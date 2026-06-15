@@ -1,0 +1,260 @@
+# =============================================================================
+# IDENTITY
+# =============================================================================
+
+[user]
+	name = Gabriel Silva
+	email = 69444613+p7gg@users.noreply.github.com
+
+# =============================================================================
+# CORE
+# =============================================================================
+
+[core]
+	# Use delta as pager for all git output (log, diff, show, etc.)
+	pager = delta
+	# Open commit editor in VS Code
+	editor = "code --wait"
+
+[init]
+	defaultBranch = main
+
+[help]
+	# Prompt before running the autocorrected command (instead of just doing it)
+	autocorrect = prompt
+
+# =============================================================================
+# CREDENTIALS
+# =============================================================================
+
+[credential "https://github.com"]
+	helper =
+	helper = !/home/gabriel/.local/share/mise/installs/github-cli-cli/latest/bin/gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/home/gabriel/.local/share/mise/installs/github-cli-cli/latest/bin/gh auth git-credential
+
+# =============================================================================
+# UI & DISPLAY
+# =============================================================================
+
+[color]
+	# Enable colored output when writing to a terminal
+	ui = auto
+
+[column]
+	# Display output in columns where applicable (e.g. git branch, git tag)
+	ui = auto
+
+[log]
+	# Show relative dates by default (e.g. "3 days ago")
+	date = relative
+
+# =============================================================================
+# DIFF
+# =============================================================================
+
+[diff]
+	# Histogram algorithm is more accurate than the default myers for most cases
+	algorithm = histogram
+	# Highlight moved blocks of code in a different color
+	colorMoved = plain
+	# Use i/ and w/ prefixes instead of a/ and b/ (index vs worktree)
+	mnemonicPrefix = true
+	# Detect renames in diffs
+	renames = true
+	tool = vscode
+
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+
+# =============================================================================
+# MERGE
+# =============================================================================
+
+[merge]
+	# zdiff3 shows the common ancestor in conflict markers — much easier to resolve
+	conflictstyle = zdiff3
+	tool = vscode
+
+[mergetool "vscode"]
+	cmd = code --wait $MERGED
+
+# =============================================================================
+# BRANCH & TAG
+# =============================================================================
+
+[branch]
+	# Show most recently committed branches first
+	sort = -committerdate
+
+[tag]
+	# Sort tags by version number (semver-aware) instead of lexicographically
+	sort = version:refname
+
+# =============================================================================
+# COMMIT
+# =============================================================================
+
+[commit]
+	# Show the full diff below the commit message template when editing
+	verbose = true
+
+# =============================================================================
+# FETCH
+# =============================================================================
+
+[fetch]
+	# Delete local refs to remote branches/tags that no longer exist on the remote
+	prune = true
+	pruneTags = true
+	# Fetch all remotes at once
+	all = true
+
+# =============================================================================
+# PUSH
+# =============================================================================
+
+[push]
+  default = upstream
+	# Automatically set upstream tracking for new branches on push
+	autoSetupRemote = true
+	# Push annotated tags that point to commits being pushed
+	followTags = true
+
+# =============================================================================
+# PULL
+# =============================================================================
+
+[pull]
+	# Always rebase instead of merge when pulling
+	rebase = true
+
+# =============================================================================
+# REBASE
+# =============================================================================
+
+[rebase]
+	# Automatically apply fixup!/squash! commits during interactive rebase
+	autoSquash = true
+	# Stash dirty working tree before rebase, re-apply after
+	autoStash = true
+	# Keep intermediate branch refs up to date during rebase --update-refs
+	updateRefs = true
+	# Warn if commits are accidentally dropped during interactive rebase
+	missingCommitsCheck = warn
+
+# =============================================================================
+# RERERE (Reuse Recorded Resolution)
+# =============================================================================
+
+[rerere]
+	# Remember how you resolved a conflict and replay it automatically next time
+	enabled = true
+	# Automatically stage files rerere resolved
+	autoupdate = true
+
+# =============================================================================
+# SUBMODULES
+# =============================================================================
+
+[submodule]
+	# Recurse into submodules for commands that support it
+	recurse = true
+
+[status]
+	# Show submodule summary in git status
+	submoduleSummary = true
+
+# =============================================================================
+# DELTA (diff pager)
+# https://github.com/dandavison/delta
+# =============================================================================
+
+[interactive]
+	# Use delta's color-only mode for interactive commands (add -p, etc.)
+	diffFilter = delta --color-only --features=interactive
+
+[delta]
+  navigate = true            ; use n and N to move between diff sections
+  side-by-side = true        ; enable side-by-side view by default
+  line-numbers = true        ; show line numbers
+  hyperlinks = true          ; make file paths clickable in supported terminals
+
+
+# =============================================================================
+# GIT LFS
+# =============================================================================
+
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+
+# =============================================================================
+# ALIASES
+# =============================================================================
+
+[alias]
+	# List all aliases
+	aliases = !git config --get-regexp alias | sed -re 's/alias\\.(\\S*)\\s(.*)$/\\1 = \\2/g'
+
+	# --- Logging ---
+
+	# Pretty tree log with graph, relative dates, and author
+	lg = log --graph --date=relative --pretty=tformat:'%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%an %ad)%Creset'
+	# Interactive log with difftastic for structural diffs
+	dlog = "!f() { GIT_EXTERNAL_DIFF=difft git log -p --ext-diff; }; f"
+
+	# --- Branches ---
+
+	# List branches sorted by last commit date with author and relative date
+	br = branch --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(contents:subject) %(color:green)(%(committerdate:relative)) [%(authorname)]' --sort=-committerdate
+	# Interactively switch branches via fzf
+	ch = !git branch | grep -v "^\\*" | fzf --height=30% --reverse --info=inline | xargs git checkout
+	# Rename current or specified branch locally and on origin
+	# Usage: git rename <new> | git rename <old> <new>
+	rename = "!f() { \
+		if [ $# -eq 0 ] || [ $# -gt 2 ]; then \
+			echo 'Usage: git rename [old] <new>'; exit 1; \
+		fi; \
+		if [ $# -eq 1 ]; then \
+			old=$(git branch --show-current); new=$1; \
+		else \
+			old=$1; new=$2; \
+		fi; \
+		git branch -m \"$old\" \"$new\" && \
+		git push origin --delete \"$old\" 2>/dev/null; \
+		git push origin -u \"$new\"; \
+	}; f"
+
+	# --- Staging & Committing ---
+
+	# Commit with message
+	cm = commit -m
+	# Stage all and commit with message
+	acm = "!git add . && git commit -m"
+	# Amend last commit without editing the message
+	amend = commit --amend --no-edit
+	# Stage all and commit as WIP
+	wip = !git add -A && git commit -m 'Work in progress'
+	# Stage all and commit as version bump
+	bump = !git add -A && git commit -m 'chore: bump version'
+
+	# --- Undoing ---
+
+	# Undo last commit, keeping changes unstaged
+	undo = reset HEAD~1 --mixed
+	# Unstage files without discarding changes
+	unstage = restore --staged
+
+	# --- Misc ---
+
+	# Print the repo root path
+	root = rev-parse --show-toplevel
+	# List all config entries
+	cfg = config --list
+	# Legacy checkout alias
+	co = checkout
