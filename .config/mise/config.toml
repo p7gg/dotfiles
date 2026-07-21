@@ -26,3 +26,4 @@ python = "latest"
 "github:backnotprop/plannotator" = "latest"
 "github:gittower/git-flow-next" = { version = "latest", rename_exe = "git-flow" }
 cargo-binstall = "latest"
+nub = "latest"
