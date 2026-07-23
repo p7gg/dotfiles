@@ -25,21 +25,21 @@ done
 
 # aliases ======================================================================
 
-alias gensecret="openssl rand -base64 32"
+alias gensecret='openssl rand -base64 32'
 alias ls='eza --icons'
 alias ll='eza -lh --icons --git'
 alias la='eza -lah --icons --git'
 alias tree='eza --tree --icons'
-alias cat="bat --style=auto"
-alias cl="clear"
-alias pn="pnpm"
-alias lz="lazygit"
-alias g="git"
-# alias grep='rg --color=auto'
+alias cat='bat --style=auto'
+alias cl='clear'
+alias pn='pnpm'
+alias lz='lazygit'
+alias g='git'
+alias grep='rg --color=auto'
 alias diff='diff --color=auto'
 alias df='df -h'
-alias ..="cd .."
-alias ...="cd ../.."
+alias ..='cd ..'
+alias ...='cd ../..'
 
 # keybindings ==================================================================
 
