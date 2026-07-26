@@ -1,1 +1,1 @@
-eval "$(~/.local/bin/mise activate zsh)"
+eval "$(/usr/sbin/mise activate zsh)"
