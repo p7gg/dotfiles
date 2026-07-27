@@ -1,0 +1,230 @@
+{
+  "version": 3,
+  "skills": {
+    "commit": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "commit/SKILL.md",
+      "skillFolderHash": "2c608604608c104d2f564f56872d40000d4faabb",
+      "installedAt": "2026-07-27T20:15:18.184Z",
+      "updatedAt": "2026-07-27T20:15:18.184Z"
+    },
+    "commit-confirm": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "commit-confirm/SKILL.md",
+      "skillFolderHash": "56fed8eaa3e7d763ab9f37794036b3add10f0095",
+      "installedAt": "2026-07-27T20:15:18.185Z",
+      "updatedAt": "2026-07-27T20:15:18.185Z"
+    },
+    "diagnose": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "diagnose/SKILL.md",
+      "skillFolderHash": "4c1b628acb77a76576a807a725528c4c919bfa1b",
+      "installedAt": "2026-07-27T20:15:18.190Z",
+      "updatedAt": "2026-07-27T20:15:18.190Z"
+    },
+    "diagnose-fix-loop": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "diagnose-fix-loop/SKILL.md",
+      "skillFolderHash": "f22bc4ed2292468e8c4912be1afd3dc03efef095",
+      "installedAt": "2026-07-27T20:15:18.191Z",
+      "updatedAt": "2026-07-27T20:15:18.191Z"
+    },
+    "git-integrate": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "git-integrate/SKILL.md",
+      "skillFolderHash": "6cb59c6c676089f4b102020024593ec93fb767ad",
+      "installedAt": "2026-07-27T20:15:18.192Z",
+      "updatedAt": "2026-07-27T20:15:18.192Z"
+    },
+    "legend-list-best-practices": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "legend-list-best-practices/SKILL.md",
+      "skillFolderHash": "63e56d95b595eb55266a2660316a968c7cd0899b",
+      "installedAt": "2026-07-27T20:15:18.193Z",
+      "updatedAt": "2026-07-27T20:15:18.193Z"
+    },
+    "legend-state-best-practices": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "legend-state-best-practices/SKILL.md",
+      "skillFolderHash": "77b83c171178d4fafd265ba76f865225bd82aeb2",
+      "installedAt": "2026-07-27T20:15:18.195Z",
+      "updatedAt": "2026-07-27T20:15:18.195Z"
+    },
+    "react-coding-style": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "react-coding-style/SKILL.md",
+      "skillFolderHash": "74a1465e118ab628e5d3266a42104ab264b14720",
+      "installedAt": "2026-07-27T20:15:18.196Z",
+      "updatedAt": "2026-07-27T20:15:18.196Z"
+    },
+    "simplify": {
+      "source": "LegendApp/legend-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "simplify/SKILL.md",
+      "skillFolderHash": "f07f527ce542d2b63feb3a2b314eacda19198e1f",
+      "installedAt": "2026-07-27T20:15:18.197Z",
+      "updatedAt": "2026-07-27T20:15:18.197Z"
+    },
+    "tanstack-cli": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-cli/skills/tanstack-cli/SKILL.md",
+      "skillFolderHash": "b7c1373d4f5f0e0d6f476fd95ae004a393e92c75",
+      "installedAt": "2026-07-27T20:19:47.492Z",
+      "updatedAt": "2026-07-27T20:19:47.492Z"
+    },
+    "tanstack-ai": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-ai/skills/tanstack-ai/SKILL.md",
+      "skillFolderHash": "ee14157a89a0f33eb680b55c5438794f9c745946",
+      "installedAt": "2026-07-27T20:19:47.493Z",
+      "updatedAt": "2026-07-27T20:19:47.493Z"
+    },
+    "tanstack-config": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-config/skills/tanstack-config/SKILL.md",
+      "skillFolderHash": "5525d134047ad793fb46886647ab38c33c48687a",
+      "installedAt": "2026-07-27T20:19:47.498Z",
+      "updatedAt": "2026-07-27T20:19:47.498Z"
+    },
+    "tanstack-db": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-db/skills/tanstack-db/SKILL.md",
+      "skillFolderHash": "4fde40fbbf9e1cbdaf08112020467b220ea077a6",
+      "installedAt": "2026-07-27T20:19:47.500Z",
+      "updatedAt": "2026-07-27T20:19:47.500Z"
+    },
+    "tanstack-devtools": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-devtools/skills/tanstack-devtools/SKILL.md",
+      "skillFolderHash": "b5832718182827cd511c694212ac1525a21de713",
+      "installedAt": "2026-07-27T20:19:47.501Z",
+      "updatedAt": "2026-07-27T20:19:47.501Z"
+    },
+    "tanstack-form": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-form/skills/tanstack-form/SKILL.md",
+      "skillFolderHash": "065d5e98a46cee7820b69a918e3e832b93bab499",
+      "installedAt": "2026-07-27T20:19:47.502Z",
+      "updatedAt": "2026-07-27T20:19:47.502Z"
+    },
+    "tanstack-pacer": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-pacer/skills/tanstack-pacer/SKILL.md",
+      "skillFolderHash": "740298181996542e88871675aee1abc43ce5419c",
+      "installedAt": "2026-07-27T20:19:47.503Z",
+      "updatedAt": "2026-07-27T20:19:47.503Z"
+    },
+    "tanstack-query": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-query/skills/tanstack-query/SKILL.md",
+      "skillFolderHash": "50fdcfbff89fba75fd5c2be42701b907d185abeb",
+      "installedAt": "2026-07-27T20:19:47.504Z",
+      "updatedAt": "2026-07-27T20:19:47.504Z"
+    },
+    "tanstack-ranger": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-ranger/skills/tanstack-ranger/SKILL.md",
+      "skillFolderHash": "d614176ccba89edfd30eac22022c7cae06273eba",
+      "installedAt": "2026-07-27T20:19:47.505Z",
+      "updatedAt": "2026-07-27T20:19:47.505Z"
+    },
+    "tanstack-router": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-router/skills/tanstack-router/SKILL.md",
+      "skillFolderHash": "3b8331bcf3766835e37439290ba2fa843186f2d1",
+      "installedAt": "2026-07-27T20:19:47.507Z",
+      "updatedAt": "2026-07-27T20:19:47.507Z"
+    },
+    "tanstack-start": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-start/skills/tanstack-start/SKILL.md",
+      "skillFolderHash": "2da37ffef5e4ffa3d71aaf8ed32bd059346324de",
+      "installedAt": "2026-07-27T20:19:47.508Z",
+      "updatedAt": "2026-07-27T20:19:47.508Z"
+    },
+    "tanstack-store": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-store/skills/tanstack-store/SKILL.md",
+      "skillFolderHash": "35d09dc8fb18195fb8afcce3e9265cc13eb004f7",
+      "installedAt": "2026-07-27T20:19:47.509Z",
+      "updatedAt": "2026-07-27T20:19:47.509Z"
+    },
+    "tanstack-table": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-table/skills/tanstack-table/SKILL.md",
+      "skillFolderHash": "dc0227e127c47b7f4a192f30594bd7b4f2140a48",
+      "installedAt": "2026-07-27T20:19:47.510Z",
+      "updatedAt": "2026-07-27T20:19:47.510Z"
+    },
+    "tanstack-virtual": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/tanstack-skills/tanstack-skills.git",
+      "skillPath": "plugins/tanstack-virtual/skills/tanstack-virtual/SKILL.md",
+      "skillFolderHash": "edc663cae0f6ffa3dbbce883e5472524410f20bf",
+      "installedAt": "2026-07-27T20:19:47.511Z",
+      "updatedAt": "2026-07-27T20:19:47.511Z"
+    }
+  },
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "antigravity",
+    "antigravity-cli",
+    "cline",
+    "codex",
+    "cursor",
+    "deepagents",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-code-cli",
+    "opencode",
+    "warp",
+    "zed"
+  ]
+}

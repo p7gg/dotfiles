@@ -48,6 +48,7 @@ phase1() {
     link_file "${DOTFILES}/starship.toml" "${HOME}/.config/starship.toml"
     link_file "${DOTFILES}/.config/mise/config.toml" "${HOME}/.config/mise/config.toml"
     link_dir  "${DOTFILES}/.zsh"         "${HOME}/.zsh"
+    link_dir  "${DOTFILES}/.agents"      "${HOME}/.agents"
     link_dir  "${DOTFILES}/.config/opencode" "${HOME}/.config/opencode"
 }
 
