@@ -28,4 +28,3 @@ python = "latest"
 "github:cli/cli" = "latest"
 "github:backnotprop/plannotator" = "latest"
 "github:gittower/git-flow-next" = { version = "latest", rename_exe = "git-flow" }
-"cargo:cargo-clean-all" = "latest"
