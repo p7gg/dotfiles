@@ -5,5 +5,8 @@
     "enabled": true
   },
   "diff_style": "auto",
-  "mouse": true
+  "mouse": true,
+  "plugin": [
+    "oh-my-opencode-slim"
+  ]
 }

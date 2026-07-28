@@ -12,3 +12,6 @@ fi
 
 # ---------- GPG ----------
 export GPG_TTY=$(tty)
+
+# ---------- Opencode ----------
+export OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
