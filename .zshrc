@@ -35,7 +35,6 @@ alias cl='clear'
 alias pn='pnpm'
 alias lz='lazygit'
 alias g='git'
-alias grep='rg --color=auto'
 alias diff='diff --color=auto'
 alias df='df -h'
 alias ..='cd ..'
@@ -82,7 +81,7 @@ zstyle ':completion:*' menu select
 
 # Make completion case-insensitive
 # Example: "doc" can complete to "Documents"
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'  # lowercase input matches upper and lower
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}' 'r:|.=* r:|=* l:|=*'
 
 # Reuse ls completions for eza (avoids defining a separate completion function)
 compdef eza=ls
