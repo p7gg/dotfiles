@@ -207,6 +207,15 @@
       "skillFolderHash": "edc663cae0f6ffa3dbbce883e5472524410f20bf",
       "installedAt": "2026-07-27T20:19:47.511Z",
       "updatedAt": "2026-07-27T20:19:47.511Z"
+    },
+    "better-icons": {
+      "source": "better-auth/better-icons",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/better-auth/better-icons.git",
+      "skillPath": "skills/SKILL.md",
+      "skillFolderHash": "49c97e1227b9611b44248acd341c7f188582f937",
+      "installedAt": "2026-08-11T23:11:43.504Z",
+      "updatedAt": "2026-08-11T23:11:43.504Z"
     }
   },
   "dismissed": {
