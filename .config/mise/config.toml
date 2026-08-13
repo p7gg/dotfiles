@@ -30,3 +30,4 @@ python = "latest"
 "github:gittower/git-flow-next" = { version = "latest", rename_exe = "git-flow" }
 ffmpeg = "latest"
 yt-dlp = { version = "latest", rename_exe = "yt-dlp" }
+codex = "latest"
