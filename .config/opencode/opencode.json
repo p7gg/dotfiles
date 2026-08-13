@@ -88,14 +88,13 @@
     },
     "opensrc": {
       "type": "local",
-      "command": ["npx", "-y", "opensrc-mcp"],
+      "command": [
+        "npx",
+        "-y",
+        "opensrc-mcp"
+      ],
       "enabled": true
     },
-    "browser-control": {
-      "type": "local",
-      "command": ["browser-control-mcp"],
-      "enabled": true
-    }
   },
   "agent": {
     "explore": {
