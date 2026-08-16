@@ -36,6 +36,44 @@ link_dir() {
     link_file "$src" "$dst"
 }
 
+# ── Phase 0: Install pacman prerequisites ───────────────────────────────
+
+phase0() {
+    # Arch: everything the dotfiles and mise builds need, before any setup.
+    if ! command -v pacman >/dev/null 2>&1; then
+        return
+    fi
+
+    info "installing pacman prerequisites..."
+
+    # nano = $EDITOR in .zshenv; xdg-utils = desktop integration; pacman-contrib = rankmirrors/checkupdates
+    local pkgs=(zsh git curl openssl lsof unzip xz base-devel nano xdg-utils pacman-contrib)
+    local missing=()
+    local p
+    for p in "${pkgs[@]}"; do
+        pacman -Q "$p" >/dev/null 2>&1 || missing+=("$p")
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        sudo pacman -S --needed --noconfirm "${missing[@]}"
+    else
+        ok "all pacman prerequisites present"
+    fi
+
+    # AUR helper (builds from source — needs the base-devel/git just installed)
+    if command -v yay >/dev/null 2>&1; then
+        ok "yay already installed"
+    else
+        info "installing yay (AUR helper)..."
+        local build_dir
+        build_dir="$(mktemp -d)"
+        git clone https://aur.archlinux.org/yay.git "$build_dir/yay"
+        (cd "$build_dir/yay" && makepkg -si --noconfirm)
+        rm -rf "$build_dir"
+        ok "yay installed"
+    fi
+}
+
 # ── Phase 1: Symlink dotfiles ───────────────────────────────────────────-
 
 phase1() {
@@ -95,6 +133,16 @@ phase2() {
 phase3() {
     info "post-install configuration..."
 
+    local zsh_path
+    zsh_path="$(command -v zsh || true)"
+    if [ -n "$zsh_path" ] && [ "$SHELL" != "$zsh_path" ]; then
+        warn "setting default shell to zsh..."
+        chsh -s "$zsh_path"
+        ok "default shell changed — log out and back in to take effect"
+    else
+        ok "default shell is already zsh"
+    fi
+
     local gh_path
     gh_path="$(command -v gh 2>/dev/null || mise which gh 2>/dev/null || true)"
     if [ -n "$gh_path" ]; then
@@ -143,6 +191,7 @@ summary() {
 
 # ── Main ─────────────────────────────────────────────────────────────────
 
+phase0
 phase1
 phase2
 phase3
