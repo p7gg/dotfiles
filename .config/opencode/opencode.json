@@ -96,6 +96,11 @@
       ],
       "enabled": true
     },
+    "linear": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+      "enabled": true
+    }
   },
   "agent": {
     "explore": {
