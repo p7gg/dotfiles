@@ -3,7 +3,8 @@
   "autoupdate": true,
   "plugin": [
     "@plannotator/opencode@latest",
-    "oh-my-opencode-slim"
+    "oh-my-opencode-slim",
+    "@thelioo/opencode-balancer"
   ],
   "model": "opencode-go/qwen3.7-plus",
   "permission": {
