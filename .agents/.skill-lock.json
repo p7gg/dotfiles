@@ -216,6 +216,15 @@
       "skillFolderHash": "49c97e1227b9611b44248acd341c7f188582f937",
       "installedAt": "2026-08-11T23:11:43.504Z",
       "updatedAt": "2026-08-11T23:11:43.504Z"
+    },
+    "adopt-better-result": {
+      "source": "dmmulroy/better-result",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/dmmulroy/better-result.git",
+      "skillPath": "skills/adopt-better-result/SKILL.md",
+      "skillFolderHash": "6fbe7c7b5b568bf67aabc68dd4c54b6026957a9a",
+      "installedAt": "2026-08-14T16:07:20.686Z",
+      "updatedAt": "2026-08-14T16:07:20.686Z"
     }
   },
   "dismissed": {
