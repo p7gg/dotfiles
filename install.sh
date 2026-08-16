@@ -19,7 +19,7 @@ link_file() {
             return
         fi
         mkdir -p "$BACKUP_DIR"
-        mv "$dst" "$BACKUP_DIR/" 2>/dev/null || true
+        mv "$dst" "$BACKUP_DIR/"
         warn "backed up: ${dst#$HOME/}"
     fi
     ln -sf "$src" "$dst"
@@ -30,7 +30,7 @@ link_dir() {
     local src="$1" dst="$2"
     if [ -d "$dst" ] && [ ! -L "$dst" ]; then
         mkdir -p "$BACKUP_DIR"
-        mv "$dst" "$BACKUP_DIR/" 2>/dev/null || true
+        mv "$dst" "$BACKUP_DIR/"
         warn "backed up: ${dst#$HOME/}"
     fi
     link_file "$src" "$dst"
@@ -103,7 +103,8 @@ phase2() {
     if [ ${#missing[@]} -gt 0 ]; then
         warn "install missing packages: ${missing[*]}"
         if command -v apt-get >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y "${missing[@]}"
+            sudo apt-get update || true
+            sudo apt-get install -y "${missing[@]}"
         elif command -v dnf >/dev/null 2>&1; then
             sudo dnf install -y "${missing[@]}"
         elif command -v brew >/dev/null 2>&1; then
@@ -118,13 +119,14 @@ phase2() {
 
     if ! command -v mise >/dev/null 2>&1; then
         info "installing mise..."
-        curl https://mise.run | sh
+        curl -fsSL https://mise.run | sh
+        export PATH="${HOME}/.local/bin:${PATH}"
     else
         ok "mise already installed"
     fi
 
     info "installing mise tools (this will take a while)..."
-    mise install --yes 2>/dev/null || mise install
+    mise install --yes
     ok "mise tools installed"
 }
 
@@ -183,10 +185,9 @@ summary() {
     info "install complete!"
     printf "  \033[1mNotes:\033[0m\n"
     printf "  • Start \033[1mzsh\033[0m — .zshrc will auto-install zinit and plugins\n"
-    printf "  • Backup saved to: \033[33m%s\033[0m\n" "$BACKUP_DIR"
     printf "  • Set git user if prompted above\n"
     printf "  • Restart your terminal or run: \033[1mexec zsh\033[0m\n"
-    [ -d "$BACKUP_DIR" ] && printf "  • Existing dotfiles: \033[33m%s\033[0m\n" "$BACKUP_DIR"
+    [ -d "$BACKUP_DIR" ] && printf "  • Existing dotfiles backed up to: \033[33m%s\033[0m\n" "$BACKUP_DIR"
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────
