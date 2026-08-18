@@ -243,6 +243,34 @@
       "skillFolderHash": "b4620eb2cfc6b58173cda800b7c7578190dfd632",
       "installedAt": "2026-08-17T16:18:18.813Z",
       "updatedAt": "2026-08-17T16:18:18.813Z"
+    },
+    "grill-me": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mattpocock/skills.git",
+      "skillPath": "skills/productivity/grill-me/SKILL.md",
+      "skillFolderHash": "3df14e2d3a89459bf300614be9247e3ce74798f8",
+      "pluginName": "mattpocock-skills",
+      "installedAt": "2026-08-18T03:18:58.507Z",
+      "updatedAt": "2026-08-18T03:18:58.507Z"
+    },
+    "taste-review": {
+      "source": "bholmesdev/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/bholmesdev/skills.git",
+      "skillPath": "skills/taste-review/SKILL.md",
+      "skillFolderHash": "685d18b93e3deb4e796c96ad8af52b8af9a2277f",
+      "installedAt": "2026-08-18T03:19:32.238Z",
+      "updatedAt": "2026-08-18T03:19:32.238Z"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/agent-skills.git",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "skillFolderHash": "343db72180d05814949fef7d46be96b5c6ee86b3",
+      "installedAt": "2026-08-18T03:20:52.960Z",
+      "updatedAt": "2026-08-18T03:20:52.960Z"
     }
   },
   "dismissed": {
