@@ -74,13 +74,13 @@
       "updatedAt": "2026-07-27T20:15:18.196Z"
     },
     "simplify": {
-      "source": "LegendApp/legend-skills",
+      "source": "bholmesdev/skills",
       "sourceType": "github",
-      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
-      "skillPath": "simplify/SKILL.md",
-      "skillFolderHash": "f07f527ce542d2b63feb3a2b314eacda19198e1f",
+      "sourceUrl": "https://github.com/bholmesdev/skills.git",
+      "skillPath": "skills/simplify/SKILL.md",
+      "skillFolderHash": "2a318b3c0e4ba1d80785efd1fe2b37ea188947ab",
       "installedAt": "2026-07-27T20:15:18.197Z",
-      "updatedAt": "2026-07-27T20:15:18.197Z"
+      "updatedAt": "2026-08-18T03:20:58.131Z"
     },
     "tanstack-cli": {
       "source": "tanstack-skills/tanstack-skills",

@@ -1,55 +1,53 @@
 ---
 name: simplify
-description: Keep code, tests, documentation, configuration, and other changes as tight, clear, performant, and minimal as possible without weakening behavior. Use during implementation to prevent unnecessary complexity, after behavior is proven to consolidate working changes, before handoff for a full branch audit, and when asked to simplify, tighten, clean up, reduce verbosity, remove complexity, or minimize existing work.
+description: Use this skill automatically when you feel your code is ready for human review, and whenever writing or reviewing code comments. Ready means the code works and achieves a stated goal, verified by your own tests and/or, if you deem it necessary, human testing.
 ---
+Review changes in the current branch, or in the scope the user specifies. Apply these criteria without changing behavior. Only touch code in that scope, and run the relevant existing checks after changes.
 
-# Simplify
+## Word choice in code and comments
 
-Produce the smallest clear implementation that fully satisfies the required behavior. Minimize concepts and moving parts, not line count.
+Variable names, function names, and comments are all prose. Apply Orwell's rules ("Politics and the English Language") to each:
 
-## Cadence
+> Never use a long word where a short one will do.
+> 
+> If it is possible to cut a word out, always cut it out.
+> 
+> Never use the passive where you can use the active.
+> 
+> Never use a foreign phrase, a scientific word, or a jargon word if you can think of an everyday English equivalent.
 
-- During construction, apply the priorities locally while discovering behavior. Allow clearly temporary instrumentation or scaffolding when it accelerates learning.
-- At convergence, once a logical behavior slice passes, simplify that slice, remove superseded attempts, and rerun focused validation.
-- Before handoff or merge, compare the full branch with its merge base and reconcile code, tests, comments, documentation, configuration, and relevant history.
+Latinate vocabulary (reconcile, coalesce, normalize, reconciliation) sounds technical and abstract; Anglo-Saxon words (prune, run, watch, stop, drop, walk) are short and physical. Prefer the Saxon word.
 
-## Workflow
+### Names
 
-1. Identify the required behavior, invariants, constraints, and non-goals.
-2. Inspect the relevant diff and separate it into logical concepts. For a final branch audit, compare the full branch with its merge base and check history for superseded attempts when relevant.
-3. Inspect the existing owners, sources of truth, common path, and decision points before adding anything.
-4. Choose the design with the fewest necessary concepts and the least work at runtime.
-5. When changes are requested, implement directly and reuse existing mechanisms where they fit.
-6. Validate behavior with checks proportional to the risk.
-7. Review the final code, tests, names, comments, documentation, configuration, and relevant history for anything that no longer earns its complexity.
+1. **One word per concept, one concept per word.** Keep a vocabulary. If `sync` names "pulling remote changes," it cannot also name "flushing edits to disk;" rename one of them.
+2. **Cut words the context already carries.** A module named `workspaceWatcher` does not need `startNativeWorkspaceWatcher`; `watchWorkspace` says the same thing.
+3. **A compound name is usually a hedge:**
 
-## Simplification Priorities
+- ❌ `lastObservedDiskContent` is a specification to defend
+- ✅ `baseline` is a readable description
 
-- Prefer deletion, reuse, or a direct change over a new abstraction.
-- Keep one source of truth; avoid mirrored state, overlapping guards, duplicate registries, and compensating mechanisms.
-- Avoid speculative fallbacks, compatibility paths, configuration, parameters, and generic APIs.
-- Inline one-use helpers when doing so makes the policy clearer at its decision point.
-- Prefer straightforward positive control flow over early-return chains or empty branches.
-- On hot paths, minimize allocations, callback recreation, subscriptions, renders, passes, I/O, and native work.
-- For prose, remove repetition and keep the shortest wording or example that remains self-sufficient.
+### Comments
 
-## Existing Work
+State, in plain English, the constraint the code cannot show: why the **non-obvious** exists.
 
-Establish a passing baseline before simplifying working code. Test one questionable concept at a time, rerun the relevant validation, and restore it if behavior or meaningful coverage weakens. Do not restructure several accumulated fix attempts before establishing which changes are causally necessary.
+- ✅ If code is complex and the implementation is non-obvious, add a comment.
+- ✅ If a function contains complex behaviors or side effects, add a doc comment.
+- 🗑️ If a comment narrates change history from the conversation, delete it.
+- 🗑️ If a comment restates code whose behavior is self-evident, delete it.
 
-When duplicate or ineffective regression coverage is suspected, deliberately break the claimed invariant and confirm the remaining test fails. Passing tests alone do not prove that every test or implementation concept is necessary.
+## Code structure
 
-Do not rewrite branch history without authorization.
+1. **Inverted pyramid.** Within a file, lead with the exported or significant functions and push helpers below them. Don't bury the lead.
+2. **Related concepts over monoliths.** Break a large file into modules that each own one concept.
+3. **Combine overlapping concepts.** If two types, functions, or constants overlap significantly, merge them. The fewer distinct concepts a reader must hold in their head, the better.
+4. **Use shared code.** Common utilities (ex. file path parsing) may exist in the codebase already. Check for library or utility functions before inlining.
+5. **Derivability.** If a value can be computed from values already in scope, don't pass or store it separately. Removing derivable state often simplifies signatures, types, and control flow in one move. Example: an `isDirty` parameter that is always `editorContent !== baseline` can be dropped.
 
-## Performance Changes
+## Overfitting
 
-Name the exact common-path work being removed: allocations, scans, mounts, renders, subscriptions, I/O, or native calls. Control-flow evidence plus regression tests can justify removing work that is structurally unused. Require a benchmark, profile, or repeated repro when an optimization changes semantics or introduces a tradeoff. Do not add complexity for theoretical gains.
+Code must stand on its own. If a change only makes sense to someone who watched it happen (this conversation, this PR), it is overfitted. Write for the reader who arrives with no history.
 
-## Guardrails
+- If a name or comment needs the conversation to be understood, rewrite it against the codebase's own vocabulary.
+- **No backwards compatibility with unshipped code.** Supporting an old signature, alias, or data shape that only existed earlier in the same branch is compatibility with something that was never deployed. Delete the old path and update its callers.
 
-- Preserve correctness, required behavior, type safety, distinct regression coverage, and useful clarity.
-- Do not replace clear code with compressed or clever code merely to reduce lines.
-- Make scoped, behavior-preserving improvements directly. If the better design requires a sweeping API or architecture change, explain and suggest it instead of expanding the task without approval.
-- Leave unrelated and user-authored changes untouched.
-
-Stop when every remaining concept supports a requirement, invariant, clarity, or measured performance need. Report only material simplifications, validation, and unresolved opportunities.
