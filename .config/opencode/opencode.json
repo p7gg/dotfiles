@@ -98,17 +98,27 @@
     },
     "linear": {
       "type": "local",
-      "command": ["npx", "-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/mcp"
+      ],
       "enabled": true
     }
   },
   "agent": {
     "explore": {
-      "disable": true
+      "disable": true,
+      "options": {},
+      "permission": {}
     },
     "general": {
-      "disable": true
+      "disable": true,
+      "options": {},
+      "permission": {}
     }
   },
-  "lsp": true
+  "lsp": true,
+  "shell": "/usr/sbin/zsh"
 }
