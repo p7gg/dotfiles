@@ -231,9 +231,9 @@
       "sourceType": "github",
       "sourceUrl": "https://github.com/dmmulroy/anti-slop.git",
       "skillPath": "skills/install-anti-slop/SKILL.md",
-      "skillFolderHash": "b1512e24318785e3f9028e19a8f7cbec11343088",
+      "skillFolderHash": "31c294c983ea89bc585041cb43ec651b2df684a1",
       "installedAt": "2026-08-16T16:19:33.067Z",
-      "updatedAt": "2026-08-16T16:19:33.067Z"
+      "updatedAt": "2026-08-19T18:23:31.065Z"
     },
     "playwright-best-practices": {
       "source": "currents-dev/playwright-best-practices-skill",
