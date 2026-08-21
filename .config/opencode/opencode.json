@@ -91,6 +91,5 @@
       "permission": {}
     }
   },
-  "lsp": true,
-  "shell": "/usr/sbin/zsh"
+  "lsp": true
 }
