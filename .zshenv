@@ -1,3 +1,10 @@
+# ---------- PATH ----------
+# mise (installed via https://mise.run) lives here
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 # ---------- Editor ----------
 # Default editor used by git, crontab, etc.
 export EDITOR="nano"
