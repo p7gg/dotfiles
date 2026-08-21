@@ -1,9 +1,3 @@
-export PNPM_HOME="/home/gabriel/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-esac
-
 #compdef pnpm
 ###-begin-pnpm-completion-###
 if type compdef &>/dev/null; then
