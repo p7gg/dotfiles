@@ -5,186 +5,392 @@ set -euo pipefail
 
 AGGRESSIVE=0
 ASSUME_YES=0
+
+# Expand combined short flags (-ay -> -a -y)
+ARGS=()
 for arg in "$@"; do
+    if [[ "$arg" == -[a-z]* && "$arg" != --* && ${#arg} -gt 2 ]]; then
+        for ((i = 1; i < ${#arg}; i++)); do ARGS+=("-${arg:i:1}"); done
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+for arg in "${ARGS[@]}"; do
     case "$arg" in
         -a|--aggressive) AGGRESSIVE=1 ;;
         -y|--yes)        ASSUME_YES=1 ;;
         -h|--help)
-            echo "usage: pacclean [-a|--aggressive] [-y|--yes]"
-            echo "  -a, --aggressive  default to aggressive options"
-            echo "  -y, --yes         skip confirmation prompts"
+            cat <<'EOF'
+usage: pacclean [-a|--aggressive] [-y|--yes]
+
+  -a, --aggressive  default to the aggressive option in every menu
+  -y, --yes         non-interactive: pick the default for every menu
+                    (the safe action; combine with -a for aggressive ones)
+
+WARNING: -a -y runs every destructive action with zero prompts,
+including wiping all of ~/.cache and deleting all Playwright browsers.
+EOF
             exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 1 ;;
     esac
 done
 
-info()  { printf "\033[1;34m➜\033[0m %s\n" "$1"; }
-ok()    { printf "\033[1;32m✓\033[0m %s\n" "$1"; }
-warn()  { printf "\033[1;33m⚠\033[0m %s\n" "$1"; }
-dim()   { printf "\033[2m%s\033[0m\n" "$1"; }
+if [ "$ASSUME_YES" -eq 0 ] && ! [ -t 0 ]; then
+    echo "stdin is not a terminal; use -y for non-interactive mode" >&2
+    exit 1
+fi
+
+# ── output helpers (colors only on a tty) ────────────────────────────────
+if [ -t 1 ]; then
+    B=$'\033[1m'; R=$'\033[0m'
+    C_INFO=$'\033[1;34m'; C_OK=$'\033[1;32m'; C_WARN=$'\033[1;33m'; C_DIM=$'\033[2m'
+else
+    B=''; R=''; C_INFO=''; C_OK=''; C_WARN=''; C_DIM=''
+fi
+info() { printf "%s➜%s %s\n" "$C_INFO" "$R" "$1"; }
+ok()   { printf "%s✓%s %s\n" "$C_OK" "$R" "$1"; }
+warn() { printf "%s⚠%s %s\n" "$C_WARN" "$R" "$1"; }
+dim()  { printf "%s%s%s\n" "$C_DIM" "$1" "$R"; }
+bold() { printf "%s%s%s\n" "$B" "$1" "$R"; }
+
+# ── size helpers (all guarded: du may fail on unreadable entries) ────────
+size_of() { du -sh "$1" 2>/dev/null | cut -f1 || echo "?"; }
+kb_of()   { du -sk "$1" 2>/dev/null | cut -f1 || echo 0; }
+fmt_bytes() {
+    local kb=${1:-0}
+    if command -v numfmt >/dev/null 2>&1 && [ "$kb" -gt 0 ]; then
+        numfmt --to=iec $((kb * 1024))
+    else
+        echo "${kb}K"
+    fi
+}
 
 df_root() { df -h / | awk 'NR==2 {print $4" free"}'; }
 
-confirm() {
-    [ "$ASSUME_YES" -eq 1 ] && return 0
-    local reply
-    read -r -p "$1 [y/N] " reply
-    [[ "$reply" =~ ^[Yy]$ ]]
+# ── summary tracking ─────────────────────────────────────────────────────
+declare -a SUMMARY=()
+sum_done() { SUMMARY+=("ok|$1"); }
+sum_skip() { SUMMARY+=("skip|$1"); }
+sum_fail() { SUMMARY+=("fail|$1"); }
+
+print_summary() {
+    bold "── summary ──────────────────────────────────"
+    local entry kind text
+    for entry in "${SUMMARY[@]}"; do
+        kind=${entry%%|*} text=${entry#*|}
+        case "$kind" in
+            ok)   printf "%s✓%s %s\n" "$C_OK" "$R" "$text" ;;
+            skip) printf "%s·%s %s\n" "$C_DIM" "$R" "$text" ;;
+            fail) printf "%s✗%s %s\n" "$C_WARN" "$R" "$text" ;;
+        esac
+    done
 }
 
-ask_aggressive() {
-    [ "$AGGRESSIVE" -eq 1 ] && return 0
-    local reply
-    read -r -p "$1 [y/N] " reply
-    [[ "$reply" =~ ^[Yy]$ ]]
+# ── interaction ──────────────────────────────────────────────────────────
+# choose <keys> <question> — keys like "12s" or "1s"; echoes the choice.
+# Default: 2 if aggressive (when offered), else 1 with -y, else skip.
+choose() {
+    local keys=$1 question=$2 reply def k disp=""
+    if [[ "$keys" == *2* && "$AGGRESSIVE" -eq 1 ]]; then def=2
+    elif [ "$ASSUME_YES" -eq 1 ]; then def=1
+    else def=s; fi
+    if [ "$ASSUME_YES" -eq 1 ]; then echo "$def"; return; fi
+    for ((k = 0; k < ${#keys}; k++)); do disp+="${keys:k:1}/"; done
+    disp=${disp%/}
+    read -r -p "  $question [$disp, default: $def] " reply
+    reply=${reply:-$def}
+    reply=${reply,,}
+    if [[ ${#reply} -eq 1 && "$keys" == *"$reply"* ]]; then echo "$reply"; else echo "$def"; fi
+}
+
+# Remove the *contents* of the given directories (dotfiles included),
+# report how much was freed. Skips paths that don't exist.
+run_wipe() {
+    local label=$1; shift
+    local paths=() p before=0 after=0 freed human
+    for p in "$@"; do [ -d "$p" ] && paths+=("$p"); done
+    if [ ${#paths[@]} -eq 0 ]; then
+        dim "  nothing to clean"
+        sum_skip "$label — nothing found"
+        return 0
+    fi
+    for p in "${paths[@]}"; do before=$((before + $(kb_of "$p"))); done
+    find "${paths[@]}" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+    for p in "${paths[@]}"; do after=$((after + $(kb_of "$p"))); done
+    freed=$((before - after)); ((freed < 0)) && freed=0
+    human=$(fmt_bytes "$freed")
+    ok "$label (~$human freed)"
+    sum_done "$label (~$human freed)"
+}
+
+# Validate sudo once before the first privileged step so the password
+# prompt doesn't interrupt mid-flow later.
+SUDO_READY=0
+sudorun() {
+    if [ "$SUDO_READY" -eq 0 ]; then
+        info "requesting sudo (needed for system cleanup steps)"
+        sudo -v || return 1
+        SUDO_READY=1
+    fi
+    sudo "$@"
 }
 
 BEFORE=$(df_root)
-printf "\n\033[1mpacclean\033[0m — disk cleanup\n"
+bold "\npacclean — interactive disk cleanup"
 info "disk before: $BEFORE"
 printf "\n"
 
 # ── 1. Pacman package cache ──────────────────────────────────────────────
 if command -v paccache >/dev/null 2>&1; then
-    CACHE_SIZE=$(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1 || true)
-    CACHE_SIZE=${CACHE_SIZE:-unknown}
-    info "pacman cache: ${CACHE_SIZE}"
-    if ask_aggressive "  remove ALL cached versions except currently installed? (aggressive)"; then
-        sudo paccache -ruk0 && ok "removed caches of uninstalled + old versions"
-    else
-        confirm "  remove old cached versions (keep last 3)?" && { sudo paccache -r && ok "old package caches removed"; } || dim "skipped"
-    fi
+    info "pacman cache (/var/cache/pacman/pkg): $(size_of /var/cache/pacman/pkg)"
+    dim "    Downloaded package tarballs. Cached versions let you downgrade"
+    dim "    a broken update; removing them never touches installed packages."
+    case "$(choose "12s" "clean pacman cache?  [1] keep last 3 versions  [2] keep only installed (aggressive)  [s] skip")" in
+        1)
+            KB_BEFORE=$(kb_of /var/cache/pacman/pkg)
+            if sudorun paccache -r; then
+                ok "old package caches removed (~$(fmt_bytes $((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))) freed)"
+                sum_done "pacman cache — old versions removed"
+            else
+                sum_fail "pacman cache cleanup"
+            fi ;;
+        2)
+            KB_BEFORE=$(kb_of /var/cache/pacman/pkg)
+            if sudorun paccache -ruk0; then
+                ok "caches of uninstalled + old versions removed (~$(fmt_bytes $((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))) freed)"
+                sum_done "pacman cache — only installed versions kept"
+            else
+                sum_fail "pacman cache cleanup (aggressive)"
+            fi ;;
+        *) dim "  skipped"; sum_skip "pacman cache" ;;
+    esac
+    printf "\n"
 else
     warn "paccache not found (install pacman-contrib)"
+    printf "\n"
 fi
 
 # ── 2. Orphan packages ───────────────────────────────────────────────────
 ORPHANS=$(pacman -Qtdq 2>/dev/null || true)
 if [ -n "$ORPHANS" ]; then
-    info "orphan packages:"
-    dim "$(echo "$ORPHANS" | sed 's/^/    /')"
-    if ask_aggressive "  remove orphans WITH their dependency chains? (aggressive: pacman -Rns --recursive)"; then
-        echo "$ORPHANS" | sudo pacman -Rns --recursive --noconfirm - && ok "orphans removed recursively"
-    else
-        confirm "  remove orphan packages?" && echo "$ORPHANS" | sudo pacman -Rns --noconfirm - && ok "orphans removed"
-    fi
+    info "orphan packages ($(wc -l <<<"$ORPHANS")):"
+    dim "$(sed 's/^/    /' <<<"$ORPHANS")"
+    dim "    Were installed as dependencies but nothing requires them anymore."
+    case "$(choose "12s" "remove orphans?  [1] listed packages only  [2] also pull unneeded dependency chains (aggressive)  [s] skip")" in
+        1)
+            if sudorun pacman -Rns --noconfirm - <<<"$ORPHANS"; then
+                ok "orphans removed"
+                sum_done "orphan packages removed"
+            else
+                sum_fail "orphan removal"
+            fi ;;
+        2)
+            if sudorun pacman -Rns --recursive --noconfirm - <<<"$ORPHANS"; then
+                ok "orphans removed recursively"
+                sum_done "orphan packages + dependency chains removed"
+            else
+                sum_fail "recursive orphan removal"
+            fi ;;
+        *) dim "  skipped"; sum_skip "orphan packages" ;;
+    esac
+    printf "\n"
 else
     ok "no orphan packages"
+    sum_done "no orphan packages"
+    printf "\n"
 fi
 
 # ── 3. AUR build cache (~/.cache/yay) ────────────────────────────────────
 if [ -d "${HOME}/.cache/yay" ]; then
-    YAY_SIZE=$(du -sh "${HOME}/.cache/yay" 2>/dev/null | cut -f1)
-    info "AUR build cache (~/.cache/yay): ${YAY_SIZE}"
-    confirm "  clear AUR build cache?" && { rm -rf "${HOME}/.cache/yay/"* && ok "AUR cache cleared"; } || dim "skipped"
+    info "AUR build cache (~/.cache/yay): $(size_of "${HOME}/.cache/yay")"
+    dim "    Cloned PKGBUILDs and compiled artifacts from AUR builds."
+    dim "    Safe to delete; the next AUR install rebuilds from source."
+    case "$(choose "1s" "clear AUR build cache?  [1] yes  [s] skip")" in
+        1) run_wipe "AUR build cache cleared" "${HOME}/.cache/yay" ;;
+        *) dim "  skipped"; sum_skip "AUR build cache" ;;
+    esac
+    printf "\n"
 fi
 
 # ── 4. Systemd journal ───────────────────────────────────────────────────
 if command -v journalctl >/dev/null 2>&1; then
-    JOURNAL_SIZE=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+.*$' || echo "?")
-    info "systemd journal: ${JOURNAL_SIZE}"
-    if ask_aggressive "  vacuum journal to 50MB? (aggressive; otherwise 500MB)"; then
-        sudo journalctl --vacuum-size=50M && ok "journal vacuumed to 50M"
-    else
-        confirm "  vacuum journal to 500MB?" && { sudo journalctl --vacuum-size=500M && ok "journal vacuumed"; } || dim "skipped"
-    fi
+    JOURNAL_SIZE=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+(\.\d+)?[KMGT]' | head -n1 || true)
+    info "systemd journal: ${JOURNAL_SIZE:-unknown}"
+    dim "    System/service logs. Vacuuming deletes the oldest entries until"
+    dim "    the archive fits the size cap; recent logs are always kept."
+    case "$(choose "12s" "vacuum journal?  [1] cap at 500MB  [2] cap at 50MB (aggressive)  [s] skip")" in
+        1) sudorun journalctl --vacuum-size=500M >/dev/null && { ok "journal capped at 500MB"; sum_done "journal vacuumed (500MB cap)"; } || sum_fail "journal vacuum" ;;
+        2) sudorun journalctl --vacuum-size=50M  >/dev/null && { ok "journal capped at 50MB";  sum_done "journal vacuumed (50MB cap)"; }  || sum_fail "journal vacuum" ;;
+        *) dim "  skipped"; sum_skip "systemd journal" ;;
+    esac
+    printf "\n"
 fi
 
 # ── 5. User cache (~/.cache) ─────────────────────────────────────────────
-CACHE_TOTAL=$(du -sh "${HOME}/.cache" 2>/dev/null | cut -f1 || echo "?")
-info "user cache (~/.cache): ${CACHE_TOTAL}"
-if ask_aggressive "  wipe ENTIRE ~/.cache? (aggressive — apps will rebuild caches slowly)"; then
-    confirm "  really wipe all of ~/.cache?" && { rm -rf "${HOME}/.cache/"* && ok "user cache wiped"; } || dim "skipped"
-else
-    confirm "  clear thumbnails and browser caches only?" && {
-        rm -rf "${HOME}/.cache/thumbnails" 2>/dev/null || true
-        rm -rf "${HOME}/.cache/mozilla" "${HOME}/.cache/chromium" "${HOME}/.cache/BraveSoftware" "${HOME}/.cache/google-chrome" 2>/dev/null || true
-        ok "thumbnails + browser caches cleared"
-    } || dim "skipped"
-fi
+info "user cache (~/.cache): $(size_of "${HOME}/.cache")"
+dim "    App-rebuildable data: thumbnails, browser caches, tool downloads."
+dim "    Wiping everything is safe, but apps start cold (slow first launch)."
+case "$(choose "12s" "clean user cache?  [1] thumbnails + browser caches only  [2] wipe ENTIRE ~/.cache (aggressive)  [s] skip")" in
+    1)
+        run_wipe "thumbnails + browser caches cleared" \
+            "${HOME}/.cache/thumbnails" \
+            "${HOME}/.cache/mozilla" \
+            "${HOME}/.cache/chromium" \
+            "${HOME}/.cache/BraveSoftware" \
+            "${HOME}/.cache/google-chrome" ;;
+    2)
+        WIPE_ALL=1
+        if [ "$ASSUME_YES" -eq 0 ]; then
+            read -r -p "  really wipe ALL of ~/.cache? [y/N] " _reply
+            [[ "$_reply" =~ ^[Yy]$ ]] || WIPE_ALL=0
+        fi
+        if [ "$WIPE_ALL" -eq 1 ]; then
+            run_wipe "entire user cache wiped" "${HOME}/.cache"
+        else
+            dim "  skipped"; sum_skip "user cache (declined double-confirm)"
+        fi ;;
+    *) dim "  skipped"; sum_skip "user cache" ;;
+esac
+printf "\n"
 
 # ── 6. Trash ─────────────────────────────────────────────────────────────
 TRASH="${HOME}/.local/share/Trash"
-if [ -d "$TRASH" ]; then
-    TRASH_SIZE=$(du -sh "$TRASH" 2>/dev/null | cut -f1)
-    info "trash: ${TRASH_SIZE}"
-    confirm "  empty trash?" && { rm -rf "$TRASH/files/"* "$TRASH/info/"* 2>/dev/null; ok "trash emptied"; } || dim "skipped"
+if [ -d "$TRASH/files" ] || [ -d "$TRASH/info" ]; then
+    info "trash (~/.local/share/Trash): $(size_of "$TRASH")"
+    dim "    Files you deleted from your file manager — already out of sight,"
+    dim "    this just reclaims the space permanently."
+    case "$(choose "1s" "empty trash?  [1] yes  [s] skip")" in
+        1) run_wipe "trash emptied" "$TRASH/files" "$TRASH/info" ;;
+        *) dim "  skipped"; sum_skip "trash" ;;
+    esac
+    printf "\n"
 fi
 
 # ── 7. Mise tool cache ───────────────────────────────────────────────────
 if command -v mise >/dev/null 2>&1; then
-    MISE_CACHE=$(du -sh "${HOME}/.local/share/mise/downloads" 2>/dev/null | cut -f1 || echo "?")
-    info "mise downloads cache: ${MISE_CACHE}"
-    confirm "  prune stale mise downloads?" && { mise cache clear && rm -rf "${HOME}/.local/share/mise/downloads/"* 2>/dev/null; ok "mise cache cleared"; } || dim "skipped"
+    MISE_DIR="${HOME}/.local/share/mise/downloads"
+    info "mise downloads cache: $(size_of "$MISE_DIR")"
+    dim "    Downloaded runtime archives (node, python, ...) kept for reuse."
+    dim "    Installed tool versions are NOT touched — only stale downloads."
+    case "$(choose "1s" "prune mise downloads?  [1] yes  [s] skip")" in
+        1)
+            if mise cache clear >/dev/null 2>&1; then
+                run_wipe "mise cache + downloads cleared" "$MISE_DIR"
+            else
+                sum_fail "mise cache cleanup"
+            fi ;;
+        *) dim "  skipped"; sum_skip "mise cache" ;;
+    esac
+    printf "\n"
 fi
 
 # ── 8. JS package manager caches ─────────────────────────────────────────
 if command -v npm >/dev/null 2>&1 && [ -d "${HOME}/.npm" ]; then
-    NPM_SIZE=$(du -sh "${HOME}/.npm" 2>/dev/null | cut -f1)
-    info "npm cache (~/.npm): ${NPM_SIZE}"
-    confirm "  clean npm cache?" && { npm cache clean --force >/dev/null 2>&1; ok "npm cache cleaned"; } || dim "skipped"
+    info "npm cache (~/.npm): $(size_of "${HOME}/.npm")"
+    dim "    Downloaded package tarballs + metadata. Projects in node_modules"
+    dim "    are unaffected; next install re-downloads what it needs."
+    case "$(choose "1s" "clean npm cache?  [1] yes  [s] skip")" in
+        1) npm cache clean --force >/dev/null 2>&1 && { ok "npm cache cleaned"; sum_done "npm cache cleaned"; } || sum_fail "npm cache clean" ;;
+        *) dim "  skipped"; sum_skip "npm cache" ;;
+    esac
+    printf "\n"
 fi
 
 if command -v pnpm >/dev/null 2>&1; then
     PNPM_STORE=$(pnpm store path 2>/dev/null || true)
     if [ -n "$PNPM_STORE" ] && [ -d "$PNPM_STORE" ]; then
-        PNPM_SIZE=$(du -sh "$PNPM_STORE" 2>/dev/null | cut -f1)
-        info "pnpm store (${PNPM_STORE}): ${PNPM_SIZE}"
-        # prune only removes packages not referenced by any project — safe
-        confirm "  prune unreferenced packages from pnpm store?" && { pnpm store prune >/dev/null 2>&1; ok "pnpm store pruned"; } || dim "skipped"
+        info "pnpm store ($PNPM_STORE): $(size_of "$PNPM_STORE")"
+        dim "    Content-addressed package store shared by all pnpm projects."
+        dim "    Prune only removes versions no project references — safe."
+        case "$(choose "1s" "prune pnpm store?  [1] yes  [s] skip")" in
+            1) pnpm store prune >/dev/null 2>&1 && { ok "pnpm store pruned"; sum_done "pnpm store pruned"; } || sum_fail "pnpm store prune" ;;
+            *) dim "  skipped"; sum_skip "pnpm store" ;;
+        esac
+        printf "\n"
     fi
 fi
 
 if command -v bun >/dev/null 2>&1 && [ -d "${HOME}/.bun/install/cache" ]; then
-    BUN_SIZE=$(du -sh "${HOME}/.bun/install/cache" 2>/dev/null | cut -f1)
-    info "bun cache: ${BUN_SIZE}"
-    confirm "  clean bun install cache?" && { bun pm cache rm >/dev/null 2>&1; ok "bun cache cleaned"; } || dim "skipped"
+    info "bun install cache: $(size_of "${HOME}/.bun/install/cache")"
+    dim "    Downloaded package tarballs from bun installs."
+    case "$(choose "1s" "clean bun install cache?  [1] yes  [s] skip")" in
+        1) bun pm cache rm >/dev/null 2>&1 && { ok "bun cache cleaned"; sum_done "bun cache cleaned"; } || sum_fail "bun cache clean" ;;
+        *) dim "  skipped"; sum_skip "bun cache" ;;
+    esac
+    printf "\n"
 fi
 
 # ── 9. Rust caches ───────────────────────────────────────────────────────
-if [ -d "${HOME}/.cargo/registry" ]; then
-    CARGO_SIZE=$(du -sh "${HOME}/.cargo/registry" 2>/dev/null | cut -f1)
-    info "cargo registry: ${CARGO_SIZE}"
-    if ask_aggressive "  remove extracted crate sources AND cached .crate files? (aggressive — next build re-downloads)"; then
-        rm -rf "${HOME}/.cargo/registry/src" "${HOME}/.cargo/registry/cache" && ok "cargo registry cleared"
-    else
-        # removing src/ only is cheap: crates re-extract from local .crate archives, no re-download
-        confirm "  remove extracted sources only (keeps .crate archives)?" && { rm -rf "${HOME}/.cargo/registry/src" && ok "extracted crate sources removed"; } || dim "skipped"
-    fi
+CARGO_REGISTRY="${HOME}/.cargo/registry"
+if [ -d "$CARGO_REGISTRY" ]; then
+    info "cargo registry: $(size_of "$CARGO_REGISTRY")"
+    dim "    src/   = extracted crate sources (re-extract locally, no download)"
+    dim "    cache/ = downloaded .crate archives (removed = re-download)"
+    case "$(choose "12s" "clean cargo registry?  [1] extracted sources only (cheap)  [2] sources + .crate archives (aggressive)  [s] skip")" in
+        1) run_wipe "extracted crate sources removed" "$CARGO_REGISTRY/src" ;;
+        2) run_wipe "cargo registry cleared" "$CARGO_REGISTRY/src" "$CARGO_REGISTRY/cache" ;;
+        *) dim "  skipped"; sum_skip "cargo registry" ;;
+    esac
+    printf "\n"
 fi
 
 if command -v rustup >/dev/null 2>&1; then
-    TOOLCHAINS=$(rustup toolchain list 2>/dev/null | grep -v '(default)' | grep -v '(override)' | grep -cv '(active)' || true)
-    if [ "${TOOLCHAINS:-0}" -gt 0 ]; then
-        info "rustup toolchains (non-default):"
-        dim "$(rustup toolchain list | grep -v '(default)' | grep -v '(override)' | grep -v '(active)' | sed 's/^/    /')"
-        confirm "  remove non-default rustup toolchains?" && {
-            rustup toolchain list | grep -v '(default)' | grep -v '(override)' | grep -v '(active)' | awk '{print $1}' | while read -r tc; do
-                rustup toolchain uninstall "$tc" >/dev/null 2>&1 && ok "removed $tc"
-            done
-        } || dim "skipped"
+    STALE_TOOLCHAINS=$(rustup toolchain list 2>/dev/null | grep -v '(default)' | grep -v '(override)' | grep -v '(active)' || true)
+    if [ -n "$STALE_TOOLCHAINS" ]; then
+        info "rustup toolchains ($(wc -l <<<"$STALE_TOOLCHAINS") non-default):"
+        dim "$(sed 's/^/    /' <<<"$STALE_TOOLCHAINS")"
+        dim "    Each installed toolchain is a full rustc build (~1GB each)."
+        dim "    The default and any overridden/active toolchain are never touched."
+        case "$(choose "1s" "remove non-default rustup toolchains?  [1] yes  [s] skip")" in
+            1)
+                REMOVED=0 FAILED=0
+                while read -r tc; do
+                    tc=${tc%% *}
+                    if rustup toolchain uninstall "$tc" >/dev/null 2>&1; then
+                        ok "removed $tc"; REMOVED=$((REMOVED + 1))
+                    else
+                        warn "failed to remove $tc"; FAILED=$((FAILED + 1))
+                    fi
+                done <<<"$STALE_TOOLCHAINS"
+                if [ "$FAILED" -eq 0 ]; then
+                    sum_done "removed $REMOVED non-default rustup toolchain(s)"
+                else
+                    sum_fail "rustup removal ($FAILED failed)"
+                fi ;;
+            *) dim "  skipped"; sum_skip "rustup toolchains" ;;
+        esac
+        printf "\n"
     else
         ok "no stale rustup toolchains"
+        printf "\n"
     fi
 fi
 
 # ── 10. Dev tool caches (opencode, playwright) ───────────────────────────
 if [ -d "${HOME}/.cache/opencode" ]; then
-    OC_SIZE=$(du -sh "${HOME}/.cache/opencode" 2>/dev/null | cut -f1)
-    info "opencode cache: ${OC_SIZE}"
-    confirm "  clear opencode cache?" && { rm -rf "${HOME}/.cache/opencode/"* && ok "opencode cache cleared"; } || dim "skipped"
+    info "opencode cache: $(size_of "${HOME}/.cache/opencode")"
+    dim "    Models/logs/state snapshots from opencode sessions."
+    case "$(choose "1s" "clear opencode cache?  [1] yes  [s] skip")" in
+        1) run_wipe "opencode cache cleared" "${HOME}/.cache/opencode" ;;
+        *) dim "  skipped"; sum_skip "opencode cache" ;;
+    esac
+    printf "\n"
 fi
 
 if [ -d "${HOME}/.cache/ms-playwright" ]; then
-    PW_SIZE=$(du -sh "${HOME}/.cache/ms-playwright" 2>/dev/null | cut -f1)
-    info "playwright browsers: ${PW_SIZE}"
-    if ask_aggressive "  delete ALL playwright browsers? (aggressive — re-download on next test run)"; then
-        rm -rf "${HOME}/.cache/ms-playwright/"* && ok "playwright browsers removed"
-    else
-        dim "skipped"
-    fi
+    info "playwright browsers: $(size_of "${HOME}/.cache/ms-playwright")"
+    dim "    Full browser builds used by e2e tests (~150MB+ per browser)."
+    dim "    Re-downloaded automatically on the next test run or install."
+    case "$(choose "2s" "delete playwright browsers?  [1] keep  [2] delete ALL (aggressive)  [s] skip")" in
+        2) run_wipe "playwright browsers removed" "${HOME}/.cache/ms-playwright" ;;
+        *) dim "  skipped"; sum_skip "playwright browsers" ;;
+    esac
+    printf "\n"
 fi
 
+# ── wrap up ──────────────────────────────────────────────────────────────
 AFTER=$(df_root)
+print_summary
 printf "\n"
-info "done! disk after: $AFTER (was: $BEFORE)"
+info "disk: was $BEFORE → now $AFTER"
