@@ -97,6 +97,12 @@ phase1() {
     link_dir  "${DOTFILES}/.zsh"         "${HOME}/.zsh"
     link_dir  "${DOTFILES}/.agents"      "${HOME}/.agents"
     link_dir  "${DOTFILES}/.config/opencode" "${HOME}/.config/opencode"
+
+    # Personal scripts → ~/.local/bin
+    mkdir -p "${HOME}/.local/bin"
+    for script in "${DOTFILES}"/bin/*; do
+        [ -f "$script" ] && link_file "$script" "${HOME}/.local/bin/$(basename "$script")"
+    done
 }
 
 # ── Phase 2: Install system dependencies ─────────────────────────────────
