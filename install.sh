@@ -72,6 +72,15 @@ phase0() {
         rm -rf "$build_dir"
         ok "yay installed"
     fi
+
+    # Brave browser (AUR prebuilt binary package)
+    if pacman -Q brave-bin >/dev/null 2>&1; then
+        ok "brave already installed"
+    else
+        info "installing brave..."
+        yay -S --needed --noconfirm brave-bin
+        ok "brave installed"
+    fi
 }
 
 # ── Phase 1: Symlink dotfiles ───────────────────────────────────────────-
@@ -123,6 +132,13 @@ phase2() {
         export PATH="${HOME}/.local/bin:${PATH}"
     else
         ok "mise already installed"
+    fi
+
+    if ! command -v opencode >/dev/null 2>&1; then
+        info "installing opencode..."
+        curl -fsSL https://opencode.ai/install | bash
+    else
+        ok "opencode already installed"
     fi
 
     info "installing mise tools (this will take a while)..."
