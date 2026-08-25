@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "opencode-go",
+  "preset": "opencode-free",
   "presets": {
     "openai": {
       "orchestrator": {
@@ -118,9 +118,213 @@
         "mcps": []
       }
     },
-    "cheap": {
+    "work": {
       "orchestrator": {
-        "model": "opencode-go/minimax-m3",
+        "model": "litellm/claude-opus-4-8",
+        "variant": "xhigh",
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "litellm/claude-sonnet-5",
+        "variant": "xhigh",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "litellm/gemini-3.5-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "explorer": {
+        "model": "litellm/gemini-3.1-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "gh_grep"
+        ]
+      },
+      "designer": {
+        "model": "litellm/gemini-3.5-flash",
+        "variant": "medium",
+        "skills": [
+          "react-coding-style",
+          "vercel-react-best-practices",
+          "taste-review",
+          "legend-list-best-practices"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "litellm/gemini-3.1-pro",
+        "variant": "xhigh",
+        "skills": [
+          "diagnose",
+          "diagnose-fix-loop",
+          "simplify"
+        ],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "observer": {
+        "model": "litellm/gemini-2.5-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": []
+      }
+    },
+    "work-premium": {
+      "orchestrator": {
+        "model": "litellm/claude-opus-4-8",
+        "variant": "xhigh",
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "litellm/claude-sonnet-5",
+        "variant": "xhigh",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "litellm/claude-sonnet-4-6",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "explorer": {
+        "model": "litellm/claude-sonnet-4-6",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "gh_grep"
+        ]
+      },
+      "designer": {
+        "model": "litellm/claude-sonnet-5",
+        "variant": "medium",
+        "skills": [
+          "react-coding-style",
+          "vercel-react-best-practices",
+          "taste-review",
+          "legend-list-best-practices"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "litellm/claude-sonnet-5",
+        "variant": "xhigh",
+        "skills": [
+          "diagnose",
+          "diagnose-fix-loop",
+          "simplify"
+        ],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "observer": {
+        "model": "litellm/gemini-2.5-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": []
+      }
+    },
+    "work-gemini": {
+      "orchestrator": {
+        "model": "litellm/gemini-3.1-pro",
+        "variant": "xhigh",
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "litellm/gemini-3.1-pro",
+        "variant": "xhigh",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "litellm/gemini-3.5-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "explorer": {
+        "model": "litellm/gemini-3.1-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "gh_grep"
+        ]
+      },
+      "designer": {
+        "model": "litellm/gemini-3.5-flash",
+        "variant": "medium",
+        "skills": [
+          "react-coding-style",
+          "vercel-react-best-practices",
+          "taste-review",
+          "legend-list-best-practices"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "litellm/glm-5.2",
+        "variant": "xhigh",
+        "skills": [
+          "diagnose",
+          "diagnose-fix-loop",
+          "simplify"
+        ],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "observer": {
+        "model": "litellm/gemini-2.5-flash-lite",
+        "variant": "low",
+        "skills": [],
+        "mcps": []
+      }
+    },
+    "commandcode": {
+      "orchestrator": {
+        "model": "commandcode/MiniMaxAI/MiniMax-M3",
         "variant": "thinking",
         "skills": [
           "*"
@@ -130,13 +334,15 @@
         ]
       },
       "oracle": {
-        "model": "opencode-go/deepseek-v4-pro",
-        "variant": "high",
-        "skills": [],
+        "model": "commandcode/Qwen/Qwen3.7-Max",
+        "variant": "max",
+        "skills": [
+          "simplify"
+        ],
         "mcps": []
       },
       "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
+        "model": "commandcode/deepseek/deepseek-v4-flash",
         "variant": "high",
         "skills": [],
         "mcps": [
@@ -146,7 +352,7 @@
         ]
       },
       "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
+        "model": "commandcode/deepseek/deepseek-v4-flash",
         "variant": "high",
         "skills": [],
         "mcps": [
@@ -155,12 +361,17 @@
         ]
       },
       "designer": {
-        "model": "opencode-go/mimo-v2.5",
-        "skills": [],
+        "model": "commandcode/moonshotai/Kimi-K2.7-Code",
+        "skills": [
+          "react-coding-style",
+          "vercel-react-best-practices",
+          "taste-review",
+          "legend-list-best-practices"
+        ],
         "mcps": []
       },
       "fixer": {
-        "model": "opencode-go/deepseek-v4-flash",
+        "model": "commandcode/deepseek/deepseek-v4-flash",
         "variant": "high",
         "skills": [
           "diagnose",
@@ -174,199 +385,34 @@
         ]
       },
       "observer": {
-        "model": "opencode-go/mimo-v2.5",
+        "model": "commandcode/xiaomi/mimo-v2.5",
         "skills": [],
         "mcps": []
       }
     },
-    "go-coding": {
+    "commandcode-premium": {
       "orchestrator": {
-        "model": "opencode-go/qwen3.8-max",
-        "variant": "max",
-        "skills": [
-          "*"
-        ],
-        "mcps": [
-          "*"
-        ]
-      },
-      "oracle": {
-        "model": "opencode-go/qwen3.8-max",
-        "variant": "max",
-        "skills": [
-          "simplify",
-          "grill-me",
-          "adopt-better-result"
-        ],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
-        "skills": [],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
-        "skills": [],
-        "mcps": [
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "designer": {
-        "model": "opencode-go/kimi-k2.7-code",
-        "skills": [
-          "react-coding-style",
-          "vercel-react-best-practices",
-          "taste-review",
-          "legend-list-best-practices",
-          "legend-state-best-practices"
-        ],
-        "mcps": [
-          "context7"
-        ]
-      },
-      "fixer": {
-        "model": "opencode-go/kimi-k2.7-code",
-        "skills": [
-          "diagnose",
-          "diagnose-fix-loop",
-          "simplify",
-          "adopt-better-result",
-          "react-coding-style"
-        ],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "observer": {
-        "model": "opencode-go/mimo-v2.5-pro",
-        "skills": [],
-        "mcps": []
-      }
-    },
-    "go-max": {
-      "orchestrator": {
-        "model": "opencode-go/qwen3.8-max",
-        "variant": "max",
-        "skills": [
-          "*"
-        ],
-        "mcps": [
-          "*"
-        ]
-      },
-      "oracle": {
-        "model": "opencode-go/qwen3.8-max",
-        "variant": "max",
-        "skills": [
-          "*"
-        ],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc",
-          "jira",
-          "linear"
-        ]
-      },
-      "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
-        "skills": [],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
-        "skills": [],
-        "mcps": [
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "designer": {
-        "model": "opencode-go/kimi-k3",
-        "variant": "max",
-        "skills": [
-          "react-coding-style",
-          "vercel-react-best-practices",
-          "taste-review",
-          "legend-list-best-practices",
-          "legend-state-best-practices"
-        ],
-        "mcps": [
-          "context7"
-        ]
-      },
-      "fixer": {
-        "model": "opencode-go/deepseek-v4-pro",
-        "variant": "high",
-        "skills": [
-          "diagnose",
-          "diagnose-fix-loop",
-          "simplify",
-          "adopt-better-result"
-        ],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc"
-        ]
-      },
-      "observer": {
-        "model": "opencode-go/mimo-v2.5-pro",
-        "skills": [],
-        "mcps": []
-      }
-    },
-    "hybrid": {
-      "orchestrator": {
-        "model": "opencode-go/qwen3.8-max",
-        "variant": "max",
-        "skills": [
-          "*"
-        ],
-        "mcps": [
-          "*"
-        ]
-      },
-      "oracle": {
-        "model": [
-          "opencode/gpt-5.6-sol",
-          "opencode-go/qwen3.8-max"
-        ],
+        "model": "commandcode/moonshotai/Kimi-K3",
         "variant": "xhigh",
         "skills": [
           "*"
         ],
         "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc",
-          "jira",
-          "linear"
+          "*",
+          "!context7"
         ]
       },
+      "oracle": {
+        "model": "commandcode/zai-org/GLM-5.3",
+        "variant": "xhigh",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": []
+      },
       "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
+        "model": "commandcode/deepseek/deepseek-v4-flash",
+        "variant": "low",
         "skills": [],
         "mcps": [
           "context7",
@@ -375,8 +421,8 @@
         ]
       },
       "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
+        "model": "commandcode/zai-org/GLM-5.2-Fast",
+        "variant": "low",
         "skills": [],
         "mcps": [
           "gh_grep",
@@ -384,30 +430,23 @@
         ]
       },
       "designer": {
-        "model": "opencode-go/kimi-k2.7-code",
+        "model": "commandcode/moonshotai/Kimi-K2.7-Code",
+        "variant": "medium",
         "skills": [
           "react-coding-style",
           "vercel-react-best-practices",
           "taste-review",
-          "legend-list-best-practices",
-          "legend-state-best-practices"
+          "legend-list-best-practices"
         ],
-        "mcps": [
-          "context7"
-        ]
+        "mcps": []
       },
       "fixer": {
-        "model": [
-          "opencode/gpt-5.6-sol",
-          "opencode-go/deepseek-v4-pro"
-        ],
+        "model": "commandcode/deepseek/deepseek-v4-pro",
         "variant": "xhigh",
         "skills": [
           "diagnose",
           "diagnose-fix-loop",
-          "simplify",
-          "adopt-better-result",
-          "react-coding-style"
+          "simplify"
         ],
         "mcps": [
           "context7",
@@ -416,92 +455,148 @@
         ]
       },
       "observer": {
-        "model": "opencode-go/mimo-v2.5-pro",
+        "model": "commandcode/xiaomi/mimo-v2.5-pro",
+        "variant": "low",
         "skills": [],
         "mcps": []
       }
     },
-    "zen": {
+    "commandcode-free": {
       "orchestrator": {
-        "model": "opencode/gpt-5.6-sol",
+        "model": "commandcode/stealth/ox-alpha",
         "variant": "xhigh",
         "skills": [
           "*"
         ],
         "mcps": [
-          "*"
+          "*",
+          "!context7"
         ]
       },
       "oracle": {
-        "model": "opencode/claude-opus-4-8",
-        "variant": "max",
+        "model": "commandcode/stealth/ox-alpha",
+        "variant": "xhigh",
         "skills": [
-          "*"
+          "simplify"
         ],
-        "mcps": [
-          "context7",
-          "gh_grep",
-          "opensrc",
-          "jira",
-          "linear"
-        ]
+        "mcps": []
       },
       "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
+        "model": "commandcode/poolside/laguna-s-2.1-free",
+        "variant": "low",
         "skills": [],
         "mcps": [
           "context7",
-          "gh_grep",
-          "opensrc"
+          "gh_grep"
         ]
       },
       "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
-        "variant": "high",
+        "model": "commandcode/poolside/laguna-s-2.1-free",
+        "variant": "low",
         "skills": [],
         "mcps": [
-          "gh_grep",
-          "opensrc"
+          "gh_grep"
         ]
       },
       "designer": {
-        "model": "opencode/claude-sonnet-5",
-        "variant": "max",
+        "model": "commandcode/poolside/laguna-s-2.1-free",
+        "variant": "medium",
         "skills": [
           "react-coding-style",
           "vercel-react-best-practices",
           "taste-review",
-          "legend-list-best-practices",
-          "legend-state-best-practices"
+          "legend-list-best-practices"
         ],
-        "mcps": [
-          "context7"
-        ]
+        "mcps": []
       },
       "fixer": {
-        "model": "opencode/gpt-5.6-sol",
+        "model": "commandcode/stealth/ox-alpha",
+        "variant": "xhigh",
+        "skills": [
+          "diagnose",
+          "diagnose-fix-loop",
+          "simplify"
+        ],
+        "mcps": [
+          "context7",
+          "gh_grep"
+        ]
+      },
+      "observer": {
+        "model": "commandcode/poolside/laguna-s-2.1-free",
+        "variant": "low",
+        "skills": [],
+        "mcps": []
+      }
+    },
+    "opencode-free": {
+      "orchestrator": {
+        "model": "opencode/muse-spark-1.2-contributor-free",
         "variant": "xhigh",
         "skills": [
           "*"
         ],
         "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "opencode/nemotron-3-ultra-free",
+        "variant": "xhigh",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "opencode/nemotron-3.5-lightning-free",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
           "context7",
-          "gh_grep",
-          "opensrc"
+          "gh_grep"
+        ]
+      },
+      "explorer": {
+        "model": "opencode/hy3-free",
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "gh_grep"
+        ]
+      },
+      "designer": {
+        "model": "opencode/x-preview-f-free",
+        "variant": "medium",
+        "skills": [
+          "react-coding-style",
+          "vercel-react-best-practices",
+          "taste-review",
+          "legend-list-best-practices"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "opencode-go/ox-alpha-free",
+        "variant": "xhigh",
+        "skills": [
+          "diagnose",
+          "diagnose-fix-loop",
+          "simplify"
+        ],
+        "mcps": [
+          "context7",
+          "gh_grep"
         ]
       },
       "observer": {
-        "model": "opencode-go/mimo-v2.5-pro",
+        "model": "opencode/mimo-v2.5-free",
+        "variant": "low",
         "skills": [],
         "mcps": []
       }
     }
   },
-  "disabled_agents": [],
-  "image_routing": "direct",
-  "autoUpdate": true,
-  "multiplexer": {
-    "type": "none"
-  }
+  "autoUpdate": true
 }
