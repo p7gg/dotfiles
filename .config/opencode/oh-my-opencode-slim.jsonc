@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "opencode-free",
+  "preset": "commandcode",
   "presets": {
     "openai": {
       "orchestrator": {
@@ -70,7 +70,7 @@
         "mcps": []
       },
       "librarian": {
-        "model": "opencode-go/deepseek-v4-flash",
+        "model": "opencode-go/mimo-v2.5",
         "variant": "high",
         "skills": [],
         "mcps": [
@@ -80,7 +80,7 @@
         ]
       },
       "explorer": {
-        "model": "opencode-go/deepseek-v4-flash",
+        "model": "opencode-go/mimo-v2.5",
         "variant": "high",
         "skills": [],
         "mcps": [
@@ -342,7 +342,7 @@
         "mcps": []
       },
       "librarian": {
-        "model": "commandcode/deepseek/deepseek-v4-flash",
+        "model": "commandcode/xiaomi/mimo-v2.5",
         "variant": "high",
         "skills": [],
         "mcps": [
@@ -352,7 +352,7 @@
         ]
       },
       "explorer": {
-        "model": "commandcode/deepseek/deepseek-v4-flash",
+        "model": "commandcode/xiaomi/mimo-v2.5",
         "variant": "high",
         "skills": [],
         "mcps": [
