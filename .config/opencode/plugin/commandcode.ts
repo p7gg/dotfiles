@@ -1,7 +1,4 @@
 import type { Plugin } from "@opencode-ai/plugin"
-import { existsSync, readFileSync } from "node:fs"
-import { homedir } from "node:os"
-import { join } from "node:path"
 
 const PROVIDER_ID = "commandcode"
 const ANTHROPIC_PROVIDER_ID = "commandcode-anthropic"
@@ -24,42 +21,44 @@ type ProviderConfig = {
   models?: Record<string, { name: string; limit: { context: number; output: number } }>
 }
 
+// Promos with no signal in the id string — CommandCode's arbitrary,
+// time-limited discounts. These can't be derived automatically and
+// must be updated by hand when they change.
+// Screenshot 2026-08-31: minimax-m3 2× usage ("Every credit goes 2× further"),
+// mimo-v2.5 + mimo-v2.5-pro up to 99% off ("Every dollar of credit goes further"),
+// laguna-s-2.1-free free ("Requests on this model cost no credits", while capacity lasts).
 const DEAL_LABELS: Record<string, string> = {
-  "gemini-3.7-flash": "-50%",
   "minimax-m3": "2x usage",
-  "mimo-v2.5": "up to 99% off",
-  "mimo-v2.5-pro": "up to 99% off",
-  "ox-alpha": "free",
-  "laguna-s-2.1-free": "free",
+  "mimo-v2.5": "up to -99%",
+  "mimo-v2.5-pro": "up to -99%",
 }
 
-const isClaude = (id: string) => /^claude/i.test(id)
+// Naming conventions CommandCode does apply consistently — checked
+// before the manual map above.
+type DealRule = {
+  test: RegExp
+  label: string
+}
+
+const DEAL_RULES: DealRule[] = [
+  { test: /-free$/i, label: "free" },
+]
+
 const isSnapshot = (id: string) => /-\d{8}$/.test(id)
 
-function dealLabel(id: string): string | undefined {
-  const base = (id.split("/").pop() ?? id).toLowerCase()
-  return DEAL_LABELS[base]
+function modelKey(id: string): string {
+  return id.split("/").pop() ?? id
 }
 
-function authFilePath(): string {
-  const xdg = process.env.XDG_DATA_HOME
-  if (xdg) {
-    const candidate = join(xdg, "opencode", "auth.json")
-    if (existsSync(candidate)) return candidate
-  }
-  return join(homedir(), ".local", "share", "opencode", "auth.json")
+function isClaude(key: string): boolean {
+  return /^claude/i.test(key)
 }
 
-function readStoredApiKey(): string | undefined {
-  try {
-    const raw = JSON.parse(readFileSync(authFilePath(), "utf8")) as Record<
-      string,
-      { type?: string; key?: string }
-    >
-    return raw[PROVIDER_ID]?.key ?? raw[ANTHROPIC_PROVIDER_ID]?.key
-  } catch {
-    return undefined
+function dealLabel(key: string): string | undefined {
+  for (const rule of DEAL_RULES) {
+    if (rule.test.test(key)) return rule.label
   }
+  return DEAL_LABELS[key.toLowerCase()]
 }
 
 async function discoverModels(log: Logger): Promise<CommandCodeModel[]> {
@@ -77,54 +76,16 @@ async function discoverModels(log: Logger): Promise<CommandCodeModel[]> {
   }
 }
 
-async function probeAccess(models: CommandCodeModel[], log: Logger): Promise<void> {
-  const key = readStoredApiKey()
-  if (!key) return
-
-  const candidates = models.filter((m) => !isClaude(m.id))
-  const model =
-    candidates.find((m) => m.id === "gpt-5.4-mini")?.id ?? candidates[0]?.id
-  if (!model) return
-
-  try {
-    const response = await fetch(`${BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: "." }],
-        max_tokens: 1,
-      }),
-    })
-
-    if (response.status === 401) {
-      await log("error", "stored API key rejected (401) - run /connect again")
-    } else if (response.status === 403) {
-      await log(
-        "error",
-        "your CommandCode plan has no API access (403 upgrade_required) - upgrade at commandcode.ai",
-      )
-    } else if (response.status === 422) {
-      await log("warn", "ZDR requested but no ZDR-capable upstream exists (422)")
-    }
-  } catch {
-    // network errors here are non-fatal; real requests will surface them
-  }
-}
-
 export const CommandCodeModels = (async ({ client }) => {
   const log: Logger = async (level, message) => {
     const payload = { service: "commandcode", level, message }
+    try {
+      await client.app.log({ body: payload })
+    } catch {
       try {
-        await client.app.log({ body: payload })
-      } catch {
-        try {
-          await (client.app.log as unknown as (args: unknown) => Promise<void>)(payload)
-        } catch {}
-      }
+        await (client.app.log as unknown as (args: unknown) => Promise<void>)(payload)
+      } catch {}
+    }
   }
 
   return {
@@ -150,12 +111,19 @@ export const CommandCodeModels = (async ({ client }) => {
       for (const model of discovered) {
         if (isSnapshot(model.id)) continue
 
-        const target = isClaude(model.id) ? anthropic : openai
-        const label = dealLabel(model.id)
+        const key = modelKey(model.id)
+        const target = isClaude(key) ? anthropic : openai
+        const label = dealLabel(key)
+
+        // Register under the FULL id — the endpoint routes on the
+        // provider-prefixed id (e.g. "minimax/minimax-m3-free"),
+        // not the bare name. Stripping the prefix made every
+        // slash-prefixed model fail with "not supported on this endpoint".
+        const registrationId = model.id
 
         target.models ??= {}
-        target.models[model.id] ??= {
-          name: label ? `${model.name ?? model.id} (${label})` : (model.name ?? model.id),
+        target.models[registrationId] ??= {
+          name: label ? `${model.name ?? key} (${label})` : (model.name ?? key),
           limit: {
             context: model.context_length ?? DEFAULT_CONTEXT,
             output: DEFAULT_OUTPUT,
@@ -165,7 +133,6 @@ export const CommandCodeModels = (async ({ client }) => {
       }
 
       await log("info", `registered ${registered} models`)
-      await probeAccess(discovered, log)
     },
 
     "chat.headers": async (_input, output) => {
