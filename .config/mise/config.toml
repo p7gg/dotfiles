@@ -30,6 +30,8 @@ python = "latest"
 ffmpeg = "latest"
 yt-dlp = { version = "latest", rename_exe = "yt-dlp" }
 codex = "latest"
+"npm:command-code" = "latest"
+jq = "latest"
 
 [settings]
 cargo.binstall = true

@@ -23,4 +23,4 @@ export GPG_TTY=$(tty)
 # ---------- Opencode ----------
 export OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
 export OPENCODE_ENABLE_EXA=1
-export CMD_ZDR=1
+# export CMD_ZDR=1
