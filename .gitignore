@@ -11,4 +11,3 @@ node_modules/
 *.swp
 *.swo
 *~
-.config/opencode/balancer.sqlite*
