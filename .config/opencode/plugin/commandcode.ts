@@ -24,9 +24,10 @@ type ProviderConfig = {
 // Promos with no signal in the id string — CommandCode's arbitrary,
 // time-limited discounts. These can't be derived automatically and
 // must be updated by hand when they change.
-// Screenshot 2026-08-31: minimax-m3 2× usage ("Every credit goes 2× further"),
+// Screenshot 2026-09-02: minimax-m3 2× usage ("Every credit goes 2× further"),
 // mimo-v2.5 + mimo-v2.5-pro up to 99% off ("Every dollar of credit goes further"),
-// laguna-s-2.1-free free ("Requests on this model cost no credits", while capacity lasts).
+// laguna-s-2.1-free free ("Requests on this model cost no credits", while capacity lasts),
+// longcat-2.0:free free ("Requests on this model cost no credits", while it lasts).
 const DEAL_LABELS: Record<string, string> = {
   "minimax-m3": "2x usage",
   "mimo-v2.5": "up to -99%",
@@ -42,6 +43,7 @@ type DealRule = {
 
 const DEAL_RULES: DealRule[] = [
   { test: /-free$/i, label: "free" },
+  { test: /:free$/i, label: "free" },
 ]
 
 const isSnapshot = (id: string) => /-\d{8}$/.test(id)

@@ -1,0 +1,23 @@
+{
+  "skill_name": "konva-js",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a React component (App.tsx) using react-konva that renders a Stage with a Layer containing multiple draggable rectangles. Implement selection so that clicking a rectangle selects it and shows a Transformer that allows resizing and rotation. Include handlers to support dragging and updating position in React state. Provide brief run instructions.",
+      "expected_output": "A complete React functional component (App.tsx) using react-konva that implements a Stage, Layer, multiple draggable Rects, selection logic with Transformer, and instructions to run (npm install, start).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Given a Konva Stage with an image, provide a code snippet that loads an image, applies Blur and Brighten filters, caches the node, and exports the stage to a high-resolution PNG (pixelRatio=2) using toBlob or toDataURL. Include notes about performance and cache usage.",
+      "expected_output": "A code snippet demonstrating Konva.Image.fromURL or Image loading, applying Konva.Filters.Blur and Konva.Filters.Brighten, calling image.cache(), and exporting via stage.toBlob or stage.toDataURL with pixelRatio=2 plus explanatory notes.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Provide a minimal example and explanation of how to optimize a Konva scene for performance: separate static background into its own layer (listening=false), cache complex shapes or filtered images, use layer.batchDraw() for interactive updates, and set Konva.pixelRatio appropriately. Show code that demonstrates these patterns.",
+      "expected_output": "A minimal JS example showing multiple layers (background with listening=false, main interactive layer, UI layer), caching a complex shape, using batchDraw for animation or interaction, and notes explaining the performance benefits.",
+      "files": []
+    }
+  ]
+}

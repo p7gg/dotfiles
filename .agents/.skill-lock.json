@@ -8,7 +8,7 @@
       "skillPath": "commit/SKILL.md",
       "skillFolderHash": "2c608604608c104d2f564f56872d40000d4faabb",
       "installedAt": "2026-07-27T20:15:18.184Z",
-      "updatedAt": "2026-07-27T20:15:18.184Z"
+      "updatedAt": "2026-09-05T03:22:52.356Z"
     },
     "commit-confirm": {
       "source": "LegendApp/legend-skills",
@@ -17,7 +17,7 @@
       "skillPath": "commit-confirm/SKILL.md",
       "skillFolderHash": "56fed8eaa3e7d763ab9f37794036b3add10f0095",
       "installedAt": "2026-07-27T20:15:18.185Z",
-      "updatedAt": "2026-07-27T20:15:18.185Z"
+      "updatedAt": "2026-09-05T03:22:52.358Z"
     },
     "diagnose": {
       "source": "LegendApp/legend-skills",
@@ -26,7 +26,7 @@
       "skillPath": "diagnose/SKILL.md",
       "skillFolderHash": "4c1b628acb77a76576a807a725528c4c919bfa1b",
       "installedAt": "2026-07-27T20:15:18.190Z",
-      "updatedAt": "2026-07-27T20:15:18.190Z"
+      "updatedAt": "2026-09-05T03:22:52.357Z"
     },
     "diagnose-fix-loop": {
       "source": "LegendApp/legend-skills",
@@ -35,7 +35,7 @@
       "skillPath": "diagnose-fix-loop/SKILL.md",
       "skillFolderHash": "f22bc4ed2292468e8c4912be1afd3dc03efef095",
       "installedAt": "2026-07-27T20:15:18.191Z",
-      "updatedAt": "2026-07-27T20:15:18.191Z"
+      "updatedAt": "2026-09-05T03:22:52.358Z"
     },
     "git-integrate": {
       "source": "LegendApp/legend-skills",
@@ -44,7 +44,7 @@
       "skillPath": "git-integrate/SKILL.md",
       "skillFolderHash": "6cb59c6c676089f4b102020024593ec93fb767ad",
       "installedAt": "2026-07-27T20:15:18.192Z",
-      "updatedAt": "2026-07-27T20:15:18.192Z"
+      "updatedAt": "2026-09-05T03:22:52.359Z"
     },
     "legend-list-best-practices": {
       "source": "LegendApp/legend-skills",
@@ -53,7 +53,7 @@
       "skillPath": "legend-list-best-practices/SKILL.md",
       "skillFolderHash": "63e56d95b595eb55266a2660316a968c7cd0899b",
       "installedAt": "2026-07-27T20:15:18.193Z",
-      "updatedAt": "2026-07-27T20:15:18.193Z"
+      "updatedAt": "2026-09-05T03:22:52.360Z"
     },
     "legend-state-best-practices": {
       "source": "LegendApp/legend-skills",
@@ -62,7 +62,7 @@
       "skillPath": "legend-state-best-practices/SKILL.md",
       "skillFolderHash": "77b83c171178d4fafd265ba76f865225bd82aeb2",
       "installedAt": "2026-07-27T20:15:18.195Z",
-      "updatedAt": "2026-07-27T20:15:18.195Z"
+      "updatedAt": "2026-09-05T03:22:52.361Z"
     },
     "react-coding-style": {
       "source": "LegendApp/legend-skills",
@@ -71,16 +71,16 @@
       "skillPath": "react-coding-style/SKILL.md",
       "skillFolderHash": "74a1465e118ab628e5d3266a42104ab264b14720",
       "installedAt": "2026-07-27T20:15:18.196Z",
-      "updatedAt": "2026-07-27T20:15:18.196Z"
+      "updatedAt": "2026-09-05T03:22:52.362Z"
     },
     "simplify": {
-      "source": "bholmesdev/skills",
+      "source": "LegendApp/legend-skills",
       "sourceType": "github",
-      "sourceUrl": "https://github.com/bholmesdev/skills.git",
-      "skillPath": "skills/simplify/SKILL.md",
-      "skillFolderHash": "2a318b3c0e4ba1d80785efd1fe2b37ea188947ab",
+      "sourceUrl": "https://github.com/LegendApp/legend-skills.git",
+      "skillPath": "simplify/SKILL.md",
+      "skillFolderHash": "f07f527ce542d2b63feb3a2b314eacda19198e1f",
       "installedAt": "2026-07-27T20:15:18.197Z",
-      "updatedAt": "2026-08-18T03:20:58.131Z"
+      "updatedAt": "2026-09-05T03:22:52.363Z"
     },
     "tanstack-cli": {
       "source": "tanstack-skills/tanstack-skills",
@@ -231,9 +231,9 @@
       "sourceType": "github",
       "sourceUrl": "https://github.com/dmmulroy/anti-slop.git",
       "skillPath": "skills/install-anti-slop/SKILL.md",
-      "skillFolderHash": "31c294c983ea89bc585041cb43ec651b2df684a1",
+      "skillFolderHash": "44a970ae13bc32ef7391b681208a384e1aae669b",
       "installedAt": "2026-08-16T16:19:33.067Z",
-      "updatedAt": "2026-08-19T18:23:31.065Z"
+      "updatedAt": "2026-09-05T03:20:08.048Z"
     },
     "playwright-best-practices": {
       "source": "currents-dev/playwright-best-practices-skill",
@@ -271,6 +271,15 @@
       "skillFolderHash": "343db72180d05814949fef7d46be96b5c6ee86b3",
       "installedAt": "2026-08-18T03:20:52.960Z",
       "updatedAt": "2026-08-18T03:20:52.960Z"
+    },
+    "konva-js": {
+      "source": "p7gg/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/p7gg/skills.git",
+      "skillPath": "skills/konva-js/SKILL.md",
+      "skillFolderHash": "990383ea9addb384ad4a98bc5132425310f5107e",
+      "installedAt": "2026-09-05T04:05:59.693Z",
+      "updatedAt": "2026-09-05T04:05:59.693Z"
     }
   },
   "dismissed": {

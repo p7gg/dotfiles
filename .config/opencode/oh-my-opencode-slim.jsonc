@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "commandcode-base",
+  "preset": "opencode-go",
   "presets": {
     "openai": {
       "orchestrator": {
@@ -181,7 +181,7 @@
         "variant": "high"
       }
     },
-    "commandcode-base": {
+    "commandcode-goat": {
       "orchestrator": {
         "model": "commandcode/MiniMaxAI/MiniMax-M3"
       },
@@ -201,7 +201,7 @@
         "model": "commandcode/deepseek/deepseek-v4-flash"
       },
       "observer": {
-        "model": "commandcode/xiaomi/mimo-v2.5"
+        "model": "commandcode/meituan/LongCat-2.0:free"
       }
     },
     "commandcode-premium": {
@@ -232,16 +232,16 @@
         "model": "commandcode/xiaomi/mimo-v2.5"
       },
       "oracle": {
-        "model": "commandcode/deepseek/deepseek-v4-flash-fast"
+        "model": "commandcode/xiaomi/mimo-v2.5-pro"
       },
       "librarian": {
-        "model": "commandcode/Qwen/Qwen3.8-Flash"
+        "model": "commandcode/meituan/LongCat-2.0:free"
       },
       "explorer": {
-        "model": "commandcode/Qwen/Qwen3.8-Flash"
+        "model": "commandcode/poolside/laguna-s-2.1-free"
       },
       "designer": {
-        "model": "commandcode/moonshotai/Kimi-K2.7-Code-Highspeed"
+        "model": "commandcode/meituan/LongCat-2.0:free"
       },
       "fixer": {
         "model": "commandcode/deepseek/deepseek-v4-flash-fast"
