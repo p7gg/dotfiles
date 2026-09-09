@@ -18,7 +18,10 @@ elif command -v batcat >/dev/null 2>&1; then
 fi
 
 # ---------- GPG ----------
-export GPG_TTY=$(tty)
+# Guarded: `tty` fails on non-tty sessions (VS Code remote, scripts, cron).
+if tty >/dev/null 2>&1; then
+  export GPG_TTY=$(tty)
+fi
 
 # ---------- Opencode ----------
 export OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
