@@ -2,20 +2,33 @@
 set -euo pipefail
 
 # Usage: ./install.sh [phase ...]   (default: all phases)
-#   Phases: system link tools config auth
+#   Phases: system link tools extras config auth
 #   Example: ./install.sh link config        # only re-link + re-configure
-# Env skips: SKIP_TAILSCALE=1 SKIP_AUTH=1 SKIP_MISE_TOOLS=1
+# Env skips: SKIP_TAILSCALE=1 SKIP_AUTH=1 SKIP_MISE_TOOLS=1 SKIP_EXTRAS=1
 
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="${HOME}/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
 SKIP_TAILSCALE="${SKIP_TAILSCALE:-0}"
 SKIP_AUTH="${SKIP_AUTH:-0}"
 SKIP_MISE_TOOLS="${SKIP_MISE_TOOLS:-0}"
+SKIP_EXTRAS="${SKIP_EXTRAS:-0}"
 
 info()  { printf "\033[1;34m➜\033[0m %s\n" "$1"; }
 ok()    { printf "\033[1;32m✓\033[0m %s\n" "$1"; }
 warn()  { printf "\033[1;33m⚠\033[0m %s\n" "$1"; }
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# Prompt a yes/no question (default: No). Returns 0 for yes, 1 for no.
+# Usage: if ask_yes_no "Install foo?"; then ...; fi
+ask_yes_no() {
+    local prompt="$1" answer
+    printf "%s [y/N] " "$prompt" >&2
+    read -r answer </dev/tty || return 1
+    case "$answer" in
+        [Yy]|[Yy][Ee][Ss]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 # ── Symlink helpers ──────────────────────────────────────────────────────
 
@@ -55,7 +68,8 @@ phase_system() {
         info "installing pacman prerequisites..."
 
         # nano = $EDITOR in .zshenv; xdg-utils = desktop integration; pacman-contrib = rankmirrors/checkupdates
-        local pkgs=(zsh git curl openssl lsof unzip xz base-devel nano xdg-utils pacman-contrib)
+        # git-lfs = required by .gitconfig [filter "lfs"]; difftastic (difft) = used by `git dlog` alias
+        local pkgs=(zsh git git-lfs curl openssl lsof unzip xz base-devel nano xdg-utils pacman-contrib difftastic)
         local missing=()
         local p
         for p in "${pkgs[@]}"; do
@@ -214,6 +228,123 @@ phase_tools() {
     ok "mise tools installed"
 }
 
+# ── Phase: optional extra packages (interactive, Arch/AUR only) ─────────
+
+phase_extras() {
+    if [ "$SKIP_EXTRAS" = "1" ]; then
+        info "skipping extras (SKIP_EXTRAS=1)"
+        return
+    fi
+    if ! has_cmd pacman; then
+        info "skipping extras (not an Arch system — AUR packages unavailable)"
+        return
+    fi
+    if ! has_cmd yay; then
+        warn "skipping extras (yay not found — run system phase first)"
+        return
+    fi
+    if [ ! -t 0 ]; then
+        warn "non-interactive shell — skipping extras, install manually:"
+        warn "  yay -S --needed t3code-nightly-bin brave-bin visual-studio-code-bin"
+        warn "  yay -S --needed ttf-cascadia-code-nerd ttf-cascadia-mono-nerd ttf-firacode-nerd otf-firamono-nerd otf-geist-mono-nerd ttf-hack-nerd otf-hasklig-nerd ttf-ibmplex-mono-nerd ttf-jetbrains-mono-nerd ttf-meslo-nerd otf-monaspace-nerd ttf-noto-nerd ttf-roboto-mono-nerd ttf-sourcecodepro-nerd ttf-space-mono-nerd ttf-ubuntu-nerd ttf-ubuntu-mono-nerd ttf-zed-mono-nerd"
+        warn "  or rerun: ./install.sh extras"
+        return
+    fi
+    info "optional extras (already-installed packages are skipped)..."
+
+    # format: "pkg|Human-readable label"
+    local extras=(
+        "t3code-nightly-bin|T3 Code nightly (desktop control surface for coding agents)"
+        "brave-bin|Brave browser (binary release)"
+        "visual-studio-code-bin|Visual Studio Code (official binary release)"
+        "ghostty|Ghostty terminal (GPU-accelerated)"
+        "docker|Docker engine (containers)"
+        "docker-compose|Docker Compose (multi-container orchestration)"
+        "wl-clipboard|Clipboard tools for Wayland (wl-copy/wl-paste)"
+        "xclip|Clipboard tool for X11 (xclip)"
+    )
+
+    local entry pkg label
+    for entry in "${extras[@]}"; do
+        pkg="${entry%%|*}"
+        label="${entry#*|}"
+        if pacman -Q "$pkg" >/dev/null 2>&1; then
+            ok "$pkg already installed"
+            continue
+        fi
+        if ask_yes_no "Install ${label} [${pkg}]?"; then
+            info "installing $pkg..."
+            yay -S --needed --noconfirm "$pkg" \
+                || { warn "$pkg install failed — rerun: yay -S $pkg"; continue; }
+            ok "$pkg installed"
+        else
+            info "skipping $pkg"
+        fi
+    done
+
+    # Docker post-setup (idempotent): daemon socket + user group membership.
+    # Only runs when the docker package is present (installed just now or earlier).
+    if pacman -Q docker >/dev/null 2>&1; then
+        if has_cmd systemctl; then
+            if systemctl is-enabled --quiet docker.socket 2>/dev/null; then
+                ok "docker.socket already enabled"
+            else
+                info "enabling docker.socket..."
+                sudo systemctl enable --now docker.socket \
+                    || warn "could not enable docker.socket — run: sudo systemctl enable --now docker.socket"
+            fi
+        fi
+        local docker_user
+        docker_user="$(id -un)"
+        if id -nG "$docker_user" 2>/dev/null | tr ' ' '\n' | grep -qx docker; then
+            ok "user already in docker group"
+        else
+            info "adding $docker_user to docker group (log out and back in to take effect)..."
+            sudo usermod -aG docker "$docker_user" \
+                || warn "could not add $docker_user to docker group — run: sudo usermod -aG docker $docker_user"
+        fi
+    fi
+
+    # Nerd Fonts bundle — one opt-in gate for the whole set (default: No).
+    # Maps to the 18 zips in the screenshot; all are official extra packages.
+    local nerd_fonts=(
+        ttf-cascadia-code-nerd
+        ttf-cascadia-mono-nerd
+        ttf-firacode-nerd
+        otf-firamono-nerd
+        otf-geist-mono-nerd
+        ttf-hack-nerd
+        otf-hasklig-nerd
+        ttf-ibmplex-mono-nerd
+        ttf-jetbrains-mono-nerd
+        ttf-meslo-nerd
+        otf-monaspace-nerd
+        ttf-noto-nerd
+        ttf-roboto-mono-nerd
+        ttf-sourcecodepro-nerd
+        ttf-space-mono-nerd
+        ttf-ubuntu-nerd
+        ttf-ubuntu-mono-nerd
+        ttf-zed-mono-nerd
+    )
+    local missing_fonts=()
+    local f
+    for f in "${nerd_fonts[@]}"; do
+        pacman -Q "$f" >/dev/null 2>&1 || missing_fonts+=("$f")
+    done
+    if [ ${#missing_fonts[@]} -eq 0 ]; then
+        ok "all nerd fonts already installed"
+    elif ask_yes_no "Install Nerd Fonts bundle [${#missing_fonts[@]} of ${#nerd_fonts[@]} missing]?"; then
+        info "installing nerd fonts..."
+        yay -S --needed --noconfirm "${missing_fonts[@]}" \
+            || { warn "nerd fonts install failed — rerun: yay -S ${missing_fonts[*]}"; return; }
+        has_cmd fc-cache && fc-cache -f >/dev/null 2>&1 || true
+        ok "nerd fonts installed"
+    else
+        info "skipping nerd fonts"
+    fi
+}
+
 # ── Phase: post-install configuration ────────────────────────────────────
 
 phase_config() {
@@ -235,6 +366,17 @@ phase_config() {
         warn "  git config --global user.email \"you@example.com\""
     else
         ok "git user configured: $(git config user.name) <$(git config user.email)>"
+    fi
+
+    # .gitconfig declares an LFS filter — hooks must be registered per user.
+    if has_cmd git-lfs; then
+        if git lfs install >/dev/null 2>&1; then
+            ok "git-lfs hooks installed"
+        else
+            warn "git lfs install failed — rerun: git lfs install"
+        fi
+    else
+        warn "git-lfs not found — skipping (run system phase first)"
     fi
 
     if [ ! -f "$HOME/.zsh/completions/_mise" ]; then
@@ -376,6 +518,7 @@ summary() {
     printf "  • Start \033[1mzsh\033[0m — .zshrc will auto-install zinit and plugins\n"
     printf "  • Set git user if prompted above\n"
     printf "  • Auth: rerun './install.sh auth' any time to (re)check logins\n"
+    printf "  • Extras: rerun './install.sh extras' to (re)check optional packages\n"
     printf "  • Tailscale status: \033[1mtailscale status\033[0m\n"
     printf "  • Restart your terminal or run: \033[1mexec zsh\033[0m\n"
     [ -d "$BACKUP_DIR" ] && printf "  • Existing dotfiles backed up to: \033[33m%s\033[0m\n" "$BACKUP_DIR"
@@ -385,18 +528,18 @@ summary() {
 
 usage() {
     printf "Usage: %s [phase ...]\n" "$0"
-    printf "Phases: system link tools config auth (default: all)\n"
+    printf "Phases: system link tools extras config auth (default: all)\n"
 }
 
 main() {
     local phases=()
     if [ $# -eq 0 ]; then
-        phases=(system link tools config auth)
+        phases=(system link tools extras config auth)
     else
         local a
         for a in "$@"; do
             case "$a" in
-                system|link|tools|config|auth) phases+=("$a") ;;
+                system|link|tools|extras|config|auth) phases+=("$a") ;;
                 -h|--help) usage; return 0 ;;
                 *) printf "unknown phase: %s\n" "$a" >&2; usage >&2; return 1 ;;
             esac
