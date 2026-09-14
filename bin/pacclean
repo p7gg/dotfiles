@@ -560,6 +560,101 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     printf "\n"
 fi
 
+# ── 13. Git worktrees (t3-code, opencode, general) ───────────────────────
+# Agent tools park linked worktrees in their own paths (t3-code:
+# ~/.t3/worktrees; opencode worktree plugins:
+# ~/.local/share/opencode/worktree), but linked checkouts can live
+# anywhere, so repos under the usual dev roots are scanned broadly and
+# `git worktree list` is the source of truth. `prune` only drops admin
+# metadata for dirs that are already gone — it never deletes a checkout.
+# Removing tool-managed checkouts is the aggressive option.
+T3_WT="${HOME}/.t3/worktrees"
+OC_WT="${HOME}/.local/share/opencode/worktree"
+WT_REPOS=()
+for _r in "${HOME}/Projects" "${HOME}/work" "${HOME}/code" "${HOME}/src" "${HOME}/dev" "${HOME}/repos"; do
+    [ -d "$_r" ] || continue
+    while IFS= read -r _g; do
+        WT_REPOS+=("$(dirname "$_g")")
+    done < <(find "$_r" -maxdepth 3 -type d -name ".git" -print 2>/dev/null || true)
+done
+[ -d "${HOME}/dotfiles/.git" ] && WT_REPOS+=("${HOME}/dotfiles")
+if _top=$(git rev-parse --show-toplevel 2>/dev/null); then
+    _dup=0
+    for _r in "${WT_REPOS[@]}"; do [ "$_r" = "$_top" ] && _dup=1 && break; done
+    [ "$_dup" -eq 0 ] && WT_REPOS+=("$_top")
+    unset _dup
+fi
+unset _top
+LINKED_WT=""
+TOOL_WT=""
+if [ "${#WT_REPOS[@]}" -gt 0 ]; then
+    for _repo in "${WT_REPOS[@]}"; do
+        _first=1
+        while IFS= read -r _line; do
+            case "$_line" in
+                worktree\ *)
+                    _wt=${_line#worktree }
+                    if [ "$_first" -eq 1 ]; then _first=0; continue; fi
+                    LINKED_WT+="${_wt}"$'\n'
+                    case "$_wt" in
+                        "$T3_WT"/*|"$OC_WT"/*) TOOL_WT+="${_repo}"$'\t'"${_wt}"$'\n' ;;
+                    esac
+                    ;;
+            esac
+        done < <(git -C "$_repo" worktree list --porcelain 2>/dev/null || true)
+    done
+fi
+LINKED_WT=${LINKED_WT%$'\n'}
+TOOL_WT=${TOOL_WT%$'\n'}
+if [ -z "$LINKED_WT" ] && [ ! -d "$T3_WT" ] && [ ! -d "$OC_WT" ]; then
+    ok "no git worktrees found"
+    sum_skip "no git worktrees"
+    printf "\n"
+else
+    _n=$(grep -c . <<<"$LINKED_WT" || true)
+    info "git worktrees: ${_n} linked checkout(s) across ${#WT_REPOS[@]} repo(s)"
+    [ -n "$LINKED_WT" ] && dim "$(sed 's/^/    /' <<<"$LINKED_WT")"
+    [ -d "$T3_WT" ] && info "t3-code worktree dir: $(size_of "$T3_WT")"
+    [ -d "$OC_WT" ] && info "opencode worktree dir: $(size_of "$OC_WT")"
+    dim "    prune drops metadata for dirs already deleted (always safe);"
+    dim "    aggressive also removes tool-managed checkouts (git worktree remove)."
+    case "$(choose "12s" "clean git worktrees?  [1] prune stale metadata  [2] also remove tool-managed checkouts (aggressive)  [s] skip")" in
+        1)
+            for _repo in "${WT_REPOS[@]}"; do
+                run_quiet git -C "$_repo" worktree prune
+            done
+            ok "worktree metadata pruned"
+            sum_done "git worktree metadata pruned" ;;
+        2)
+            if [ -n "$TOOL_WT" ]; then
+                KB_BEFORE=0
+                while IFS=$'\t' read -r _repo _wt; do
+                    [ -n "${_wt:-}" ] || continue
+                    KB_BEFORE=$((KB_BEFORE + $(kb_of "$_wt")))
+                    if [ "$DRY_RUN" -eq 1 ]; then
+                        dim "    [dry-run] would run: git -C $_repo worktree remove --force $_wt"
+                    elif git -C "$_repo" worktree remove --force "$_wt" 2>/dev/null; then
+                        ok "removed $_wt"
+                    else
+                        warn "could not remove $_wt"
+                    fi
+                done <<<"$TOOL_WT"
+                track_kb "$KB_BEFORE"
+                ok "tool-managed worktrees removed ($(freed_note "$KB_BEFORE"))"
+                sum_done "tool-managed git worktrees removed"
+            else
+                dim "  no tool-managed checkouts to remove"
+            fi
+            for _repo in "${WT_REPOS[@]}"; do
+                run_quiet git -C "$_repo" worktree prune
+            done
+            # leftover non-git artifact dirs (e.g. t3 session outputs)
+            run_wipe "tool worktree leftovers cleared" "$T3_WT" "$OC_WT" ;;
+        *) dim "  skipped"; sum_skip "git worktrees" ;;
+    esac
+    printf "\n"
+fi
+
 # ── wrap up ──────────────────────────────────────────────────────────────
 AFTER=$(df_root)
 print_summary
