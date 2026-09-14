@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # pacclean — interactive storage cleanup for Arch Linux
-# Usage: pacclean [--aggressive|-a] [--yes|-y]
+# Usage: pacclean [--aggressive|-a] [--yes|-y] [--dry-run|-n]
 set -euo pipefail
 
 AGGRESSIVE=0
 ASSUME_YES=0
+DRY_RUN=0
 
 # Expand combined short flags (-ay -> -a -y)
 ARGS=()
@@ -20,13 +21,16 @@ for arg in "${ARGS[@]}"; do
     case "$arg" in
         -a|--aggressive) AGGRESSIVE=1 ;;
         -y|--yes)        ASSUME_YES=1 ;;
+        -n|--dry-run)    DRY_RUN=1 ;;
         -h|--help)
             cat <<'EOF'
-usage: pacclean [-a|--aggressive] [-y|--yes]
+usage: pacclean [-a|--aggressive] [-y|--yes] [-n|--dry-run]
 
   -a, --aggressive  default to the aggressive option in every menu
   -y, --yes         non-interactive: pick the default for every menu
                     (the safe action; combine with -a for aggressive ones)
+  -n, --dry-run     preview what would happen without changing anything
+                    (non-interactive; mirrors -y, or -a -y)
 
 WARNING: -a -y runs every destructive action with zero prompts,
 including wiping all of ~/.cache and deleting all Playwright browsers.
@@ -36,7 +40,7 @@ EOF
     esac
 done
 
-if [ "$ASSUME_YES" -eq 0 ] && ! [ -t 0 ]; then
+if [ "$ASSUME_YES" -eq 0 ] && [ "$DRY_RUN" -eq 0 ] && ! [ -t 0 ]; then
     echo "stdin is not a terminal; use -y for non-interactive mode" >&2
     exit 1
 fi
@@ -54,9 +58,30 @@ warn() { printf "%s⚠%s %s\n" "$C_WARN" "$R" "$1"; }
 dim()  { printf "%s%s%s\n" "$C_DIM" "$1" "$R"; }
 bold() { printf "%s%s%s\n" "$B" "$1" "$R"; }
 
-# ── size helpers (all guarded: du may fail on unreadable entries) ────────
-size_of() { du -sh "$1" 2>/dev/null | cut -f1 || echo "?"; }
-kb_of()   { du -sk "$1" 2>/dev/null | cut -f1 || echo 0; }
+# ── execution helpers (dry-run aware) ────────────────────────────────────
+# run_quiet runs a command silently; in dry-run it only announces it.
+run_quiet() {
+    if [ "$DRY_RUN" -eq 1 ]; then dim "    [dry-run] would run: $*"; return 0; fi
+    "$@" >/dev/null 2>&1
+}
+
+# Validate sudo once before the first privileged step so the password
+# prompt doesn't interrupt mid-flow later.
+SUDO_READY=0
+sudorun() {
+    if [ "$DRY_RUN" -eq 1 ]; then dim "    [dry-run] would run: sudo $*"; return 0; fi
+    if [ "$SUDO_READY" -eq 0 ]; then
+        info "requesting sudo (needed for system cleanup steps)"
+        sudo -v || return 1
+        SUDO_READY=1
+    fi
+    sudo "$@"
+}
+
+# ── size helpers (du can fail on unreadable entries while still printing
+# a partial total, so only fall back when it produced nothing) ───────────
+size_of() { local out; out=$(du -sh "$1" 2>/dev/null | cut -f1 || true); echo "${out:-?}"; }
+kb_of()   { local out; out=$(du -sk "$1" 2>/dev/null | cut -f1 || true); echo "${out:-0}"; }
 fmt_bytes() {
     local kb=${1:-0}
     if command -v numfmt >/dev/null 2>&1 && [ "$kb" -gt 0 ]; then
@@ -68,11 +93,32 @@ fmt_bytes() {
 
 df_root() { df -h / | awk 'NR==2 {print $4" free"}'; }
 
+freed_note() {
+    if [ "$DRY_RUN" -eq 1 ]; then echo "dry-run"; else echo "~$(fmt_bytes "$1") freed"; fi
+}
+
+browsers_running() {
+    local p
+    for p in firefox firefox-bin chromium chrome google-chrome brave; do
+        pgrep -x "$p" >/dev/null 2>&1 && return 0
+    done
+    return 1
+}
+
+warn_browsers() {
+    if browsers_running; then
+        warn "a browser is running — restart it if its cache causes glitches"
+    fi
+}
+
 # ── summary tracking ─────────────────────────────────────────────────────
 declare -a SUMMARY=()
-sum_done() { SUMMARY+=("ok|$1"); }
+FAILED=0
+TOTAL_FREED_KB=0
+sum_done() { if [ "$DRY_RUN" -eq 1 ]; then SUMMARY+=("ok|$1 [dry-run]"); else SUMMARY+=("ok|$1"); fi; }
 sum_skip() { SUMMARY+=("skip|$1"); }
-sum_fail() { SUMMARY+=("fail|$1"); }
+sum_fail() { SUMMARY+=("fail|$1"); FAILED=$((FAILED + 1)); }
+track_kb() { TOTAL_FREED_KB=$((TOTAL_FREED_KB + ${1:-0})); }
 
 print_summary() {
     bold "── summary ──────────────────────────────────"
@@ -85,17 +131,31 @@ print_summary() {
             fail) printf "%s✗%s %s\n" "$C_WARN" "$R" "$text" ;;
         esac
     done
+    if [ "$TOTAL_FREED_KB" -gt 0 ]; then
+        printf "\n"
+        if [ "$DRY_RUN" -eq 1 ]; then
+            info "estimated reclaimable: ~$(fmt_bytes "$TOTAL_FREED_KB")"
+        else
+            info "total freed (measured): ~$(fmt_bytes "$TOTAL_FREED_KB")"
+        fi
+    fi
 }
 
 # ── interaction ──────────────────────────────────────────────────────────
 # choose <keys> <question> — keys like "12s" or "1s"; echoes the choice.
-# Default: 2 if aggressive (when offered), else 1 with -y, else skip.
+# Default: 2 if aggressive (when offered), else 1 with -y/-n, else skip.
 choose() {
     local keys=$1 question=$2 reply def k disp=""
-    if [[ "$keys" == *2* && "$AGGRESSIVE" -eq 1 ]]; then def=2
-    elif [ "$ASSUME_YES" -eq 1 ]; then def=1
+    if [ "$AGGRESSIVE" -eq 1 ]; then
+        if [[ "$keys" == *2* ]]; then def=2; else def=1; fi
+    elif [ "$ASSUME_YES" -eq 1 ] || [ "$DRY_RUN" -eq 1 ]; then def=1
     else def=s; fi
-    if [ "$ASSUME_YES" -eq 1 ]; then echo "$def"; return; fi
+    if [ "$ASSUME_YES" -eq 1 ] || [ "$DRY_RUN" -eq 1 ]; then
+        if [ "$DRY_RUN" -eq 1 ]; then
+            printf "%s    [dry-run] choice: %s%s\n" "$C_DIM" "$def" "$R" >&2
+        fi
+        echo "$def"; return
+    fi
     for ((k = 0; k < ${#keys}; k++)); do disp+="${keys:k:1}/"; done
     disp=${disp%/}
     read -r -p "  $question [$disp, default: $def] " reply
@@ -116,28 +176,37 @@ run_wipe() {
         return 0
     fi
     for p in "${paths[@]}"; do before=$((before + $(kb_of "$p"))); done
+    if [ "$DRY_RUN" -eq 1 ]; then
+        human=$(fmt_bytes "$before")
+        ok "$label (dry-run: ~$human would be freed)"
+        sum_done "$label"
+        track_kb "$before"
+        return 0
+    fi
     find "${paths[@]}" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
     for p in "${paths[@]}"; do after=$((after + $(kb_of "$p"))); done
     freed=$((before - after)); ((freed < 0)) && freed=0
     human=$(fmt_bytes "$freed")
+    track_kb "$freed"
     ok "$label (~$human freed)"
     sum_done "$label (~$human freed)"
 }
 
-# Validate sudo once before the first privileged step so the password
-# prompt doesn't interrupt mid-flow later.
-SUDO_READY=0
-sudorun() {
-    if [ "$SUDO_READY" -eq 0 ]; then
-        info "requesting sudo (needed for system cleanup steps)"
-        sudo -v || return 1
-        SUDO_READY=1
-    fi
-    sudo "$@"
-}
+# ── sanity checks ────────────────────────────────────────────────────────
+if ! command -v pacman >/dev/null 2>&1; then
+    warn "pacman not found — pacclean targets Arch Linux"
+    exit 1
+fi
 
 BEFORE=$(df_root)
-bold "\npacclean — interactive disk cleanup"
+printf "\n"
+bold "pacclean — interactive disk cleanup"
+if [ "$DRY_RUN" -eq 1 ]; then
+    warn "DRY RUN — no changes will be made"
+fi
+if [ "$AGGRESSIVE" -eq 1 ] && [ "$ASSUME_YES" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then
+    warn "aggressive + yes: every destructive action runs with zero prompts"
+fi
 info "disk before: $BEFORE"
 printf "\n"
 
@@ -146,20 +215,24 @@ if command -v paccache >/dev/null 2>&1; then
     info "pacman cache (/var/cache/pacman/pkg): $(size_of /var/cache/pacman/pkg)"
     dim "    Downloaded package tarballs. Cached versions let you downgrade"
     dim "    a broken update; removing them never touches installed packages."
-    case "$(choose "12s" "clean pacman cache?  [1] keep last 3 versions  [2] keep only installed (aggressive)  [s] skip")" in
+    case "$(choose "12s" "clean pacman cache?  [1] keep last 3 versions  [2] keep only latest of each (aggressive)  [s] skip")" in
         1)
             KB_BEFORE=$(kb_of /var/cache/pacman/pkg)
             if sudorun paccache -r; then
-                ok "old package caches removed (~$(fmt_bytes $((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))) freed)"
+                FREED=$((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))
+                track_kb "$FREED"
+                ok "old package caches removed ($(freed_note "$FREED"))"
                 sum_done "pacman cache — old versions removed"
             else
                 sum_fail "pacman cache cleanup"
             fi ;;
         2)
             KB_BEFORE=$(kb_of /var/cache/pacman/pkg)
-            if sudorun paccache -ruk0; then
-                ok "caches of uninstalled + old versions removed (~$(fmt_bytes $((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))) freed)"
-                sum_done "pacman cache — only installed versions kept"
+            if sudorun paccache -rk1 && sudorun paccache -ruk0; then
+                FREED=$((KB_BEFORE - $(kb_of /var/cache/pacman/pkg)))
+                track_kb "$FREED"
+                ok "uninstalled + old versions removed ($(freed_note "$FREED"))"
+                sum_done "pacman cache — only latest versions kept"
             else
                 sum_fail "pacman cache cleanup (aggressive)"
             fi ;;
@@ -177,7 +250,8 @@ if [ -n "$ORPHANS" ]; then
     info "orphan packages ($(wc -l <<<"$ORPHANS")):"
     dim "$(sed 's/^/    /' <<<"$ORPHANS")"
     dim "    Were installed as dependencies but nothing requires them anymore."
-    case "$(choose "12s" "remove orphans?  [1] listed packages only  [2] also pull unneeded dependency chains (aggressive)  [s] skip")" in
+    dim "    -Rns also removes their unused dependency chains."
+    case "$(choose "1s" "remove orphans?  [1] remove listed packages + unused deps  [s] skip")" in
         1)
             if sudorun pacman -Rns --noconfirm - <<<"$ORPHANS"; then
                 ok "orphans removed"
@@ -185,19 +259,12 @@ if [ -n "$ORPHANS" ]; then
             else
                 sum_fail "orphan removal"
             fi ;;
-        2)
-            if sudorun pacman -Rns --recursive --noconfirm - <<<"$ORPHANS"; then
-                ok "orphans removed recursively"
-                sum_done "orphan packages + dependency chains removed"
-            else
-                sum_fail "recursive orphan removal"
-            fi ;;
         *) dim "  skipped"; sum_skip "orphan packages" ;;
     esac
     printf "\n"
 else
     ok "no orphan packages"
-    sum_done "no orphan packages"
+    sum_skip "no orphan packages"
     printf "\n"
 fi
 
@@ -231,21 +298,28 @@ fi
 info "user cache (~/.cache): $(size_of "${HOME}/.cache")"
 dim "    App-rebuildable data: thumbnails, browser caches, tool downloads."
 dim "    Wiping everything is safe, but apps start cold (slow first launch)."
-case "$(choose "12s" "clean user cache?  [1] thumbnails + browser caches only  [2] wipe ENTIRE ~/.cache (aggressive)  [s] skip")" in
+case "$(choose "12s" "clean user cache?  [1] app + dev caches  [2] wipe ENTIRE ~/.cache (aggressive)  [s] skip")" in
     1)
-        run_wipe "thumbnails + browser caches cleared" \
+        warn_browsers
+        run_wipe "app + dev caches cleared" \
             "${HOME}/.cache/thumbnails" \
             "${HOME}/.cache/mozilla" \
             "${HOME}/.cache/chromium" \
             "${HOME}/.cache/BraveSoftware" \
-            "${HOME}/.cache/google-chrome" ;;
+            "${HOME}/.cache/google-chrome" \
+            "${HOME}/.cache/node-gyp" \
+            "${HOME}/.cache/typescript" \
+            "${HOME}/.cache/cursor-compile-cache" \
+            "${HOME}/.cache/aube" \
+            "${HOME}/.cache/mise" ;;
     2)
         WIPE_ALL=1
-        if [ "$ASSUME_YES" -eq 0 ]; then
-            read -r -p "  really wipe ALL of ~/.cache? [y/N] " _reply
+        if [ "$ASSUME_YES" -eq 0 ] && [ "$DRY_RUN" -eq 0 ]; then
+            read -r -p "  really wipe ALL of ~/.cache? [y/N] " _reply || _reply=
             [[ "$_reply" =~ ^[Yy]$ ]] || WIPE_ALL=0
         fi
         if [ "$WIPE_ALL" -eq 1 ]; then
+            warn_browsers
             run_wipe "entire user cache wiped" "${HOME}/.cache"
         else
             dim "  skipped"; sum_skip "user cache (declined double-confirm)"
@@ -269,16 +343,29 @@ fi
 
 # ── 7. Mise tool cache ───────────────────────────────────────────────────
 if command -v mise >/dev/null 2>&1; then
-    MISE_DIR="${HOME}/.local/share/mise/downloads"
-    info "mise downloads cache: $(size_of "$MISE_DIR")"
-    dim "    Downloaded runtime archives (node, python, ...) kept for reuse."
-    dim "    Installed tool versions are NOT touched — only stale downloads."
-    case "$(choose "1s" "prune mise downloads?  [1] yes  [s] skip")" in
+    MISE_ROOT="${HOME}/.local/share/mise"
+    MISE_CACHE_DIR=$(mise cache path 2>/dev/null || echo "${HOME}/.cache/mise")
+    info "mise tool installs: $(size_of "$MISE_ROOT/installs")"
+    dim "    Installed runtime versions (node, python, ...). Only 'mise prune'"
+    dim "    (aggressive below) removes versions your configs no longer use."
+    info "mise caches: downloads $(size_of "$MISE_ROOT/downloads") · conda $(size_of "$MISE_ROOT/conda-packages") · cache $(size_of "$MISE_CACHE_DIR")"
+    dim "    Downloaded archives and conda packages kept for reuse; removing"
+    dim "    them just means the next install re-downloads."
+    case "$(choose "12s" "clean mise caches?  [1] download/cache files  [2] also prune unused tool versions (aggressive)  [s] skip")" in
         1)
-            if mise cache clear >/dev/null 2>&1; then
-                run_wipe "mise cache + downloads cleared" "$MISE_DIR"
+            run_quiet mise cache clear
+            run_wipe "mise download/conda caches cleared" "$MISE_ROOT/downloads" "$MISE_ROOT/conda-packages" ;;
+        2)
+            KB_BEFORE=$(kb_of "$MISE_ROOT/installs")
+            run_quiet mise cache clear
+            run_wipe "mise download/conda caches cleared" "$MISE_ROOT/downloads" "$MISE_ROOT/conda-packages"
+            if run_quiet mise prune; then
+                FREED=$((KB_BEFORE - $(kb_of "$MISE_ROOT/installs")))
+                track_kb "$FREED"
+                ok "unused mise tool versions pruned ($(freed_note "$FREED"))"
+                sum_done "mise unused tool versions pruned"
             else
-                sum_fail "mise cache cleanup"
+                sum_fail "mise prune"
             fi ;;
         *) dim "  skipped"; sum_skip "mise cache" ;;
     esac
@@ -288,10 +375,10 @@ fi
 # ── 8. JS package manager caches ─────────────────────────────────────────
 if command -v npm >/dev/null 2>&1 && [ -d "${HOME}/.npm" ]; then
     info "npm cache (~/.npm): $(size_of "${HOME}/.npm")"
-    dim "    Downloaded package tarballs + metadata. Projects in node_modules"
-    dim "    are unaffected; next install re-downloads what it needs."
-    case "$(choose "1s" "clean npm cache?  [1] yes  [s] skip")" in
-        1) npm cache clean --force >/dev/null 2>&1 && { ok "npm cache cleaned"; sum_done "npm cache cleaned"; } || sum_fail "npm cache clean" ;;
+    dim "    Downloaded tarballs + registry metadata, plus the npx cache"
+    dim "    (_npx). Projects in node_modules are untouched."
+    case "$(choose "1s" "clean npm + npx caches?  [1] yes  [s] skip")" in
+        1) run_wipe "npm + npx caches cleared" "${HOME}/.npm" ;;
         *) dim "  skipped"; sum_skip "npm cache" ;;
     esac
     printf "\n"
@@ -299,12 +386,31 @@ fi
 
 if command -v pnpm >/dev/null 2>&1; then
     PNPM_STORE=$(pnpm store path 2>/dev/null || true)
+    PNPM_CACHE=$(pnpm cache path 2>/dev/null || echo "${HOME}/.cache/pnpm")
     if [ -n "$PNPM_STORE" ] && [ -d "$PNPM_STORE" ]; then
         info "pnpm store ($PNPM_STORE): $(size_of "$PNPM_STORE")"
-        dim "    Content-addressed package store shared by all pnpm projects."
-        dim "    Prune only removes versions no project references — safe."
-        case "$(choose "1s" "prune pnpm store?  [1] yes  [s] skip")" in
-            1) pnpm store prune >/dev/null 2>&1 && { ok "pnpm store pruned"; sum_done "pnpm store pruned"; } || sum_fail "pnpm store prune" ;;
+        dim "    pnpm metadata cache ($PNPM_CACHE): $(size_of "$PNPM_CACHE")"
+        dim "    Store holds content-addressed packages shared by all projects;"
+        dim "    prune removes only versions no project references — safe."
+        case "$(choose "12s" "clean pnpm caches?  [1] prune store  [2] also metadata cache (aggressive)  [s] skip")" in
+            1)
+                if run_quiet pnpm store prune; then
+                    ok "pnpm store pruned"
+                    sum_done "pnpm store pruned"
+                else
+                    sum_fail "pnpm store prune"
+                fi ;;
+            2)
+                KB_BEFORE=$(( $(kb_of "$PNPM_STORE") + $(kb_of "$PNPM_CACHE") ))
+                if run_quiet pnpm store prune && run_quiet pnpm cache delete '*' -y; then
+                    FREED=$((KB_BEFORE - $(kb_of "$PNPM_STORE") - $(kb_of "$PNPM_CACHE")))
+                    ((FREED < 0)) && FREED=0
+                    track_kb "$FREED"
+                    ok "pnpm store + metadata cache cleaned ($(freed_note "$FREED"))"
+                    sum_done "pnpm store + metadata cache cleaned"
+                else
+                    sum_fail "pnpm cache cleanup (aggressive)"
+                fi ;;
             *) dim "  skipped"; sum_skip "pnpm store" ;;
         esac
         printf "\n"
@@ -315,7 +421,16 @@ if command -v bun >/dev/null 2>&1 && [ -d "${HOME}/.bun/install/cache" ]; then
     info "bun install cache: $(size_of "${HOME}/.bun/install/cache")"
     dim "    Downloaded package tarballs from bun installs."
     case "$(choose "1s" "clean bun install cache?  [1] yes  [s] skip")" in
-        1) bun pm cache rm >/dev/null 2>&1 && { ok "bun cache cleaned"; sum_done "bun cache cleaned"; } || sum_fail "bun cache clean" ;;
+        1)
+            KB_BEFORE=$(kb_of "${HOME}/.bun/install/cache")
+            if run_quiet bun pm cache rm; then
+                FREED=$((KB_BEFORE - $(kb_of "${HOME}/.bun/install/cache")))
+                track_kb "$FREED"
+                ok "bun cache cleaned ($(freed_note "$FREED"))"
+                sum_done "bun cache cleaned"
+            else
+                sum_fail "bun cache clean"
+            fi ;;
         *) dim "  skipped"; sum_skip "bun cache" ;;
     esac
     printf "\n"
@@ -336,27 +451,30 @@ if [ -d "$CARGO_REGISTRY" ]; then
 fi
 
 if command -v rustup >/dev/null 2>&1; then
-    STALE_TOOLCHAINS=$(rustup toolchain list 2>/dev/null | grep -v '(default)' | grep -v '(override)' | grep -v '(active)' || true)
+    STALE_TOOLCHAINS=$(rustup toolchain list 2>/dev/null \
+        | grep -v '(default)' | grep -v '(override)' | grep -v '(active)' \
+        | grep -v '^no installed toolchains$' || true)
     if [ -n "$STALE_TOOLCHAINS" ]; then
         info "rustup toolchains ($(wc -l <<<"$STALE_TOOLCHAINS") non-default):"
         dim "$(sed 's/^/    /' <<<"$STALE_TOOLCHAINS")"
         dim "    Each installed toolchain is a full rustc build (~1GB each)."
-        dim "    The default and any overridden/active toolchain are never touched."
+        dim "    Default/active toolchains are never touched. Note: overrides"
+        dim "    active in other directories aren't detected and may be listed."
         case "$(choose "1s" "remove non-default rustup toolchains?  [1] yes  [s] skip")" in
             1)
-                REMOVED=0 FAILED=0
+                REMOVED=0 TC_FAILED=0
                 while read -r tc; do
                     tc=${tc%% *}
-                    if rustup toolchain uninstall "$tc" >/dev/null 2>&1; then
+                    if run_quiet rustup toolchain uninstall "$tc"; then
                         ok "removed $tc"; REMOVED=$((REMOVED + 1))
                     else
-                        warn "failed to remove $tc"; FAILED=$((FAILED + 1))
+                        warn "failed to remove $tc"; TC_FAILED=$((TC_FAILED + 1))
                     fi
                 done <<<"$STALE_TOOLCHAINS"
-                if [ "$FAILED" -eq 0 ]; then
+                if [ "$TC_FAILED" -eq 0 ]; then
                     sum_done "removed $REMOVED non-default rustup toolchain(s)"
                 else
-                    sum_fail "rustup removal ($FAILED failed)"
+                    sum_fail "rustup removal ($TC_FAILED failed)"
                 fi ;;
             *) dim "  skipped"; sum_skip "rustup toolchains" ;;
         esac
@@ -367,7 +485,46 @@ if command -v rustup >/dev/null 2>&1; then
     fi
 fi
 
-# ── 10. Dev tool caches (opencode, playwright) ───────────────────────────
+# ── 10. Go caches ────────────────────────────────────────────────────────
+if command -v go >/dev/null 2>&1; then
+    GO_CACHE=$(go env GOCACHE 2>/dev/null || true)
+    GO_MODS=$(go env GOMODCACHE 2>/dev/null || true)
+    if { [ -n "$GO_CACHE" ] && [ -d "$GO_CACHE" ]; } || { [ -n "$GO_MODS" ] && [ -d "$GO_MODS" ]; }; then
+        info "go build cache: $(size_of "$GO_CACHE")"
+        dim "    Cached compiled packages — 'go clean -cache' forces a rebuild."
+        if [ -n "$GO_MODS" ] && [ -d "$GO_MODS" ]; then
+            info "go module cache: $(size_of "$GO_MODS")"
+            dim "    Downloaded modules — 'go clean -modcache' forces re-download."
+        fi
+        case "$(choose "12s" "clean go caches?  [1] build cache  [2] build + module cache (aggressive)  [s] skip")" in
+            1)
+                KB_BEFORE=$(kb_of "$GO_CACHE")
+                if run_quiet go clean -cache; then
+                    FREED=$((KB_BEFORE - $(kb_of "$GO_CACHE")))
+                    track_kb "$FREED"
+                    ok "go build cache cleaned ($(freed_note "$FREED"))"
+                    sum_done "go build cache cleaned"
+                else
+                    sum_fail "go build cache clean"
+                fi ;;
+            2)
+                KB_BEFORE=$(( $(kb_of "$GO_CACHE") + $(kb_of "$GO_MODS") ))
+                if run_quiet go clean -cache && run_quiet go clean -modcache; then
+                    FREED=$((KB_BEFORE - $(kb_of "$GO_CACHE") - $(kb_of "$GO_MODS")))
+                    ((FREED < 0)) && FREED=0
+                    track_kb "$FREED"
+                    ok "go build + module caches cleaned ($(freed_note "$FREED"))"
+                    sum_done "go build + module caches cleaned"
+                else
+                    sum_fail "go cache clean (aggressive)"
+                fi ;;
+            *) dim "  skipped"; sum_skip "go caches" ;;
+        esac
+        printf "\n"
+    fi
+fi
+
+# ── 11. Dev tool caches (opencode, playwright) ───────────────────────────
 if [ -d "${HOME}/.cache/opencode" ]; then
     info "opencode cache: $(size_of "${HOME}/.cache/opencode")"
     dim "    Models/logs/state snapshots from opencode sessions."
@@ -389,8 +546,25 @@ if [ -d "${HOME}/.cache/ms-playwright" ]; then
     printf "\n"
 fi
 
+# ── 12. Docker ───────────────────────────────────────────────────────────
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    info "docker disk usage:"
+    dim "$(docker system df 2>/dev/null | sed 's/^/    /')"
+    dim "    prune removes stopped containers, unused networks, dangling"
+    dim "    images and build cache — volumes are never touched."
+    case "$(choose "12s" "prune docker?  [1] safe prune  [2] also all unused images (aggressive)  [s] skip")" in
+        1) run_quiet docker system prune -f && { ok "docker pruned"; sum_done "docker pruned (containers/networks/dangling images)"; } || sum_fail "docker prune" ;;
+        2) run_quiet docker system prune -af && { ok "docker pruned (all unused images)"; sum_done "docker pruned (all unused images)"; } || sum_fail "docker prune (aggressive)" ;;
+        *) dim "  skipped"; sum_skip "docker" ;;
+    esac
+    printf "\n"
+fi
+
 # ── wrap up ──────────────────────────────────────────────────────────────
 AFTER=$(df_root)
 print_summary
 printf "\n"
 info "disk: was $BEFORE → now $AFTER"
+if [ "$FAILED" -gt 0 ] && [ "$DRY_RUN" -eq 0 ]; then
+    exit 1
+fi
