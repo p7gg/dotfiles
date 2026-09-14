@@ -209,14 +209,17 @@ function anthropicVariantsFor(efforts: readonly string[]): Record<string, Record
 // Promos with no signal in the id string — CommandCode's arbitrary,
 // time-limited discounts. These can't be derived automatically and
 // must be updated by hand when they change.
-// Screenshot 2026-09-02: minimax-m3 2× usage ("Every credit goes 2× further"),
-// mimo-v2.5 + mimo-v2.5-pro up to 99% off ("Every dollar of credit goes further"),
+// Screenshot 2026-09-09: minimax-m3 2× usage ("Every credit goes 2× further"),
+// mimo-v2.5 + mimo-v2.5-pro Up to 99% off ("Every dollar of credit goes further"),
 // laguna-s-2.1-free free ("Requests on this model cost no credits", while capacity lasts),
-// longcat-2.0:free free ("Requests on this model cost no credits", while it lasts).
+// longcat-2.0:free free ("Requests on this model cost no credits", while it lasts),
+// ling-3.0-flash-sante:free free ("is free, up to 100 requests a day", while it lasts),
+// deepseek-v4.1-flash boosted credits ("$60 on GOAT ($40), $70 on Pro ($50)", through September 17, 2026).
 const DEAL_LABELS: Record<string, string> = {
-  "minimax-m3": "2x usage",
-  "mimo-v2.5": "up to -99%",
-  "mimo-v2.5-pro": "up to -99%",
+  "deepseek-v4.1-flash": "boosted credits, thru Sep 17",
+  "minimax-m3": "2× usage",
+  "mimo-v2.5": "Up to 99% off",
+  "mimo-v2.5-pro": "Up to 99% off",
 }
 
 // Naming conventions CommandCode does apply consistently — checked
