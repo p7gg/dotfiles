@@ -39,7 +39,37 @@ Options:
 Run this inside WSL, as root, once after importing the Arch image. Then run
 `wsl --shutdown` from Windows and reopen the distro. The target user must not be
 root; create or name a normal Linux user instead.
+
+The root password is set first if the root account is locked or has none. An
+existing root password is left unchanged.
 EOF
+}
+
+ensure_password() {
+    local user="$1"
+    local status
+
+    if ! id -u "$user" >/dev/null 2>&1; then
+        if ((DRY_RUN)); then
+            log "Would set a password for $user"
+            return 0
+        fi
+        die "cannot set a password: user does not exist: $user"
+    fi
+
+    status="$(LC_ALL=C passwd -S "$user" | awk '{print $2}')"
+    if [[ "$status" == "P" ]]; then
+        log "$user already has a password; leaving it unchanged"
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would set a password for $user"
+        return 0
+    fi
+
+    log "Set a password for $user"
+    passwd "$user"
 }
 
 write_sudoers() {
@@ -237,6 +267,11 @@ fi
 [[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] ||
     die "invalid hostname: $TARGET_HOSTNAME"
 
+require_cmd passwd
+
+# Secure root before anything else changes system state.
+ensure_password root
+
 require_cmd pacman
 require_cmd pacman-key
 require_cmd useradd
@@ -275,15 +310,7 @@ else
     run_cmd useradd -m -G wheel -s /bin/bash "$TARGET_USER"
 fi
 
-if ((DRY_RUN)); then
-    log "Would ensure $TARGET_USER has a password"
-else
-    password_status="$(LC_ALL=C passwd -S "$TARGET_USER" | awk '{print $2}')"
-    if [[ "$password_status" == "L" || "$password_status" == "NP" ]]; then
-        log "Set a password for $TARGET_USER"
-        passwd "$TARGET_USER"
-    fi
-fi
+ensure_password "$TARGET_USER"
 
 write_sudoers
 setup_locale

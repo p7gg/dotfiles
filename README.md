@@ -182,11 +182,13 @@ and merges the required settings instead of skipping the file.
 
 `wsl-init.sh` handles:
 
+- a root password prompt first, if the root account is locked or has none; an
+  existing root password is left unchanged
 - pacman keyring initialization if it is empty
 - `pacman -Syu`
 - installing `sudo` and `git`
 - creating the user and adding them to `wheel`
-- a password prompt if the account is locked
+- a password prompt for the new user if the account is locked
 - a sudoers drop-in for `wheel`
 - `en_US.UTF-8` locale generation
 - `/etc/wsl.conf` default user and hostname, optional systemd; new files get
