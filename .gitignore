@@ -1,0 +1,24 @@
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Local scratch space
+/.tmp/
+
+# Never commit private key material by accident.
+id_rsa
+id_ed25519
+id_ecdsa
+*.pem
+*.key
+*.agekey
+key.txt
+
+# Public keys are fine.
+!*.pub
