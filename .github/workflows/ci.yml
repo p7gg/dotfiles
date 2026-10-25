@@ -32,6 +32,7 @@ jobs:
             git \
             git-delta \
             gitleaks \
+            jq \
             just \
             shellcheck \
             shfmt
