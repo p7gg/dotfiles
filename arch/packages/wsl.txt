@@ -1,0 +1,8 @@
+# Extra packages for Arch inside WSL.
+# WSL is CLI-only here: no GNOME, PipeWire, NetworkManager, or hardware packages.
+
+pass
+
+# Examples:
+# neovim
+# tmux

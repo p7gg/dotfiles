@@ -1,0 +1,9 @@
+# Native-only packages (desktop/GUI, hardware, backups, firewall).
+# The bootstrap installs this file in addition to base.txt when the native
+# profile is selected.
+
+fwupd
+gnome-tweaks
+restic
+ufw
+zellij

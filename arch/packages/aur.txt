@@ -1,0 +1,10 @@
+# AUR-only packages used on both native Arch and WSL.
+# paru is bootstrapped automatically if any AUR list contains packages.
+
+bws-bin
+# gitbutler-bin includes both the GUI and the `but` CLI. Do not add
+# gitbutler-cli-bin; both packages own /usr/bin/but.
+gitbutler-bin
+google-cloud-cli
+google-cloud-cli-component-gke-gcloud-auth-plugin
+lefthook
