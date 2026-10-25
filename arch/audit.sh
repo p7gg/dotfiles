@@ -7,8 +7,15 @@ set -Eeuo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=arch/lib/common.sh
+source "$REPO_ROOT/arch/lib/common.sh"
+
 PROFILE="auto"
 CHECK=0
+STRICT=0
+JSON=0
+
+trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
@@ -16,7 +23,9 @@ Usage: arch/audit.sh [options]
 
 Options:
   --profile native|wsl  Package profile to compare (default: auto-detect)
-  --check               Exit 1 if any drift is found
+  --check               Exit 1 when tracked packages are missing
+  --strict              With --check, also exit 1 for untracked packages
+  --json                Print machine-readable JSON instead of sections
   -h, --help            Show this help
 
 The audit reports:
@@ -24,44 +33,11 @@ The audit reports:
   - tracked native packages that are not installed
   - installed AUR/foreign packages not present in aur*.txt
   - tracked AUR packages that are not installed
+
+Packages listed in arch/packages/audit-ignore.txt are omitted from the
+untracked sections. That file is for bootstrap artifacts and OS-layer packages,
+not for hiding real drift.
 EOF
-}
-
-log() {
-    printf '%s\n' "$*"
-}
-
-die() {
-    printf 'error: %s\n' "$*" >&2
-    exit 1
-}
-
-is_wsl() {
-    [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
-}
-
-detect_profile() {
-    if is_wsl; then
-        printf 'wsl\n'
-    else
-        printf 'native\n'
-    fi
-}
-
-filter_packages() {
-    local file="$1"
-    local line
-
-    [[ -f "$file" ]] || return 0
-
-    while IFS= read -r line; do
-        line="${line%%#*}"
-        line="${line#"${line%%[![:space:]]*}"}"
-        line="${line%"${line##*[![:space:]]}"}"
-        [[ -n "$line" ]] && printf '%s\n' "$line"
-    done <"$file"
-
-    return 0
 }
 
 expand_groups() {
@@ -79,6 +55,18 @@ expand_groups() {
     return 0
 }
 
+filter_ignored() {
+    local input="$1"
+    local ignore="$2"
+    local output="$3"
+
+    if [[ -s "$ignore" ]]; then
+        grep -vxF -f "$ignore" "$input" >"$output" || true
+    else
+        cp "$input" "$output"
+    fi
+}
+
 print_section() {
     local title="$1"
     local file="$2"
@@ -94,81 +82,191 @@ print_section() {
     fi
 }
 
-while (($# > 0)); do
-    case "$1" in
-    --profile)
-        [[ $# -ge 2 ]] || die "--profile requires an argument"
-        PROFILE="$2"
-        shift 2
-        ;;
-    --profile=*)
-        PROFILE="${1#*=}"
-        shift
-        ;;
-    --check)
-        CHECK=1
-        shift
-        ;;
-    -h | --help)
-        usage
-        exit 0
-        ;;
-    *)
-        die "unknown option: $1 (try --help)"
-        ;;
+json_array() {
+    local file="$1"
+
+    if [[ -s "$file" ]]; then
+        jq -R . "$file" | jq -s .
+    else
+        printf '[]\n'
+    fi
+}
+
+main() {
+    local tmpdir ignore_file duplicates
+    local missing_drift=0 untracked_drift=0
+
+    while (($# > 0)); do
+        case "$1" in
+        --profile)
+            [[ $# -ge 2 ]] || die "--profile requires an argument"
+            PROFILE="$2"
+            shift 2
+            ;;
+        --profile=*)
+            PROFILE="${1#*=}"
+            shift
+            ;;
+        --check)
+            CHECK=1
+            shift
+            ;;
+        --strict)
+            STRICT=1
+            shift
+            ;;
+        --json)
+            JSON=1
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unknown option: $1 (try --help)"
+            ;;
+        esac
+    done
+
+    if ((STRICT)) && ((CHECK == 0)); then
+        die "--strict requires --check"
+    fi
+
+    # shellcheck source=/dev/null
+    [[ -r /etc/os-release ]] && source /etc/os-release
+    [[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
+    command -v pacman >/dev/null 2>&1 || die "pacman not found"
+    if ((JSON)); then
+        require_cmd jq
+    fi
+
+    if [[ "$PROFILE" == "auto" ]]; then
+        PROFILE="$(detect_profile)"
+    fi
+
+    case "$PROFILE" in
+    native | wsl) ;;
+    *) die "invalid profile: $PROFILE (expected native or wsl)" ;;
     esac
-done
 
-# shellcheck source=/dev/null
-[[ -r /etc/os-release ]] && source /etc/os-release
-[[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
-command -v pacman >/dev/null 2>&1 || die "pacman not found"
+    if [[ "$PROFILE" == "native" ]] && is_wsl; then
+        warn "native profile selected inside WSL; desktop packages may not be appropriate"
+    elif [[ "$PROFILE" == "wsl" ]] && ! is_wsl; then
+        warn "wsl profile selected outside WSL"
+    fi
 
-if [[ "$PROFILE" == "auto" ]]; then
-    PROFILE="$(detect_profile)"
-fi
+    validate_package_lists \
+        "$REPO_ROOT/arch/packages/base.txt" \
+        "$REPO_ROOT/arch/packages/${PROFILE}.txt" \
+        "$REPO_ROOT/arch/packages/aur.txt" \
+        "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" ||
+        die "fix the invalid package lists before auditing"
 
-case "$PROFILE" in
-native | wsl) ;;
-*) die "invalid profile: $PROFILE (expected native or wsl)" ;;
-esac
+    tmpdir="$(mktemp -d)"
+    AUDIT_TMPDIR="$tmpdir"
+    trap 'rm -rf "${AUDIT_TMPDIR:-}"' EXIT
 
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
+    filter_packages "$REPO_ROOT/arch/packages/base.txt" >"$tmpdir/desired-raw.txt"
+    filter_packages "$REPO_ROOT/arch/packages/${PROFILE}.txt" >>"$tmpdir/desired-raw.txt"
+    expand_groups <"$tmpdir/desired-raw.txt" | LC_ALL=C sort -u >"$tmpdir/desired-native.txt"
+    filter_packages "$REPO_ROOT/arch/packages/aur.txt" >"$tmpdir/desired-aur-raw.txt"
+    filter_packages "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" >>"$tmpdir/desired-aur-raw.txt"
+    LC_ALL=C sort -u "$tmpdir/desired-aur-raw.txt" >"$tmpdir/desired-aur.txt"
 
-filter_packages "$REPO_ROOT/arch/packages/base.txt" >"$tmpdir/desired-raw.txt"
-filter_packages "$REPO_ROOT/arch/packages/${PROFILE}.txt" >>"$tmpdir/desired-raw.txt"
-expand_groups <"$tmpdir/desired-raw.txt" | LC_ALL=C sort -u >"$tmpdir/desired-native.txt"
-filter_packages "$REPO_ROOT/arch/packages/aur.txt" >"$tmpdir/desired-aur-raw.txt"
-filter_packages "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" >>"$tmpdir/desired-aur-raw.txt"
-LC_ALL=C sort -u "$tmpdir/desired-aur-raw.txt" >"$tmpdir/desired-aur.txt"
+    if ! pacman -Qqen >"$tmpdir/current-native-explicit.txt"; then
+        die "pacman -Qqen failed"
+    fi
+    if ! pacman -Qqn >"$tmpdir/current-native-all.txt"; then
+        die "pacman -Qqn failed"
+    fi
+    if ! pacman -Qqem >"$tmpdir/current-aur-explicit.txt"; then
+        die "pacman -Qqem failed"
+    fi
+    if ! pacman -Qqm >"$tmpdir/current-aur-all.txt"; then
+        die "pacman -Qqm failed"
+    fi
 
-(pacman -Qqen || true) | LC_ALL=C sort -u >"$tmpdir/current-native-explicit.txt"
-(pacman -Qqn || true) | LC_ALL=C sort -u >"$tmpdir/current-native-all.txt"
-(pacman -Qqem || true) | LC_ALL=C sort -u >"$tmpdir/current-aur-explicit.txt"
-(pacman -Qqm || true) | LC_ALL=C sort -u >"$tmpdir/current-aur-all.txt"
+    LC_ALL=C sort -u -o "$tmpdir/current-native-explicit.txt" "$tmpdir/current-native-explicit.txt"
+    LC_ALL=C sort -u -o "$tmpdir/current-native-all.txt" "$tmpdir/current-native-all.txt"
+    LC_ALL=C sort -u -o "$tmpdir/current-aur-explicit.txt" "$tmpdir/current-aur-explicit.txt"
+    LC_ALL=C sort -u -o "$tmpdir/current-aur-all.txt" "$tmpdir/current-aur-all.txt"
 
-LC_ALL=C comm -23 "$tmpdir/current-native-explicit.txt" "$tmpdir/desired-native.txt" >"$tmpdir/native-untracked.txt"
-LC_ALL=C comm -13 "$tmpdir/current-native-all.txt" "$tmpdir/desired-native.txt" >"$tmpdir/native-missing.txt"
-LC_ALL=C comm -23 "$tmpdir/current-aur-explicit.txt" "$tmpdir/desired-aur.txt" >"$tmpdir/aur-untracked.txt"
-LC_ALL=C comm -13 "$tmpdir/current-aur-all.txt" "$tmpdir/desired-aur.txt" >"$tmpdir/aur-missing.txt"
+    LC_ALL=C comm -23 "$tmpdir/current-native-explicit.txt" "$tmpdir/desired-native.txt" \
+        >"$tmpdir/native-untracked.txt"
+    LC_ALL=C comm -13 "$tmpdir/current-native-all.txt" "$tmpdir/desired-native.txt" \
+        >"$tmpdir/native-missing.txt"
+    LC_ALL=C comm -23 "$tmpdir/current-aur-explicit.txt" "$tmpdir/desired-aur.txt" \
+        >"$tmpdir/aur-untracked.txt"
+    LC_ALL=C comm -13 "$tmpdir/current-aur-all.txt" "$tmpdir/desired-aur.txt" \
+        >"$tmpdir/aur-missing.txt"
 
-log "Package audit for profile: $PROFILE"
-print_section "Native installed but not tracked" "$tmpdir/native-untracked.txt"
-print_section "Native tracked but not installed" "$tmpdir/native-missing.txt"
-print_section "AUR/foreign installed but not tracked" "$tmpdir/aur-untracked.txt"
-print_section "AUR/foreign tracked but not installed" "$tmpdir/aur-missing.txt"
+    ignore_file="$REPO_ROOT/arch/packages/audit-ignore.txt"
+    if [[ -f "$ignore_file" ]]; then
+        filter_packages "$ignore_file" >"$tmpdir/ignore.txt"
+        filter_ignored "$tmpdir/native-untracked.txt" "$tmpdir/ignore.txt" "$tmpdir/native-untracked.filtered"
+        filter_ignored "$tmpdir/aur-untracked.txt" "$tmpdir/ignore.txt" "$tmpdir/aur-untracked.filtered"
+        mv "$tmpdir/native-untracked.filtered" "$tmpdir/native-untracked.txt"
+        mv "$tmpdir/aur-untracked.filtered" "$tmpdir/aur-untracked.txt"
+    fi
 
-drift=0
-for file in "$tmpdir"/*-untracked.txt "$tmpdir"/*-missing.txt; do
-    [[ -s "$file" ]] && drift=1
-done
+    duplicates="$(cat "$tmpdir/desired-raw.txt" "$tmpdir/desired-aur-raw.txt" | LC_ALL=C sort | uniq -d)"
+    if [[ -n "$duplicates" ]]; then
+        warn "duplicate package entries across lists: $(printf '%s' "$duplicates" | tr '\n' ' ')"
+    fi
 
-if ((drift == 0)); then
-    log ""
-    log "No drift detected."
-elif ((CHECK)); then
-    log ""
-    log "Drift detected."
-    exit 1
-fi
+    [[ -s "$tmpdir/native-untracked.txt" || -s "$tmpdir/aur-untracked.txt" ]] && untracked_drift=1
+    [[ -s "$tmpdir/native-missing.txt" || -s "$tmpdir/aur-missing.txt" ]] && missing_drift=1
+
+    if ((JSON)); then
+        jq -n \
+            --arg profile "$PROFILE" \
+            --argjson native_untracked "$(json_array "$tmpdir/native-untracked.txt")" \
+            --argjson native_missing "$(json_array "$tmpdir/native-missing.txt")" \
+            --argjson aur_untracked "$(json_array "$tmpdir/aur-untracked.txt")" \
+            --argjson aur_missing "$(json_array "$tmpdir/aur-missing.txt")" \
+            --argjson missing_drift "$missing_drift" \
+            --argjson untracked_drift "$untracked_drift" \
+            '{
+                profile: $profile,
+                native_untracked: $native_untracked,
+                native_missing: $native_missing,
+                aur_untracked: $aur_untracked,
+                aur_missing: $aur_missing,
+                missing_drift: ($missing_drift == 1),
+                untracked_drift: ($untracked_drift == 1)
+            }'
+    else
+        log "Package audit for profile: $PROFILE"
+        print_section "Native installed but not tracked" "$tmpdir/native-untracked.txt"
+        print_section "Native tracked but not installed" "$tmpdir/native-missing.txt"
+        print_section "AUR/foreign installed but not tracked" "$tmpdir/aur-untracked.txt"
+        print_section "AUR/foreign tracked but not installed" "$tmpdir/aur-missing.txt"
+    fi
+
+    if ((CHECK)); then
+        if ((missing_drift)); then
+            if ((JSON == 0)); then
+                log ""
+                log "Missing tracked packages detected."
+            fi
+            exit 1
+        fi
+        if ((STRICT && untracked_drift)); then
+            if ((JSON == 0)); then
+                log ""
+                log "Drift detected (strict mode)."
+            fi
+            exit 1
+        fi
+        if ((JSON == 0)); then
+            log ""
+            log "No missing tracked packages."
+        fi
+    elif ((JSON == 0 && missing_drift == 0 && untracked_drift == 0)); then
+        log ""
+        log "No drift detected."
+    fi
+}
+
+main "$@"

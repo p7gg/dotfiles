@@ -6,7 +6,9 @@
 # WSL: token is stored in pass:
 #   pass insert bitwarden/bws-token
 #
-# The token is exported only for the bws process and its children.
+# The token is exported only for the bws process and its children. Run
+# `./arch/auth.sh` to store it interactively, or see the README for the manual
+# commands.
 function bws --wraps bws --description 'bws with access token from keyring'
     set -l account personal
     if set -q BWS_ACCOUNT
@@ -15,17 +17,21 @@ function bws --wraps bws --description 'bws with access token from keyring'
 
     set -l token
     if set -q WSL_DISTRO_NAME
-        if type -q pass
-            set token (pass show bitwarden/bws-token 2>/dev/null)
+        if not type -q pass
+            echo "bws: pass is not installed; run arch/bootstrap.sh --profile wsl" >&2
+            return 1
         end
+        set token (pass show bitwarden/bws-token 2>/dev/null | string collect)
     else
-        if type -q secret-tool
-            set token (secret-tool lookup service bws account $account 2>/dev/null)
+        if not type -q secret-tool
+            echo "bws: secret-tool is not installed; install libsecret via arch/bootstrap.sh" >&2
+            return 1
         end
+        set token (secret-tool lookup service bws account $account 2>/dev/null | string collect)
     end
 
     if test -z "$token"
-        echo "bws: could not load access token (see README)" >&2
+        echo "bws: no access token stored for account '$account'; run ./arch/auth.sh --bws-account $account" >&2
         return 1
     end
 

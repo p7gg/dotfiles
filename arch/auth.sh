@@ -8,8 +8,16 @@
 
 set -Eeuo pipefail
 
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=arch/lib/common.sh
+source "$REPO_ROOT/arch/lib/common.sh"
+
 KEY="${HOME}/.ssh/id_ed25519"
 GENERATE_KEY=0
+CHECK_ONLY=0
+DRY_RUN=0
+NON_INTERACTIVE=0
 SKIP_GH=0
 SKIP_GCLOUD=0
 SKIP_TAILSCALE=0
@@ -17,24 +25,32 @@ SKIP_BWS=0
 SKIP_LINEAR=0
 SKIP_JIRA=0
 AUTH_INCOMPLETE=0
+AUTH_EMAIL="${AUTH_EMAIL:-}"
 BWS_ACCOUNT="${BWS_ACCOUNT:-personal}"
+ROOT_RUNNER=run_sudo
+export ROOT_RUNNER
+
+trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
 Usage: arch/auth.sh [options]
 
 Options:
-  --generate-key     Generate ~/.ssh/id_ed25519 if it does not exist
-  --key PATH         Use a different private key path
-  --skip-gh          Do not configure or authenticate the GitHub CLI
-  --skip-gcloud      Do not configure or authenticate the gcloud CLI
-  --skip-tailscale   Do not authenticate Tailscale
-  --skip-bws         Do not set up the Bitwarden Secrets Manager token
-  --bws-account NAME Keyring account label for the BWS token (default: personal)
-  --skip-linear      Do not authenticate the Linear MCP server
-  --skip-jira        Do not authenticate the Jira MCP server
-  --skip-mcp         Do not authenticate the Linear or Jira MCP servers
-  -h, --help         Show this help
+  --check             Report missing authentication without changing anything
+  --dry-run           Print actions without changing anything
+  --generate-key      Generate ~/.ssh/id_ed25519 if it does not exist
+  --email EMAIL       Email address for the SSH key comment
+  --non-interactive   Never prompt; report missing pieces instead
+  --skip-gh           Do not configure or authenticate the GitHub CLI
+  --skip-gcloud       Do not configure or authenticate the gcloud CLI
+  --skip-tailscale    Do not authenticate Tailscale
+  --skip-bws          Do not set up the Bitwarden Secrets Manager token
+  --bws-account NAME  Keyring account label for the BWS token (default: personal)
+  --skip-linear       Do not authenticate the Linear MCP server
+  --skip-jira         Do not authenticate the Jira MCP server
+  --skip-mcp          Do not authenticate the Linear or Jira MCP servers
+  -h, --help          Show this help
 
 What this does:
   - ensures a per-machine SSH key exists
@@ -52,32 +68,8 @@ SSH commit signing is configured by chezmoi. Work projects under
 EOF
 }
 
-log() {
-    printf '%s\n' "$*"
-}
-
-warn() {
-    printf 'warning: %s\n' "$*" >&2
-}
-
-die() {
-    printf 'error: %s\n' "$*" >&2
-    exit 1
-}
-
-on_error() {
-    local status=$?
-    printf 'error: auth setup failed at line %s (status %s)\n' "$1" "$status" >&2
-}
-
-trap 'on_error "$LINENO"' ERR
-
-require_cmd() {
-    command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
-}
-
 mcp_list_output() {
-    opencode mcp list 2>/dev/null || true
+    opencode mcp list 2>/dev/null
 }
 
 mcp_matches() {
@@ -87,13 +79,33 @@ mcp_matches() {
 
 authenticate_mcp() {
     local name="$1" label="$2" output
-    output="$(mcp_list_output)"
+    local state_text
+
+    if ! output="$(mcp_list_output)"; then
+        warn "$label MCP status check failed; run: opencode mcp list"
+        AUTH_INCOMPLETE=1
+        return
+    fi
+
     if mcp_matches "$output" "$name" "connected"; then
         log "$label MCP is already connected"
         return
     fi
-    if ! mcp_matches "$output" "$name" "needs authentication"; then
-        warn "$label MCP is not waiting for authentication; check: opencode mcp list"
+
+    if mcp_matches "$output" "$name" "needs authentication"; then
+        state_text="needs authentication"
+    else
+        state_text="not waiting for authentication"
+    fi
+
+    if ((DRY_RUN)); then
+        warn "$label MCP $state_text; would authenticate with: opencode mcp auth $name"
+        AUTH_INCOMPLETE=1
+        return
+    fi
+
+    if [[ "$state_text" != "needs authentication" ]]; then
+        warn "$label MCP is $state_text; check: opencode mcp list"
         AUTH_INCOMPLETE=1
         return
     fi
@@ -105,8 +117,7 @@ authenticate_mcp() {
         return
     fi
 
-    output="$(mcp_list_output)"
-    if mcp_matches "$output" "$name" "connected"; then
+    if output="$(mcp_list_output)" && mcp_matches "$output" "$name" "connected"; then
         log "$label MCP connected"
     else
         warn "$label MCP is still not connected; check: opencode mcp list"
@@ -143,19 +154,67 @@ store_bws_token() {
     secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"
 }
 
+gh_key_exists() {
+    local endpoint="$1" key="$2"
+    gh api --paginate "$endpoint" --jq '.[].key' 2>/dev/null | grep -Fxq "$key"
+}
+
+gh_has_scopes() {
+    local status
+    status="$(gh auth status --hostname github.com 2>&1 || true)"
+    [[ "$status" == *"admin:public_key"* && "$status" == *"admin:ssh_signing_key"* ]]
+}
+
+ensure_gh_key() {
+    local type="$1" endpoint="$2" title_suffix="$3" label="$4"
+
+    if gh_key_exists "$endpoint" "$public_key"; then
+        log "$label SSH key is already registered on GitHub"
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        warn "$label SSH key is not registered on GitHub; would upload it"
+        AUTH_INCOMPLETE=1
+        return 1
+    fi
+
+    if gh ssh-key add "${KEY}.pub" \
+        --title "$(uname -n)-${title_suffix}" --type "$type"; then
+        log "$label SSH key registered on GitHub"
+    else
+        warn "could not register the $label SSH key on GitHub"
+        AUTH_INCOMPLETE=1
+        return 1
+    fi
+}
+
 while (($# > 0)); do
     case "$1" in
+    --check)
+        CHECK_ONLY=1
+        DRY_RUN=1
+        shift
+        ;;
+    --dry-run)
+        DRY_RUN=1
+        shift
+        ;;
     --generate-key)
         GENERATE_KEY=1
         shift
         ;;
-    --key)
-        [[ $# -ge 2 ]] || die "--key requires an argument"
-        KEY="$2"
+    --email)
+        [[ $# -ge 2 ]] || die "--email requires an argument"
+        AUTH_EMAIL="$2"
         shift 2
         ;;
-    --key=*)
-        KEY="${1#*=}"
+    --email=*)
+        AUTH_EMAIL="${1#*=}"
+        shift
+        ;;
+    --non-interactive)
+        NON_INTERACTIVE=1
         shift
         ;;
     --skip-gh)
@@ -207,101 +266,188 @@ while (($# > 0)); do
 done
 
 [[ $EUID -ne 0 ]] || die "run this as your user, not root"
-KEY="${KEY/#\~/$HOME}"
 
-require_cmd git
-require_cmd ssh-keygen
-require_cmd ssh-add
-require_cmd uname
+for cmd in git ssh-keygen uname; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        warn "required command not found: $cmd"
+        AUTH_INCOMPLETE=1
+    fi
+done
 
-umask 077
-mkdir -p "$HOME/.ssh"
-chmod 700 "$HOME/.ssh"
-
-email="$(git config --global --get user.email 2>/dev/null || true)"
-if [[ -z "$email" ]]; then
-    read -r -p "Email address for the SSH key comment: " email
+if ((DRY_RUN == 0)); then
+    umask 077
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
 fi
-[[ -n "$email" ]] || die "an email address is required for the key comment"
 
-if [[ ! -f "$KEY" ]]; then
-    if ((GENERATE_KEY)); then
-        log "Generating a new ed25519 SSH key at $KEY"
-        ssh-keygen -t ed25519 -a 100 -C "$email" -f "$KEY"
+email="${AUTH_EMAIL:-$(git config --global --get user.email 2>/dev/null || true)}"
+if [[ -z "$email" ]]; then
+    if ((NON_INTERACTIVE || DRY_RUN)) || [[ ! -t 0 ]]; then
+        warn "no email for the SSH key comment; pass --email or set git user.email"
+        AUTH_INCOMPLETE=1
     else
-        die "SSH key not found: $KEY (rerun with --generate-key or restore your key)"
+        read -r -p "Email address for the SSH key comment: " email
+    fi
+fi
+if [[ -z "$email" ]] && ((DRY_RUN == 0)); then
+    die "an email address is required for the SSH key comment"
+fi
+if [[ -n "$email" && "$email" =~ [[:space:]] ]]; then
+    die "email address must not contain whitespace"
+fi
+
+have_key=0
+if [[ -f "$KEY" ]]; then
+    have_key=1
+else
+    if ((GENERATE_KEY)); then
+        if ((DRY_RUN)); then
+            warn "SSH key is missing; would generate $KEY"
+            AUTH_INCOMPLETE=1
+        else
+            log "Generating a new ed25519 SSH key at $KEY"
+            ssh-keygen -t ed25519 -a 100 -C "${email:-$USER}" -f "$KEY"
+            have_key=1
+        fi
+    else
+        warn "SSH key not found: $KEY (rerun with --generate-key or restore your key)"
+        AUTH_INCOMPLETE=1
     fi
 fi
 
-chmod 600 "$KEY"
+if ((have_key)); then
+    if ((DRY_RUN == 0)); then
+        chmod 600 "$KEY"
+    fi
 
-if [[ ! -f "${KEY}.pub" ]]; then
-    log "Deriving public key from $KEY"
-    ssh-keygen -y -f "$KEY" >"${KEY}.pub"
+    if [[ ! -f "${KEY}.pub" ]]; then
+        if ((DRY_RUN)); then
+            warn "public key is missing: ${KEY}.pub"
+            AUTH_INCOMPLETE=1
+            have_key=0
+        else
+            log "Deriving public key from $KEY"
+            ssh-keygen -y -f "$KEY" >"${KEY}.pub"
+            chmod 644 "${KEY}.pub"
+        fi
+    fi
 fi
-chmod 644 "${KEY}.pub"
+
+public_key=""
+if ((have_key)); then
+    public_key="$(awk '{print $1, $2}' "${KEY}.pub")"
+fi
+
+if ((have_key)) && ! command -v ssh-add >/dev/null 2>&1; then
+    warn "ssh-add is not installed; cannot manage the ssh-agent"
+    AUTH_INCOMPLETE=1
+fi
 
 # Make local `git log --show-signature` verification work for both identities.
 work_email="$(git config --file "$HOME/.config/git/work.inc" --get user.email 2>/dev/null || true)"
-public_key="$(awk '{print $1, $2}' "${KEY}.pub")"
-mkdir -p "$HOME/.config/git"
-{
-    [[ -n "$email" ]] && printf '%s %s\n' "$email" "$public_key"
-    [[ -n "$work_email" ]] && printf '%s %s\n' "$work_email" "$public_key"
-} >"$HOME/.config/git/allowed_signers"
-chmod 644 "$HOME/.config/git/allowed_signers"
-
-agent_started=0
-if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
-    eval "$(ssh-agent -s)" >/dev/null
-    agent_started=1
-else
-    agent_status=0
-    ssh-add -l >/dev/null 2>&1 || agent_status=$?
-    if [[ "$agent_status" -eq 2 ]]; then
-        eval "$(ssh-agent -s)" >/dev/null
-        agent_started=1
+if ((have_key)) && [[ -n "$email" ]]; then
+    if ((DRY_RUN)); then
+        log "Would update $HOME/.config/git/allowed_signers"
+    else
+        mkdir -p "$HOME/.config/git"
+        {
+            printf '%s %s\n' "$email" "$public_key"
+            [[ -n "$work_email" ]] && printf '%s %s\n' "$work_email" "$public_key"
+        } >"$HOME/.config/git/allowed_signers"
+        chmod 644 "$HOME/.config/git/allowed_signers"
     fi
 fi
 
-if ((agent_started)); then
-    {
-        printf "set -gx SSH_AUTH_SOCK '%s'\n" "$SSH_AUTH_SOCK"
-        printf "set -gx SSH_AGENT_PID '%s'\n" "${SSH_AGENT_PID:-}"
-    } >"$HOME/.ssh/agent.env"
-    chmod 600 "$HOME/.ssh/agent.env"
-fi
+agent_started=0
+if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
+    if ((DRY_RUN)); then
+        agent_status=0
+        if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+            agent_status=2
+        else
+            ssh-add -l >/dev/null 2>&1 || agent_status=$?
+        fi
+        if [[ "$agent_status" -ne 0 ]]; then
+            warn "ssh-agent is not ready; would start it and load $KEY"
+            AUTH_INCOMPLETE=1
+        else
+            log "ssh-agent is running"
+        fi
+    else
+        if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+            eval "$(ssh-agent -s)" >/dev/null
+            agent_started=1
+        else
+            agent_status=0
+            ssh-add -l >/dev/null 2>&1 || agent_status=$?
+            if [[ "$agent_status" -eq 2 ]]; then
+                eval "$(ssh-agent -s)" >/dev/null
+                agent_started=1
+            fi
+        fi
 
-log "Loading $KEY into the ssh-agent"
-ssh-add "$KEY"
+        if ((agent_started)); then
+            {
+                printf "set -gx SSH_AUTH_SOCK '%s'\n" "$SSH_AUTH_SOCK"
+                printf "set -gx SSH_AGENT_PID '%s'\n" "${SSH_AGENT_PID:-}"
+            } >"$HOME/.ssh/agent.env"
+            chmod 600 "$HOME/.ssh/agent.env"
+        fi
 
-log "SSH key fingerprint: $(ssh-keygen -lf "${KEY}.pub" | awk '{print $2}')"
-if ((agent_started)); then
-    log "A new ssh-agent was started; new fish shells will load ~/.ssh/agent.env."
-    log "For the current fish shell, run: source ~/.ssh/agent.env"
+        if ! ssh-add "$KEY"; then
+            warn "could not load $KEY into the ssh-agent"
+            AUTH_INCOMPLETE=1
+        fi
+    fi
+
+    log "SSH key fingerprint: $(ssh-keygen -lf "${KEY}.pub" | awk '{print $2}')"
+    if ((agent_started)); then
+        log "A new ssh-agent was started; new fish shells will load ~/.ssh/agent.env."
+        log "For the current fish shell, run: source ~/.ssh/agent.env"
+    fi
 fi
 
 if ((SKIP_GH == 0)); then
     if ! command -v gh >/dev/null 2>&1; then
         warn "gh is not installed; run arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
-    else
-        if ! gh auth status >/dev/null 2>&1; then
-            log "Authenticating GitHub CLI with the SSH Git protocol"
-            gh auth login --hostname github.com --git-protocol ssh --web
-        else
-            log "GitHub CLI is already authenticated"
-        fi
-
-        log "Ensuring GitHub has this key for authentication and signing"
-        gh ssh-key add "${KEY}.pub" --title "$(uname -n)-auth" --type authentication ||
-            warn "authentication key may already be registered"
-        gh ssh-key add "${KEY}.pub" --title "$(uname -n)-signing" --type signing ||
-            warn "signing key may already be registered"
-
-        if ! gh auth status >/dev/null 2>&1; then
-            warn "GitHub CLI authentication is still failing"
+    elif ! gh auth status --hostname github.com >/dev/null 2>&1; then
+        if ((DRY_RUN)); then
+            warn "GitHub CLI is not authenticated; would run: gh auth login"
             AUTH_INCOMPLETE=1
+        else
+            log "Authenticating GitHub CLI with the SSH Git protocol"
+            if ! gh auth login --hostname github.com --git-protocol ssh --web \
+                --scopes admin:public_key,admin:ssh_signing_key; then
+                warn "GitHub CLI authentication failed"
+                AUTH_INCOMPLETE=1
+            fi
+        fi
+    elif ! gh_has_scopes; then
+        if ((DRY_RUN)); then
+            warn "GitHub CLI token is missing admin:public_key or admin:ssh_signing_key"
+            AUTH_INCOMPLETE=1
+        else
+            log "Refreshing GitHub CLI scopes for SSH key management"
+            if ! gh auth refresh --hostname github.com \
+                --scopes admin:public_key,admin:ssh_signing_key; then
+                warn "could not refresh GitHub CLI scopes"
+                AUTH_INCOMPLETE=1
+            fi
+        fi
+    else
+        log "GitHub CLI is already authenticated with the required scopes"
+    fi
+
+    if command -v gh >/dev/null 2>&1; then
+        if gh auth status --hostname github.com >/dev/null 2>&1; then
+            if [[ -n "$public_key" ]]; then
+                ensure_gh_key authentication user/keys auth "authentication" || true
+                ensure_gh_key signing user/ssh_signing_keys signing "signing" || true
+            else
+                warn "cannot register the GitHub SSH key without a public key"
+                AUTH_INCOMPLETE=1
+            fi
         fi
     fi
 fi
@@ -313,22 +459,33 @@ if ((SKIP_GCLOUD == 0)); then
     else
         active_account="$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 || true)"
         if [[ -z "$active_account" ]]; then
-            log "Authenticating gcloud (OAuth; SSH is not used for gcloud CLI auth)"
-            if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-                gcloud auth login --no-launch-browser
+            if ((DRY_RUN)); then
+                warn "gcloud is not authenticated; would run: gcloud auth login"
+                AUTH_INCOMPLETE=1
             else
-                gcloud auth login
+                log "Authenticating gcloud (OAuth; SSH is not used for gcloud CLI auth)"
+                if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+                    gcloud auth login --no-launch-browser || AUTH_INCOMPLETE=1
+                else
+                    gcloud auth login || AUTH_INCOMPLETE=1
+                fi
             fi
         else
             log "gcloud is already authenticated as $active_account"
         fi
 
         if [[ -z "$(gcloud auth application-default print-access-token 2>/dev/null || true)" ]]; then
-            log "Configuring gcloud application default credentials"
-            if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-                gcloud auth application-default login --no-launch-browser
+            if ((DRY_RUN)); then
+                warn "gcloud application default credentials are missing; would run the login"
+                AUTH_INCOMPLETE=1
             else
-                gcloud auth application-default login
+                log "Configuring gcloud application default credentials"
+                if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+                    gcloud auth application-default login --no-launch-browser ||
+                        AUTH_INCOMPLETE=1
+                else
+                    gcloud auth application-default login || AUTH_INCOMPLETE=1
+                fi
             fi
         else
             log "gcloud application default credentials already configured"
@@ -347,6 +504,9 @@ if ((SKIP_TAILSCALE == 0)); then
     if ! command -v tailscale >/dev/null 2>&1; then
         warn "tailscale is not installed; run arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
+    elif ! command -v jq >/dev/null 2>&1; then
+        warn "jq is not installed; cannot inspect Tailscale state"
+        AUTH_INCOMPLETE=1
     elif [[ ! -S /var/run/tailscale/tailscaled.sock && ! -S /run/tailscale/tailscaled.sock ]]; then
         AUTH_INCOMPLETE=1
         if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
@@ -358,15 +518,25 @@ if ((SKIP_TAILSCALE == 0)); then
             warn "tailscaled is not running; start it with: sudo systemctl start tailscaled"
         fi
     else
-        tailscale_state="$(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty' 2>/dev/null || true)"
-        if [[ "$tailscale_state" == "Running" ]]; then
-            log "Tailscale is already connected"
-        else
-            log "Authenticating Tailscale (current state: ${tailscale_state:-unknown})"
-            sudo tailscale up
+        if ! tailscale_state="$(tailscale status --json 2>/dev/null | jq -r '.BackendState // empty')"; then
+            warn "could not read Tailscale state"
+            AUTH_INCOMPLETE=1
+            tailscale_state=""
         fi
 
-        if ! sudo tailscale set --operator="$USER"; then
+        if [[ "$tailscale_state" == "Running" ]]; then
+            log "Tailscale is already connected"
+        elif ((DRY_RUN)); then
+            warn "Tailscale is not connected (state: ${tailscale_state:-unknown}); would run: sudo tailscale up"
+            AUTH_INCOMPLETE=1
+        else
+            log "Authenticating Tailscale (current state: ${tailscale_state:-unknown})"
+            run_optional sudo tailscale up || AUTH_INCOMPLETE=1
+        fi
+
+        if ((DRY_RUN)); then
+            log "Would ensure Tailscale operator is $(id -un)"
+        elif ! run_optional sudo tailscale set --operator="$(id -un)"; then
             warn "could not set Tailscale operator"
             AUTH_INCOMPLETE=1
         fi
@@ -377,9 +547,15 @@ if ((SKIP_BWS == 0)); then
     if ! command -v bws >/dev/null 2>&1; then
         warn "bws is not installed; run arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
+    elif [[ -n "${WSL_DISTRO_NAME:-}" ]] && ! command -v pass >/dev/null 2>&1; then
+        warn "pass is not installed; run arch/bootstrap.sh --profile wsl"
+        AUTH_INCOMPLETE=1
+    elif [[ -z "${WSL_DISTRO_NAME:-}" ]] && ! command -v secret-tool >/dev/null 2>&1; then
+        warn "secret-tool is not installed; run arch/bootstrap.sh"
+        AUTH_INCOMPLETE=1
     elif bws_token_present; then
         log "Bitwarden Secrets Manager token is already stored"
-    elif [[ ! -t 0 ]]; then
+    elif ((DRY_RUN || NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
         warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
         AUTH_INCOMPLETE=1
     else
@@ -416,5 +592,9 @@ if ((AUTH_INCOMPLETE)); then
     exit 1
 fi
 
-log "Authentication setup complete."
-log "Commit signing is enabled globally by chezmoi; work email applies under ~/Projects/work/."
+if ((CHECK_ONLY)); then
+    log "Authentication check complete."
+else
+    log "Authentication setup complete."
+    log "Commit signing is enabled globally by chezmoi; work email applies under ~/Projects/work/."
+fi

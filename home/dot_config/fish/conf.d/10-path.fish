@@ -1,6 +1,18 @@
-# User-local binaries take precedence, without duplicating PATH entries.
-for dir in $HOME/.local/bin $HOME/.go/bin
-    if not contains $dir $PATH
-        set -gx PATH $dir $PATH
+# Keep user-local binaries ahead of system binaries, with ~/.local/bin before
+# the Go bin directory, and avoid duplicate PATH entries.
+set -l preferred $HOME/.local/bin $HOME/.go/bin
+set -l new_path
+
+for dir in $preferred
+    if not contains $dir $new_path
+        set -a new_path $dir
     end
 end
+
+for dir in $PATH
+    if not contains $dir $new_path
+        set -a new_path $dir
+    end
+end
+
+set -gx PATH $new_path

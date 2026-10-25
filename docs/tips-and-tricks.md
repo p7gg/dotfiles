@@ -139,7 +139,8 @@ packages and never removes anything.
 
 ```bash
 just audit native
-./arch/audit.sh --profile wsl --check
+just audit-check native
+./arch/audit.sh --profile native --json
 ```
 
 Adding a package:
@@ -280,6 +281,9 @@ path.
 
 ## OpenCode and MCP
 
+OpenCode comes from the official `extra` package. Do not use the self-updater
+or put `~/.opencode/bin` ahead of `/usr/bin`; `just doctor` catches that.
+
 The global OpenCode config tracks three MCP servers:
 
 - `linear` — OAuth
@@ -342,8 +346,8 @@ chroot.
 | --- | --- |
 | Start of a session | `gs`, `mise outdated` |
 | After editing dotfiles | `chezmoi diff`, then `chezmoi apply` |
-| Before committing | `lefthook run pre-commit` |
-| After package changes | `just dry-run native`, `just audit native` |
+| Before committing | `just lint`, `just test` |
+| After package changes | `just dry-run native`, `just audit-check native` |
 | Weekly | `sudo pacman -Syu`, `paru -Sua`, `paccache -r`, `arch-audit` |
 | After changing `wsl.conf` | `wsl --shutdown` |
 | After upgrading tools | `./arch/completions.sh` |

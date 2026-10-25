@@ -1,10 +1,12 @@
 # Common CLI and bootstrap dependencies.
 # One package name per line. Comments and blank lines are ignored by bootstrap.
 
+actionlint
 arch-audit
 atuin
 base-devel
 bat
+bats
 chezmoi
 curl
 difftastic

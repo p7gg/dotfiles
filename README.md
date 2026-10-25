@@ -18,10 +18,14 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 59 tracked packages with Native/WSL
+- [Package catalog](docs/packages.md) — all 61 tracked packages with Native/WSL
   badges, per-list counts, mise toolchains, and the install/record/audit loop.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
   secrets, OpenCode, recovery, and local SVG illustrations.
+- [Authentication and SSH](docs/auth.md) — key, GitHub, gcloud, Tailscale,
+  BWS, and MCP setup and troubleshooting.
+- [Decisions](docs/decisions.md) — tooling-language notes, optional Git
+  defaults, and the BWS private-key decision.
 - [Documentation index](docs/README.md).
 
 ## Safety
@@ -29,7 +33,9 @@ concerns.
 - Run `arch/bootstrap.sh` as your normal user, never as root.
 - Run `arch/wsl-init.sh` as root, only inside WSL, only once after importing the
   Arch image.
-- Start with `--dry-run`.
+- Start with `--check`, then `--dry-run`; dry-run previews `chezmoi diff`.
+- Use `--non-interactive --name ... --email ...` for unattended provisioning.
+- Use `arch/auth.sh --check` to inspect authentication without changing it.
 - Package reconciliation is install-only. The bootstrap never removes packages.
 - AUR packages execute code at build time. Review them before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
@@ -42,7 +48,7 @@ concerns.
 .
 ├── .chezmoiroot                  # tells chezmoi to read source state from home/
 ├── home/                         # chezmoi source state
-│   ├── .chezmoi.toml.tmpl        # init prompts: name, personal/work email
+│   ├── .chezmoi.toml.tmpl        # sourceDir, editor, and init prompts
 │   ├── .chezmoiignore
 │   ├── .chezmoiversion
 │   ├── dot_gitconfig.tmpl
@@ -66,10 +72,11 @@ concerns.
 │       └── zed/settings.json
 ├── arch/
 │   ├── bootstrap.sh              # user-level provisioning
-│   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale/MCP auth
+│   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale/BWS/MCP auth
 │   ├── completions.sh            # fish completion generation
 │   ├── wsl-init.sh               # one-time WSL root setup
 │   ├── audit.sh                  # package drift report
+│   ├── lib/common.sh             # shared shell helpers
 │   ├── system/reflector.conf     # Brazil-prioritized mirrors
 │   └── packages/
 │       ├── base.txt
@@ -77,13 +84,25 @@ concerns.
 │       ├── wsl.txt
 │       ├── aur.txt
 │       ├── aur-native.txt
-│       └── aur-wsl.txt
+│       ├── aur-wsl.txt
+│       └── audit-ignore.txt      # bootstrap/OS-layer audit allowlist
+├── scripts/
+│   ├── lint.sh                   # shared local/CI lint entry point
+│   ├── fmt.sh
+│   ├── test.sh
+│   └── doctor.sh
+├── tests/
+│   ├── render-templates.sh       # render every chezmoi template
+│   ├── common.bats
+│   └── audit.bats
 ├── windows/
 │   └── README.md
 ├── docs/
 │   ├── README.md                 # documentation index
+│   ├── auth.md                   # SSH/GitHub/gcloud/Tailscale/MCP auth
 │   ├── packages.md               # complete package catalog
 │   ├── tips-and-tricks.md        # shell/Git/WSL/secrets workflows
+│   ├── decisions.md              # design notes moved out of the README
 │   └── assets/                   # local SVG badges and illustrations
 ├── .github/workflows/ci.yml
 ├── .editorconfig
@@ -113,15 +132,24 @@ sudo pacman -S --needed git
 git clone <repo-url> ~/Projects/dotfiles
 cd ~/Projects/dotfiles
 
+./arch/bootstrap.sh --profile native --check
 ./arch/bootstrap.sh --profile native --dry-run
 ./arch/bootstrap.sh --profile native
 ```
 
 The first chezmoi run prompts for your name, personal email, and work email.
-They are stored in
-`~/.config/chezmoi/chezmoi.toml`; subsequent prompts are skipped. (`--yes` only
-affects pacman/paru confirmation prompts; it does not bypass chezmoi's init
-prompts.) Use `chezmoi edit-config` to change them later.
+Work email is optional; leave it blank on a personal-only machine. The values are
+stored in `~/.config/chezmoi/chezmoi.toml`; subsequent prompts are skipped. Use
+`chezmoi edit-config` to change them later.
+
+For unattended provisioning, pass the data explicitly. `--yes` only affects
+pacman/paru confirmation prompts; it does not bypass chezmoi prompts, so use
+`--non-interactive` when no terminal is available:
+
+```bash
+./arch/bootstrap.sh --profile native --non-interactive \
+  --name "Your Name" --email you@example.com --work-email you@work.example
+```
 
 After bootstrap, log out and back in so fish and mise are active. If
 `pacman -Syu` installed a new kernel, reboot before relying on the updated
@@ -159,7 +187,9 @@ and merges the required settings instead of skipping the file.
 - a sudoers drop-in for `wheel`
 - `en_US.UTF-8` locale generation
 - `/etc/wsl.conf` default user and hostname, optional systemd; new files get
-  automount defaults, while existing interop/automount choices are preserved
+  automount defaults, while existing interop/automount choices are preserved.
+  The target user cannot be `root`, and an existing `/etc/locale.conf` is backed
+  up and merged instead of overwritten
 
 Then, from Windows:
 
@@ -171,6 +201,7 @@ Reopen the distro as your normal user, clone the repo inside the WSL
 filesystem, and run:
 
 ```bash
+./arch/bootstrap.sh --profile wsl --check
 ./arch/bootstrap.sh --profile wsl --dry-run
 ./arch/bootstrap.sh --profile wsl
 ```
@@ -188,7 +219,7 @@ settings, not a second dotfiles manager.
 
 Tracked lists live in `arch/packages/`:
 
-- `base.txt` — common CLI tools, fish, chezmoi, mise, git, Git tooling, atuin, tealdeer, dust/duf, kubectl, system maintenance, and build tools
+- `base.txt` — common CLI tools, fish, chezmoi, mise, git, Git tooling, atuin, tealdeer, dust/duf, kubectl, lint/test tooling, system maintenance, and build tools
 - `native.txt` — native-only extras: `fwupd`, `restic`, `ufw`, `zellij`, and `gnome-tweaks`
 - `wsl.txt` — CLI-only WSL additions
 - `aur.txt` — AUR packages used by both profiles: GitButler CLI/GUI, `bws-bin`, `google-cloud-cli`, the GKE auth plugin, and `lefthook`
@@ -230,17 +261,22 @@ lists.
 To inspect drift without changing anything:
 
 ```bash
-./arch/audit.sh --profile native
-./arch/audit.sh --profile wsl --check
+./arch/audit.sh --profile native            # full report
+./arch/audit.sh --profile native --check    # exit 1 if tracked packages are missing
+./arch/audit.sh --profile native --check --strict  # also fail on untracked packages
+./arch/audit.sh --profile native --json     # machine-readable output
 ```
 
 The audit expands package groups such as `gnome` so group members do not show up
 as false drift. `base-devel` is a meta package in current Arch, not a group, so
-it is compared directly. The audit reports installed-but-untracked packages too;
-add or remove them deliberately rather than regenerating the lists blindly.
+it is compared directly. Untracked packages from `arch/packages/audit-ignore.txt`
+(for example the bootstrap's `paru` and `paru-debug`) are omitted from the
+untracked sections.
 
 On a desktop installed with GNOME, many GNOME/system packages will appear as
-untracked by design: they belong to the OS/desktop layer, not these lists.
+untracked by design: they belong to the OS/desktop layer, not these lists. The
+default `--check` therefore only fails on missing tracked packages; use
+`--strict` when you deliberately want to review the OS layer too.
 
 Adding a package is a two-step operation: install it normally, then add its name
 to the appropriate list. The bootstrap is not a package manager UI.
@@ -265,7 +301,7 @@ create a TUN device, run `tailscaled --tun=userspace-networking` and use its
 SOCKS/HTTP proxy for applications that need tailnet access.
 
 Use `./arch/bootstrap.sh --no-system` to skip the pacman/reflector/timer/
-firewall/Tailscale/hook changes.
+firewall/Tailscale changes, and `--no-hooks` to skip `lefthook install`.
 
 ## Backups
 
@@ -277,39 +313,30 @@ timer.
 ## Git hooks and Just
 
 `lefthook` is installed on both profiles and bootstrap runs `lefthook install`.
-The pre-commit hook runs Gitleaks, ShellCheck, `shfmt -d`, fish syntax/format
-checks, and `git diff --cached --check`.
+The pre-commit hook calls `scripts/lint.sh --staged` (Gitleaks, ShellCheck,
+`shfmt`, fish syntax/format, actionlint, and Just formatting) plus
+`git diff --cached --check`.
 
 Useful recipes:
 
 ```bash
 just --list
+just check native          # validate prerequisites
 just bootstrap native
 just dry-run native
-just audit native
-just completions
+just audit-check native
+just lint
+just fmt
+just test
+just doctor
+just auth-check
 just auth
 ```
 
 Atuin is installed in local-only mode for fish history; no sync login is
 configured. Zellij is installed on native only.
 
-### Rust alternatives
-
-A few notes on the requested tools:
-
-- `gitui` is Rust and is the tracked Git TUI. `lazygit` is the Go alternative.
-- `gitbutler` and its `but` CLI are Rust.
-- New Rust additions: `zellij`, `atuin`, `tealdeer`, `dust`, `git-delta`,
-  `difftastic`, `git-absorb`, and `just`.
-- Go tools include `gitleaks`, `lefthook`, `kubectl`, `restic`, `tailscale`,
-  and `duf`. `ufw` and `google-cloud-cli` are Python.
-- `github-cli` (Go), `google-cloud-cli` (Python), `opencode`,
-  `t3code-nightly-bin`, and `yt-dlp` (Python) have no drop-in Rust replacements.
-- `starship`, `mise`, `bat`, `eza`, `fd`, `ripgrep`, and `zoxide` are already
-  written in Rust. `fzf` is Go; `skim` is a Rust alternative, but not a drop-in
-  for the current fish integration.
-- `fish` is C++; `nushell` is Rust but not fish-compatible.
+Tooling-language rationale lives in [docs/decisions.md](docs/decisions.md).
 
 ## Fish
 
@@ -328,7 +355,8 @@ The config uses `set -gx` and `abbr --add --global` rather than universal
 variables, so nothing important is hidden in `fish_variables`. Fish history and
 fish variables are not tracked.
 
-`~/.local/bin` and `~/.go/bin` are prepended once. `mise`, starship, fzf,
+`~/.local/bin` and `~/.go/bin` are prepended once, with `~/.local/bin` taking
+precedence. `mise`, starship, fzf,
 zoxide, and atuin are activated only in interactive shells. Atuin is local-only;
 no sync login is set up.
 
@@ -383,6 +411,13 @@ The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 
 ## OpenCode
 
+OpenCode is installed from the official `extra` repository via
+`arch/packages/base.txt`. Do not use the self-updater or put
+`~/.opencode/bin` ahead of `/usr/bin`; `just doctor` warns when a self-managed
+binary shadows the package. If an older installer is still on the machine,
+remove `~/.opencode` and its `PATH` line from the shell profile after restarting
+OpenCode.
+
 Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings, and `~/.config/opencode/opencode.json` with the global MCP
 servers:
@@ -412,102 +447,19 @@ because it is machine auth state and can contain an OAuth token.
 
 ## Authentication and SSH
 
-Chezmoi configures SSH commit signing globally with
-`~/.ssh/id_ed25519.pub`. It also changes `user.email` under
-`~/Projects/work/` through `~/.config/git/work.inc`, populated from the
-`work_email` prompt during `chezmoi init`.
-
-Personal GitHub and work Google Cloud Source Repositories both use the same
-per-machine SSH key:
-
-- `github.com` for personal repositories and `gh`
-- `source.developers.google.com:2022` for work Cloud Source Repositories,
-  with `User` set to the work email
-
-If you prefer stronger isolation, use separate personal/work keys and adjust the
-two `Host` entries and `arch/auth.sh`; this setup intentionally keeps it simple
-with one key.
-
-Run the interactive auth helper once per machine:
+Chezmoi configures SSH commit signing with one per-machine key, and work
+projects under `~/Projects/work/` use the work email. Inspect state first, then
+run the helper once:
 
 ```bash
+./arch/auth.sh --check
 ./arch/auth.sh --generate-key
 ```
 
-It will:
-
-- generate a per-machine ed25519 key if one does not exist
-- load it into an ssh-agent
-- authenticate `gh` for personal GitHub with the SSH Git protocol
-- add the key to personal GitHub for both authentication and signing
-- authenticate `gcloud` and application default credentials
-- authenticate Tailscale when the daemon is running
-- offer to store the Bitwarden Secrets Manager token in GNOME Keyring or `pass`
-- authenticate the Linear and Jira MCP servers in OpenCode with OAuth
-- print the public key and the Cloud Source Repositories registration URL
-
-The helper skips MCP sign-in when a server is already connected. Use
-`--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
-needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
-`--bws-account NAME` if your keyring label is not `personal`. Native GNOME
-already has an SSH agent through gnome-keyring.
-In WSL the helper starts one and writes `~/.ssh/agent.env`; fish sources that
-file in new shells.
-
-Work Cloud Source Repositories setup is partly manual because Google does not
-provide a CLI command to register an SSH key for Cloud Source Repositories.
-The helper prints the steps:
-
-1. Run `gcloud auth login` (the helper does this).
-2. Open <https://source.cloud.google.com/user/ssh_keys>.
-3. Register the contents of `~/.ssh/id_ed25519.pub`.
-4. Clone with SSH:
-   ```bash
-   git clone ssh://<work-email>@source.developers.google.com:2022/p/PROJECT_ID/r/REPO_NAME
-   ```
-
-Notes:
-
-- `gh` itself authenticates with OAuth, but personal Git operations use SSH.
-  The helper runs `gh auth login --git-protocol ssh --web`.
-- `gcloud` CLI authentication is **OAuth, not SSH**. `gcloud source repos clone`
-  uses that OAuth path. The SSH key is for the direct `git clone ssh://...`
-  path and for Compute Engine VM access.
-- The helper also configures application default credentials via
-  `gcloud auth application-default login`, which is what Terraform and Google
-  client libraries use.
-- Tailscale is authenticated with `tailscale up` when its daemon is running.
-  On WSL without systemd, start it manually first:
-  ```bash
-  sudo tailscaled >/tmp/tailscaled.log 2>&1 &
-  sudo tailscale up
-  ```
-  With WSL systemd enabled, bootstrap can enable `tailscaled.service` directly.
-- `gcloud compute config-ssh` is for Compute Engine VMs, not Cloud Source
-  Repositories.
-- Commits and tags are signed by default. Personal GitHub commits can show as
-  verified after the key is registered as a signing key. Work commits use the
-  work email and the same signing key; Cloud Source Repositories does not use
-  GitHub's verification flow. The helper also writes
-  `~/.config/git/allowed_signers`, so local `git log --show-signature`
-  verification works for both identities.
-- Useful checks:
-
-```bash
-ssh-add -l
-gh auth status
-git config --show-origin --get gpg.format
-git config --show-origin --get user.signingkey
-gcloud auth list
-ssh -T git@github.com
-ssh -p 2022 -T <work-email>@source.developers.google.com
-```
-
-If you prefer to manage authentication yourself, use the individual commands
-above; the helper only automates them. It exits nonzero when a required
-component is missing or a requested authentication step is incomplete; use
-`--skip-gh`, `--skip-gcloud`, `--skip-tailscale`, `--skip-linear`,
-`--skip-jira`, or `--skip-mcp` for intentional skips.
+The helper handles the SSH key, GitHub authentication/signing keys, gcloud and
+application default credentials, Tailscale, the Bitwarden Secrets Manager token,
+and the Linear/Jira MCP servers. See [docs/auth.md](docs/auth.md) for flags,
+skip options, Cloud Source Repositories registration steps, and troubleshooting.
 
 ## Git defaults
 
@@ -522,84 +474,19 @@ Beyond SSH signing, the tracked Git config enables:
 - `column.ui = auto` and `branch.sort = -committerdate`
 - `pull.rebase`, `rebase.autoStash`, `rebase.updateRefs`, and
   `push.autoSetupRemote`
-- `delta` as the Git pager and `git dt` as the difftastic alias
+- `delta` as the Git pager and `git dt` as the difftastic alias when those
+  tools are installed
 
-Optional additions worth considering later: `feature.manyFiles = true` for
-large repositories, `diff.renames = copies`, and `push.followTags = true`.
-I would avoid `merge.ff = only` unless every repo enforces linear history.
+Optional additions are listed in [docs/decisions.md](docs/decisions.md).
 
 ## Bitwarden Secrets Manager
 
-`bws` is not in the official Arch repositories. `bws-bin` is tracked in
-`arch/packages/aur.txt` and installed by bootstrap through `paru`.
-
-The token is loaded by the fish wrapper in
-`home/dot_config/fish/functions/bws.fish`, not by a plaintext file.
-`./arch/auth.sh` offers to store it once: it detects an existing keyring or
-`pass` entry and otherwise prompts for the token. Skip that step with
-`--skip-bws`.
-
-### Native GNOME
-
-GNOME Keyring is the native desktop secret service. Store the machine-account
-token interactively (the auth helper offers this too):
-
-```bash
-secret-tool store --label='BWS access token' service bws account personal
-```
-
-Then `bws` works through the wrapper and the token is not exported globally. It
-is only available to the `bws` process and its children.
-
-### WSL
-
-GNOME Keyring is normally not running in WSL. Use `pass` instead. Generate a
-GPG key first if you do not have one, then initialize the store (the auth
-helper offers to run `pass insert` for you):
-
-```bash
-gpg --full-generate-key
-pass init <gpg-key-id>
-pass insert bitwarden/bws-token
-```
-
-The same fish wrapper reads `pass show bitwarden/bws-token` when
-`WSL_DISTRO_NAME` is set. The auth helper uses the same path.
-
-### Notes
-
-- Use a read-only machine account token scoped to one project, with rotation.
-- The wrapper is a fish function. `bws` called from bash, scripts, or systemd
-  units does not inherit `BWS_ACCESS_TOKEN`; set it explicitly for that process
-  rather than exporting it in a global profile.
-- `BWS_ACCOUNT` selects the keyring `account` label on native (default:
-  `personal`). `arch/auth.sh` honors the variable; use `--bws-account NAME`
-  when running it outside fish with a different label.
-- Environment variables are visible to same-user processes. The goal here is
-  “not plaintext at rest,” not process isolation. Use `bws run` for application
-  secrets instead of exporting everything into your shell.
-- Do not wire BWS into `chezmoi apply`. Chezmoi’s Bitwarden functions target the
-  Bitwarden password manager, not Secrets Manager, and every apply should not
-  require an unlocked token and network access.
-- `~/.config/bws/state` is an encrypted session cache, not a replacement for
-  protecting the access token.
-
-### Should the private SSH key go in BWS?
-
-Technically BWS can store any secret, including a private key. In practice I
-would not do it:
-
-- BWS is a secret store, not an SSH agent. To use the key you have to materialize
-  it somewhere, so it ends up in a file or process memory anyway.
-- The BWS machine token becomes a second credential that can retrieve the key.
-  Losing it is now equivalent to losing the key.
-- Every signing operation would depend on BWS availability and token access.
-
-Use a per-machine SSH key instead, add its public half to GitHub and Cloud
-Source Repositories, and keep an encrypted backup in your password manager or on
-a hardware token. If you absolutely must store it in BWS, fetch it into
-`$XDG_RUNTIME_DIR` with mode `0600`, add it to the agent, and delete it
-immediately; do not keep a permanent copy in the repo or home directory.
+`bws-bin` is tracked in `arch/packages/aur.txt`. The fish wrapper in
+`home/dot_config/fish/functions/bws.fish` loads the token from GNOME Keyring
+(native) or `pass` (WSL) and exports it only for the `bws` process. Run
+`./arch/auth.sh` to store it, or see
+[the secrets section in docs/tips-and-tricks.md](docs/tips-and-tricks.md#secrets-not-plaintext-at-rest)
+for the manual commands and operational notes.
 
 ## WSL defaults
 
@@ -619,8 +506,8 @@ This repo does not change either automatically.
 
 ## Day 2
 
-The bootstrap does not create a Git repository. Initialize the repo once and add
-your remote before relying on `chezmoi update`:
+If you copied the directory instead of cloning it, initialize the repository
+once and add your remote before relying on `chezmoi update`:
 
 ```bash
 git init -b main
@@ -629,6 +516,9 @@ git commit -m "Initial dotfiles"
 git remote add origin <repo-url>
 git push -u origin main
 ```
+
+This section is for human bootstrap. Agent-driven changes should use GitButler
+(`but`) for writes; see [AGENTS.md](AGENTS.md).
 
 ```bash
 # Dotfiles
@@ -640,6 +530,7 @@ chezmoi update
 
 # Packages
 just audit native
+just audit-check native
 ./arch/bootstrap.sh --profile native
 arch-audit
 
@@ -656,8 +547,10 @@ sudo systemctl list-timers --all
 sudo pacman -Syu
 paru -Sua
 
-# After changing arch/bootstrap.sh or package lists
-./arch/bootstrap.sh --profile native --dry-run
+# After changing repository files
+just lint
+just test
+just dry-run native
 ```
 
 The repo is intentionally not automatically updating packages during
@@ -697,14 +590,16 @@ Do not add that complexity before it is needed.
 
 ## Validation
 
-CI runs Bash syntax checks, ShellCheck, fish syntax/format checks, `shfmt`, and
-Gitleaks. Locally:
+CI runs in an Arch container so local and CI tool versions match. It executes
+the same entry points used locally:
 
 ```bash
-find . -name '*.sh' -print0 | xargs -0 -n1 bash -n
-find . -name '*.sh' -print0 | xargs -0 shfmt -d
-find home -name '*.fish' -print0 | xargs -0 -n1 fish --no-execute
-find home -name '*.fish' -print0 | xargs -0 -n1 fish_indent --check
-gitleaks detect --source . --redact --verbose
+just lint       # Bash syntax, ShellCheck, shfmt, fish, actionlint, Just, gitleaks
+just test       # bats tests plus every chezmoi template render
+just render     # template rendering only
 lefthook run pre-commit
 ```
+
+`just lint` scans the full repository and Git history; the pre-commit hook calls
+`scripts/lint.sh --staged` so it only checks staged shell/fish files and scans
+staged secrets.

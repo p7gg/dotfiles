@@ -9,7 +9,11 @@
 [core]
     autocrlf = input
     excludesFile = ~/.config/git/ignore
+
+{{ if lookPath "delta" -}}
+[core]
     pager = delta
+{{ end -}}
 
 [pull]
     rebase = true
@@ -46,15 +50,19 @@
     algorithm = histogram
     colorMoved = default
 
+{{ if lookPath "delta" -}}
 [interactive]
     diffFilter = delta --color-only
 
 [delta]
     navigate = true
     line-numbers = true
+{{ end -}}
 
+{{ if lookPath "difft" -}}
 [alias]
     dt = !difft
+{{ end -}}
 
 [column]
     ui = auto
@@ -76,6 +84,9 @@
     allowedSignersFile = ~/.config/git/allowed_signers
 
 # Work projects under ~/Projects/work/ use the work email, while still signing
-# with the same per-machine SSH key.
+# with the same per-machine SSH key. Skip the include entirely when the work
+# email is blank so a personal-only machine does not get user.email="".
+{{ if .work_email -}}
 [includeIf "gitdir:~/Projects/work/"]
     path = ~/.config/git/work.inc
+{{ end -}}

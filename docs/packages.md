@@ -10,16 +10,16 @@ and never removes anything. Removing a package is a deliberate manual step.
 
 ## At a glance
 
-There are **59 tracked package names**:
+There are **61 tracked package names**:
 
-- **50** are installed on both profiles: 45 official packages plus 5 AUR packages
+- **52** are installed on both profiles: 47 official packages plus 5 AUR packages
 - **7** are native-only: 5 official packages plus 2 AUR packages
 - **2** are WSL-only: 1 official package plus 1 AUR package
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 57 | `./arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 52 | `./arch/bootstrap.sh --profile wsl` |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 59 | `./arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 54 | `./arch/bootstrap.sh --profile wsl` |
 
 Counts are package names only. `paru` is bootstrapped automatically when an AUR
 list is non-empty, so it is not tracked as a package. `base-devel` is a meta
@@ -39,17 +39,19 @@ Everything outside an `aur*.txt` list comes from the official Arch repositories.
 
 ## Both profiles — official repositories
 
-Source: `arch/packages/base.txt` — 45 packages.
+Source: `arch/packages/base.txt` — 47 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
+| `actionlint` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Lints GitHub Actions workflow files. | Runs in `just lint`. |
 | `arch-audit` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Checks installed packages against Arch Security Team advisories. | Run after system upgrades. |
 | `atuin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Searchable shell history backed by a local database. | Local-only; no sync account is configured. |
 | `base-devel` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Build toolchain required by `makepkg` and AUR builds. | Meta package; the audit compares it directly. |
 | `bat` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `cat` with syntax highlighting and Git markers. | Not the default `PAGER`; `less` is. |
+| `bats` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bash Automated Testing System. | Runs the repository's shell tests. |
 | `chezmoi` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Applies the `home/` source state to the machine. | Bootstrap points `sourceDir` at this repo. |
 | `curl` | <img src="assets/badge-both.svg" alt="Both" height="18"> | HTTP/HTTPS client for downloads and APIs. | — |
-| `difftastic` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-aware structural diff. | Wired as `git dt`. |
+| `difftastic` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-aware structural diff. | Wired as `git dt` when available. |
 | `dust` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Visual disk-usage tree. | — |
 | `duf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Disk space and mount overview. | — |
 | `eza` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Modern `ls` with icons, Git status, and tree view. | — |
@@ -58,9 +60,9 @@ Source: `arch/packages/base.txt` — 45 packages.
 | `fzf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fuzzy finder for files, history, and completion. | Fish bindings load in interactive shells. |
 | `git` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Distributed version control. | Commits and tags are SSH-signed by default. |
 | `git-absorb` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Turns staged changes into `fixup!` commits automatically. | Useful before an autosquash rebase. |
-| `git-delta` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-highlighting pager for Git diffs. | Wired as `core.pager`. |
+| `git-delta` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-highlighting pager for Git diffs. | Wired as `core.pager` when available. |
 | `github-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `gh` for GitHub auth, pull requests, issues, and SSH keys. | Authenticated by `arch/auth.sh`. |
-| `gitleaks` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Scans staged changes for secrets. | Runs in the pre-commit hook. |
+| `gitleaks` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Scans staged changes and Git history for secrets. | Runs in the pre-commit hook and CI. |
 | `gitui` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal UI for Git. | — |
 | `gnupg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | OpenPGP implementation used by `pass` and signing workflows. | — |
 | `jq` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Command-line JSON processor. | — |
@@ -71,7 +73,7 @@ Source: `arch/packages/base.txt` — 45 packages.
 | `man-db` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Manual pages and the `man` command. | — |
 | `mise` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Toolchain manager for Node, Bun, pnpm, and friends. | Global config: `~/.config/mise/config.toml`. |
 | `nano` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Small terminal editor. | Fallback `EDITOR` when Neovim/Vim are absent. |
-| `opencode` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal AI coding agent. | MCP servers live in `~/.config/opencode/opencode.json`. |
+| `opencode` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal AI coding agent. | Installed from `extra`; do not use the self-updater. MCP servers live in `~/.config/opencode/opencode.json`. |
 | `openssh` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `ssh`, `ssh-keygen`, and `ssh-agent`. | Also powers Git commit signing. |
 | `pacman-contrib` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `paccache` and other pacman helpers. | `paccache.timer` is enabled when systemd is active. |
 | `reflector` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mirrorlist updater. | Brazil-first config; `reflector.timer` refreshes it. |
@@ -100,7 +102,7 @@ automatically the first time an AUR list is non-empty.
 | `gitbutler-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GitButler GUI and the `but` CLI. | Do not add `gitbutler-cli-bin`; both packages own `/usr/bin/but`. WSL GUI needs WSLg. |
 | `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `arch/auth.sh` handles OAuth login and application default credentials. |
 | `google-cloud-cli-component-gke-gcloud-auth-plugin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GKE authentication plugin for `kubectl`. | Used by `gcloud container clusters get-credentials`. |
-| `lefthook` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Git hook manager. | Bootstrap runs `lefthook install`; hooks run the local checks. |
+| `lefthook` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Git hook manager. | Bootstrap runs `lefthook install`; hooks call `scripts/lint.sh --staged`. |
 
 ## Native only — official repositories
 
@@ -183,7 +185,7 @@ $EDITOR arch/packages/aur.txt
 
 # 3. Check that the lists and the machine agree
 just audit native
-./arch/audit.sh --profile wsl --check
+just audit-check native
 ```
 
 Choose the list by scope:
@@ -213,17 +215,22 @@ pacman -Qqem | sort                    # explicit AUR/foreign packages
 ```bash
 just audit native
 just audit wsl
-./arch/audit.sh --profile native --check
-./arch/audit.sh --profile wsl --check
+just audit-check native
+./arch/audit.sh --profile native --check --strict
+./arch/audit.sh --profile native --json
 ```
 
 The audit expands package groups such as `gnome`, so group members do not show
-up as false drift. It reports installed-but-untracked packages as well as tracked
-packages that are missing. Treat both directions as information, not as an
-instruction to regenerate the lists blindly.
+up as false drift. `--check` fails only when tracked packages are missing;
+`--strict` also fails on untracked packages. `--json` is available for scripts
+and agents.
+
+`arch/packages/audit-ignore.txt` omits bootstrap artifacts such as `paru` and
+`paru-debug`. It is not a place to hide real drift.
 
 On a desktop installed with GNOME, many GNOME and system packages appear as
-untracked by design: they belong to the OS/desktop layer, not these lists.
+untracked by design: they belong to the OS/desktop layer, not these lists. That
+is why the default `--check` does not fail on untracked packages.
 
 ## Gotchas worth knowing
 

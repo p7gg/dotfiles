@@ -8,11 +8,21 @@
 
 set -Eeuo pipefail
 
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=arch/lib/common.sh
+source "$REPO_ROOT/arch/lib/common.sh"
+
 TARGET_USER="${SUDO_USER:-}"
 TARGET_HOSTNAME="arch-wsl"
 ENABLE_SYSTEMD=0
 DRY_RUN=0
 ASSUME_YES=0
+ROOT_RUNNER=run_cmd
+export ROOT_RUNNER
+
+trap 'on_error' ERR
+trap cleanup_tmp EXIT
 
 usage() {
     cat <<'EOF'
@@ -27,62 +37,9 @@ Options:
   -h, --help         Show this help
 
 Run this inside WSL, as root, once after importing the Arch image. Then run
-`wsl --shutdown` from Windows and reopen the distro.
+`wsl --shutdown` from Windows and reopen the distro. The target user must not be
+root; create or name a normal Linux user instead.
 EOF
-}
-
-log() {
-    printf '%s\n' "$*"
-}
-
-warn() {
-    printf 'warning: %s\n' "$*" >&2
-}
-
-die() {
-    printf 'error: %s\n' "$*" >&2
-    exit 1
-}
-
-on_error() {
-    local status=$?
-    printf 'error: wsl-init failed at line %s (status %s)\n' "$1" "$status" >&2
-}
-
-trap 'on_error "$LINENO"' ERR
-
-run() {
-    printf '+'
-    printf ' %q' "$@"
-    printf '\n'
-    if ((DRY_RUN == 0)); then
-        "$@"
-    fi
-}
-
-is_wsl() {
-    [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
-}
-
-ensure_keyring() {
-    local key_count
-
-    key_count="$(pacman-key --list-keys 2>/dev/null | grep -c '^pub' || true)"
-
-    if ((key_count == 0)); then
-        log "Initializing pacman keyring"
-        run pacman-key --init
-        run pacman-key --populate archlinux
-        return 0
-    fi
-
-    if ((key_count < 2)); then
-        log "Populating pacman keyring with Arch packager keys"
-        run pacman-key --populate archlinux
-        return 0
-    fi
-
-    log "pacman keyring already initialized"
 }
 
 write_sudoers() {
@@ -105,28 +62,44 @@ write_sudoers() {
 
     log "Creating $file"
     tmp="$(mktemp)"
+    register_tmp "$tmp"
     printf '%s\n' '%wheel ALL=(ALL:ALL) ALL' >"$tmp"
     visudo -cf "$tmp"
     install -Dm440 "$tmp" "$file"
-    rm -f "$tmp"
 }
 
 setup_locale() {
+    local config="/etc/locale.conf"
+    local backup
+
     if ((DRY_RUN)); then
-        log "Would enable en_US.UTF-8, run locale-gen, and write /etc/locale.conf"
+        log "Would enable en_US.UTF-8, run locale-gen, and update /etc/locale.conf"
         return 0
     fi
 
     [[ -f /etc/locale.gen.bak ]] || cp -a /etc/locale.gen /etc/locale.gen.bak
 
-    if grep -q '^#en_US\.UTF-8 UTF-8' /etc/locale.gen; then
-        sed -i 's/^#en_US\.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
-    elif ! grep -q '^en_US\.UTF-8 UTF-8' /etc/locale.gen; then
+    if grep -qE '^#[[:space:]]*en_US\.UTF-8 UTF-8' /etc/locale.gen; then
+        sed -i -E 's/^#[[:space:]]*en_US\.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+    elif ! grep -qE '^en_US\.UTF-8 UTF-8' /etc/locale.gen; then
         printf '%s\n' 'en_US.UTF-8 UTF-8' >>/etc/locale.gen
     fi
 
     locale-gen
-    printf '%s\n' 'LANG=en_US.UTF-8' >/etc/locale.conf
+
+    if [[ -f "$config" ]]; then
+        backup="${config}.bak.$(date +%Y%m%d%H%M%S)"
+        cp -a "$config" "$backup"
+        log "Backed up $config to $backup"
+        if grep -qE '^[[:space:]]*LANG=' "$config"; then
+            sed -i -E 's/^[[:space:]]*LANG=.*/LANG=en_US.UTF-8/' "$config"
+        else
+            printf '%s\n' 'LANG=en_US.UTF-8' >>"$config"
+        fi
+        return 0
+    fi
+
+    printf '%s\n' 'LANG=en_US.UTF-8' >"$config"
 }
 
 print_wsl_conf() {
@@ -154,67 +127,9 @@ hostname=$hostname
 EOF
 }
 
-set_ini_key() {
-    local file="$1"
-    local section="$2"
-    local key="$3"
-    local value="$4"
-    local tmp
-
-    tmp="$(mktemp)"
-    awk -v section="$section" -v key="$key" -v value="$value" '
-        function trim(s) {
-            sub(/^[[:space:]]+/, "", s)
-            sub(/[[:space:]]+$/, "", s)
-            return s
-        }
-        function flush_section() {
-            if (in_section && !found) {
-                print key "=" value
-            }
-            in_section = 0
-            found = 0
-        }
-        {
-            line = $0
-            if (line ~ /^[[:space:]]*\[[^]]+\][[:space:]]*$/) {
-                flush_section()
-                header = trim(line)
-                if (header == "[" section "]") {
-                    in_section = 1
-                    section_seen = 1
-                }
-                print
-                next
-            }
-            if (in_section) {
-                candidate = line
-                sub(/^[[:space:]]*/, "", candidate)
-                if (candidate ~ "^" key "[[:space:]]*=") {
-                    if (!found) {
-                        print key "=" value
-                        found = 1
-                    }
-                    next
-                }
-            }
-            print
-        }
-        END {
-            flush_section()
-            if (!section_seen) {
-                print "[" section "]"
-                print key "=" value
-            }
-        }
-    ' "$file" >"$tmp"
-    install -Dm644 "$tmp" "$file"
-    rm -f "$tmp"
-}
-
 setup_wsl_conf() {
     local file="/etc/wsl.conf"
-    local backup
+    local backup work
 
     if [[ -f "$file" ]]; then
         warn "$file already exists; merging required settings"
@@ -228,14 +143,19 @@ setup_wsl_conf() {
         cp -a "$file" "$backup"
         log "Backed up $file to $backup"
 
-        set_ini_key "$file" user default "$TARGET_USER"
+        work="$(mktemp)"
+        register_tmp "$work"
+        cp -a "$file" "$work"
+
+        ini_set_key "$work" user default "$TARGET_USER"
         # Preserve existing [interop] and [automount] choices; WSL defaults are
         # fine when those sections are absent.
-        set_ini_key "$file" network hostname "$TARGET_HOSTNAME"
+        ini_set_key "$work" network hostname "$TARGET_HOSTNAME"
         if ((ENABLE_SYSTEMD)); then
-            set_ini_key "$file" boot systemd true
+            ini_set_key "$work" boot systemd true
         fi
 
+        install -Dm644 "$work" "$file"
         log "Merged settings into $file"
         return 0
     fi
@@ -247,6 +167,7 @@ setup_wsl_conf() {
     fi
 
     print_wsl_conf "$TARGET_USER" "$TARGET_HOSTNAME" "$ENABLE_SYSTEMD" >"$file"
+    chmod 644 "$file"
 }
 
 while (($# > 0)); do
@@ -310,12 +231,11 @@ if [[ -z "$TARGET_USER" ]]; then
 fi
 
 [[ -n "$TARGET_USER" ]] || die "username must not be empty"
+[[ "$TARGET_USER" != "root" ]] ||
+    die "refusing to use root as the WSL default user; pass --user NAME"
 [[ "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid username: $TARGET_USER"
-[[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] || die "invalid hostname: $TARGET_HOSTNAME"
-
-require_cmd() {
-    command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
-}
+[[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] ||
+    die "invalid hostname: $TARGET_HOSTNAME"
 
 require_cmd pacman
 require_cmd pacman-key
@@ -331,16 +251,16 @@ ensure_keyring
 
 log "Updating the system"
 if ((ASSUME_YES)); then
-    run pacman -Syu --noconfirm
+    run_cmd pacman -Syu --noconfirm
 else
-    run pacman -Syu
+    run_cmd pacman -Syu
 fi
 
 log "Installing sudo and git"
 if ((ASSUME_YES)); then
-    run pacman -S --needed --noconfirm sudo git
+    run_cmd pacman -S --needed --noconfirm sudo git
 else
-    run pacman -S --needed sudo git
+    run_cmd pacman -S --needed sudo git
 fi
 
 if ((DRY_RUN == 0)); then
@@ -349,16 +269,16 @@ fi
 
 if id -u "$TARGET_USER" >/dev/null 2>&1; then
     log "User $TARGET_USER already exists; ensuring wheel membership"
-    run usermod -aG wheel "$TARGET_USER"
+    run_cmd usermod -aG wheel "$TARGET_USER"
 else
     log "Creating user $TARGET_USER"
-    run useradd -m -G wheel -s /bin/bash "$TARGET_USER"
+    run_cmd useradd -m -G wheel -s /bin/bash "$TARGET_USER"
 fi
 
 if ((DRY_RUN)); then
     log "Would ensure $TARGET_USER has a password"
 else
-    password_status="$(passwd -S "$TARGET_USER" | awk '{print $2}')"
+    password_status="$(LC_ALL=C passwd -S "$TARGET_USER" | awk '{print $2}')"
     if [[ "$password_status" == "L" || "$password_status" == "NP" ]]; then
         log "Set a password for $TARGET_USER"
         passwd "$TARGET_USER"

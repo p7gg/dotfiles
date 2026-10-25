@@ -8,20 +8,56 @@
 
 set -Eeuo pipefail
 
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=arch/lib/common.sh
+source "$REPO_ROOT/arch/lib/common.sh"
+
 COMPLETIONS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
 MISE_AVAILABLE=0
+DRY_RUN=0
+STRICT=0
+FAILURES=0
 
-log() {
-    printf '%s\n' "$*"
+trap 'on_error' ERR
+trap cleanup_tmp EXIT
+
+usage() {
+    cat <<'EOF'
+Usage: arch/completions.sh [options]
+
+Options:
+  --dry-run   Print what would be generated without writing files
+  --strict    Exit 1 if any completion could not be generated
+  -h, --help  Show this help
+EOF
 }
 
-warn() {
-    printf 'warning: %s\n' "$*" >&2
-}
+while (($# > 0)); do
+    case "$1" in
+    --dry-run)
+        DRY_RUN=1
+        shift
+        ;;
+    --strict)
+        STRICT=1
+        shift
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    *)
+        die "unknown option: $1 (try --help)"
+        ;;
+    esac
+done
 
 command -v mise >/dev/null 2>&1 && MISE_AVAILABLE=1
 
-mkdir -p "$COMPLETIONS_DIR"
+if ((DRY_RUN == 0)); then
+    mkdir -p "$COMPLETIONS_DIR"
+fi
 
 run_tool() {
     if ((MISE_AVAILABLE)); then
@@ -42,40 +78,56 @@ tool_available() {
     return 1
 }
 
+install_completion() {
+    local name="$1"
+    local tmp="$2"
+
+    if ((DRY_RUN)); then
+        log "would generate fish completion: ${name}"
+        return 0
+    fi
+
+    install -Dm644 "$tmp" "$COMPLETIONS_DIR/${name}.fish"
+    log "generated fish completion: ${name}"
+}
+
 generate_completion() {
     local name="$1"
     shift
     local tmp
+
     tmp="$(mktemp)"
+    register_tmp "$tmp"
 
     if run_tool "$@" >"$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
-        install -Dm644 "$tmp" "$COMPLETIONS_DIR/${name}.fish"
-        log "generated fish completion: ${name}"
+        install_completion "$name" "$tmp"
     else
         warn "could not generate fish completion: ${name}"
+        FAILURES=$((FAILURES + 1))
     fi
-
-    rm -f "$tmp"
 }
 
 generate_direct() {
     local name="$1"
     shift
     local tmp
+
     tmp="$(mktemp)"
+    register_tmp "$tmp"
 
     if "$@" >"$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
-        install -Dm644 "$tmp" "$COMPLETIONS_DIR/${name}.fish"
-        log "generated fish completion: ${name}"
+        install_completion "$name" "$tmp"
     else
         warn "could not generate fish completion: ${name}"
+        FAILURES=$((FAILURES + 1))
     fi
-
-    rm -f "$tmp"
 }
 
 if tool_available pnpm; then
     generate_completion pnpm pnpm completion fish
+else
+    warn "pnpm is not available; skipping pnpm completion"
+    FAILURES=$((FAILURES + 1))
 fi
 
 if tool_available npm; then
@@ -94,31 +146,57 @@ if tool_available npm; then
     fi
 
     if [[ -f "$npm_completion" ]]; then
-        install -Dm644 "$npm_completion" "$COMPLETIONS_DIR/npm.fish"
-        log "installed fish completion: npm"
+        if ((DRY_RUN)); then
+            log "would install fish completion: npm"
+        else
+            install -Dm644 "$npm_completion" "$COMPLETIONS_DIR/npm.fish"
+            log "installed fish completion: npm"
+        fi
     else
         warn "could not locate npm's completion.fish"
+        FAILURES=$((FAILURES + 1))
     fi
+else
+    warn "npm is not available; skipping npm completion"
+    FAILURES=$((FAILURES + 1))
 fi
 
 if tool_available bun; then
     if command -v fish >/dev/null 2>&1; then
-        if SHELL="$(command -v fish)" run_tool bun completions >/dev/null 2>&1; then
+        if ((DRY_RUN)); then
+            log "would generate fish completion: bun"
+        elif SHELL="$(command -v fish)" run_tool bun completions >/dev/null 2>&1; then
             if [[ -f "$COMPLETIONS_DIR/bun.fish" ]]; then
                 log "generated fish completion: bun"
             else
                 warn "bun completions ran, but ${COMPLETIONS_DIR}/bun.fish was not created"
+                FAILURES=$((FAILURES + 1))
             fi
         else
             warn "could not generate fish completion: bun"
+            FAILURES=$((FAILURES + 1))
         fi
     else
         warn "fish is not installed; cannot generate bun completion"
+        FAILURES=$((FAILURES + 1))
     fi
+else
+    warn "bun is not available; skipping bun completion"
+    FAILURES=$((FAILURES + 1))
 fi
 
 if command -v but >/dev/null 2>&1; then
     generate_direct but but completions fish
+else
+    warn "but is not available; skipping but completion"
+    FAILURES=$((FAILURES + 1))
 fi
 
 log "Fish completions directory: $COMPLETIONS_DIR"
+
+if ((FAILURES > 0)); then
+    warn "$FAILURES completion step(s) failed"
+    if ((STRICT)); then
+        exit 1
+    fi
+fi
