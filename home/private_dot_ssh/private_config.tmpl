@@ -1,0 +1,30 @@
+# Global defaults.
+Host *
+    AddKeysToAgent yes
+    IdentitiesOnly yes
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    HashKnownHosts yes
+    ControlMaster auto
+    ControlPath ~/.ssh/control-%C
+    ControlPersist 10m
+
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+
+Host gitlab.com
+    HostName gitlab.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+
+{{ if .work_email -}}
+# Google Cloud Source Repositories (work).
+Host source.developers.google.com
+    HostName source.developers.google.com
+    Port 2022
+    User {{ .work_email }}
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+{{ end -}}
