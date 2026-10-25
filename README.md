@@ -380,12 +380,18 @@ Chezmoi manages:
 ```text
 ~/.config/fish/config.fish
 ~/.config/fish/conf.d/*.fish
-~/.config/fish/functions/bws.fish
+~/.config/fish/functions/*.fish
 ```
 
 The config uses `set -gx` and `abbr --add --global` rather than universal
 variables, so nothing important is hidden in `fish_variables`. Fish history and
 fish variables are not tracked.
+
+`ch` opens the `fzf-checkout` branch picker. Local branches come first,
+remote-tracking branches follow, and picking a remote branch creates a local
+branch with the same name that tracks it. With arguments, `ch` defers to
+`git checkout`, so `ch <branch>` and `ch -b <branch>` keep working. The Git alias
+`git ch` uses the same picker.
 
 `~/.local/bin` and `~/.go/bin` are prepended once, with `~/.local/bin` taking
 precedence. `mise`, starship, fzf,

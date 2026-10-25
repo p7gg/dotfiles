@@ -10,7 +10,7 @@ terminal browsers. They are diagrams, not screenshots.
 
 ## Shell: fewer keystrokes
 
-The tracked fish config adds five global abbreviations:
+The tracked fish config adds six global abbreviations:
 
 | Abbreviation | Expands to |
 | --- | --- |
@@ -18,6 +18,7 @@ The tracked fish config adds five global abbreviations:
 | `gs` | `git status --short --branch` |
 | `gd` | `git diff` |
 | `gl` | `git log --oneline --graph --decorate -20` |
+| `ch` | `fzf-checkout` |
 | `ll` | `ls -lah` |
 
 Abbreviations expand when you press space, so they stay visible before a command
@@ -71,6 +72,13 @@ git dt                    # difftastic, syntax-aware structural diff
 gl                        # graph log, last 20 commits
 gitui                     # stage, inspect, and review in a TUI
 ```
+
+**Pick a branch instead of typing it.** `ch` (or `git ch`) opens an fzf list
+with local branches first and remote-tracking branches after them. The preview
+shows recent commits. Picking a remote branch creates a local branch with the
+same name and sets its upstream; remote entries that already have a local
+counterpart are hidden. Arguments skip the picker and go straight to
+`git checkout`, so `ch -b spike` still works.
 
 Recovery and conflict habits:
 

@@ -59,10 +59,11 @@
     line-numbers = true
 {{ end -}}
 
-{{ if lookPath "difft" -}}
 [alias]
+    ch = !fish -c 'fzf-checkout $argv'
+{{- if lookPath "difft" }}
     dt = !difft
-{{ end -}}
+{{- end }}
 
 [column]
     ui = auto
