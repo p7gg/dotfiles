@@ -1,0 +1,249 @@
+# Package catalog
+
+This is the complete inventory of `arch/packages/`: every package the bootstrap
+tracks, the profile it lands on, and the reason it is there.
+
+The lists are **install-only**. Bootstrap adds missing packages with `--needed`
+and never removes anything. Removing a package is a deliberate manual step.
+
+![Provisioning flow: native Arch and WSL share package lists and dotfiles](assets/provisioning-flow.svg)
+
+## At a glance
+
+There are **59 tracked package names**:
+
+- **50** are installed on both profiles: 45 official packages plus 5 AUR packages
+- **7** are native-only: 5 official packages plus 2 AUR packages
+- **2** are WSL-only: 1 official package plus 1 AUR package
+
+| Profile | Package lists | Packages | Entry point |
+| --- | --- | ---: | --- |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 57 | `./arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 52 | `./arch/bootstrap.sh --profile wsl` |
+
+Counts are package names only. `paru` is bootstrapped automatically when an AUR
+list is non-empty, so it is not tracked as a package. `base-devel` is a meta
+package in current Arch, not a group. Counts are current for this revision; the
+files in `arch/packages/` remain the source of truth.
+
+## Badge legend
+
+| Badge | Meaning |
+| --- | --- |
+| <img src="assets/badge-both.svg" alt="Both" height="20"> | Installed on native Arch and on WSL |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> | Native Arch + GNOME only |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> | Arch inside WSL only |
+| <img src="assets/badge-aur.svg" alt="AUR" height="18"> | Built from the Arch User Repository |
+
+Everything outside an `aur*.txt` list comes from the official Arch repositories.
+
+## Both profiles — official repositories
+
+Source: `arch/packages/base.txt` — 45 packages.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `arch-audit` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Checks installed packages against Arch Security Team advisories. | Run after system upgrades. |
+| `atuin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Searchable shell history backed by a local database. | Local-only; no sync account is configured. |
+| `base-devel` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Build toolchain required by `makepkg` and AUR builds. | Meta package; the audit compares it directly. |
+| `bat` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `cat` with syntax highlighting and Git markers. | Not the default `PAGER`; `less` is. |
+| `chezmoi` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Applies the `home/` source state to the machine. | Bootstrap points `sourceDir` at this repo. |
+| `curl` | <img src="assets/badge-both.svg" alt="Both" height="18"> | HTTP/HTTPS client for downloads and APIs. | — |
+| `difftastic` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-aware structural diff. | Wired as `git dt`. |
+| `dust` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Visual disk-usage tree. | — |
+| `duf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Disk space and mount overview. | — |
+| `eza` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Modern `ls` with icons, Git status, and tree view. | — |
+| `fd` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast `find` with sensible ignore rules. | — |
+| `fish` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Interactive shell. | Bootstrap sets it as the login shell. |
+| `fzf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fuzzy finder for files, history, and completion. | Fish bindings load in interactive shells. |
+| `git` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Distributed version control. | Commits and tags are SSH-signed by default. |
+| `git-absorb` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Turns staged changes into `fixup!` commits automatically. | Useful before an autosquash rebase. |
+| `git-delta` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-highlighting pager for Git diffs. | Wired as `core.pager`. |
+| `github-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `gh` for GitHub auth, pull requests, issues, and SSH keys. | Authenticated by `arch/auth.sh`. |
+| `gitleaks` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Scans staged changes for secrets. | Runs in the pre-commit hook. |
+| `gitui` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal UI for Git. | — |
+| `gnupg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | OpenPGP implementation used by `pass` and signing workflows. | — |
+| `jq` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Command-line JSON processor. | — |
+| `just` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Task runner for the repository recipes. | Start with `just --list`. |
+| `kubectl` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Kubernetes command-line client. | — |
+| `less` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal pager. | Used for `PAGER` and `MANPAGER`. |
+| `libsecret` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Secret Service client library used by GNOME Keyring. | Native `bws` wrapper calls `secret-tool`. |
+| `man-db` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Manual pages and the `man` command. | — |
+| `mise` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Toolchain manager for Node, Bun, pnpm, and friends. | Global config: `~/.config/mise/config.toml`. |
+| `nano` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Small terminal editor. | Fallback `EDITOR` when Neovim/Vim are absent. |
+| `opencode` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal AI coding agent. | MCP servers live in `~/.config/opencode/opencode.json`. |
+| `openssh` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `ssh`, `ssh-keygen`, and `ssh-agent`. | Also powers Git commit signing. |
+| `pacman-contrib` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `paccache` and other pacman helpers. | `paccache.timer` is enabled when systemd is active. |
+| `reflector` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mirrorlist updater. | Brazil-first config; `reflector.timer` refreshes it. |
+| `ripgrep` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast recursive search that respects ignore files. | `rg`. |
+| `shellcheck` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Shell script linter. | Runs in the pre-commit hook. |
+| `shfmt` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Shell script formatter. | Pre-commit checks formatting with `shfmt -d`. |
+| `starship` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Cross-shell prompt. | Config: `~/.config/starship.toml`. |
+| `sudo` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Privilege escalation used during provisioning. | — |
+| `tailscale` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mesh VPN. | Native runs `tailscaled.service`; WSL may need a manual daemon. |
+| `tealdeer` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast `tldr` client for example-driven help. | — |
+| `unzip` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Extracts `.zip` archives. | — |
+| `wget` | <img src="assets/badge-both.svg" alt="Both" height="18"> | HTTP/FTP downloader. | — |
+| `yq` | <img src="assets/badge-both.svg" alt="Both" height="18"> | YAML/XML/TOML processor with `jq` syntax. | — |
+| `yt-dlp` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Video/audio downloader. | `ffmpeg` is not installed; add it for stream merging. |
+| `zip` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Creates and updates `.zip` archives. | — |
+| `zoxide` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Smarter `cd` with frecency ranking. | Fish integration loads in interactive shells. |
+
+## Both profiles — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
+
+Source: `arch/packages/aur.txt` — 5 packages. `paru` is bootstrapped
+automatically the first time an AUR list is non-empty.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL). |
+| `gitbutler-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GitButler GUI and the `but` CLI. | Do not add `gitbutler-cli-bin`; both packages own `/usr/bin/but`. WSL GUI needs WSLg. |
+| `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `arch/auth.sh` handles OAuth login and application default credentials. |
+| `google-cloud-cli-component-gke-gcloud-auth-plugin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GKE authentication plugin for `kubectl`. | Used by `gcloud container clusters get-credentials`. |
+| `lefthook` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Git hook manager. | Bootstrap runs `lefthook install`; hooks run the local checks. |
+
+## Native only — official repositories
+
+Source: `arch/packages/native.txt` — 5 packages.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `fwupd` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Firmware update daemon and client. | `fwupd-refresh.timer` is enabled on native. |
+| `gnome-tweaks` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Advanced GNOME settings GUI. | — |
+| `restic` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Encrypted, deduplicated backups. | No repository, password, or timer is configured. |
+| `ufw` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Uncomplicated Firewall. | Bootstrap denies incoming by default and allows SSH plus `tailscale0`. |
+| `zellij` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Terminal multiplexer and workspace. | Native only by design. |
+
+## Native only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
+
+Source: `arch/packages/aur-native.txt` — 2 packages.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `t3code-nightly-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Nightly desktop control surface for local coding agents. | Nightly build; native only. |
+| `visual-studio-code-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Microsoft Visual Studio Code. | Native only by design. |
+
+## WSL only — official repositories
+
+Source: `arch/packages/wsl.txt` — 1 package.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first. |
+
+## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
+
+Source: `arch/packages/aur-wsl.txt` — 1 package.
+
+| Package | Env | What it gives you | Notes |
+| --- | :---: | --- | --- |
+| `wslu` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | WSL convenience utilities, including `wslview`. | WSL only. |
+
+## mise-managed toolchains
+
+These are not pacman packages. They are installed by `mise` from the global
+config at `home/dot_config/mise/config.toml` (applied as
+`~/.config/mise/config.toml`).
+
+| Tool | Config value | What it gives you | Notes |
+| --- | --- | --- | --- |
+| Node.js | `latest` | JavaScript runtime. | Pin project versions in each project's `mise.toml`. |
+| Bun | `latest` | JavaScript runtime, bundler, and test runner. | — |
+| pnpm | `latest` | JavaScript package manager. | Completions are generated by `arch/completions.sh`. |
+| `npm:@antfu/ni` | `latest` | Package-manager-agnostic commands such as `ni`, `nr`, and `nx`. | Use whichever lockfile the project already has. |
+| `git-flow` (`github:gittower/git-flow-next`) | `2.1.0` | Git Flow next, renamed to `git-flow`. | Version is pinned in global config. |
+
+After bootstrap:
+
+```bash
+mise install
+mise ls
+mise outdated
+mise upgrade
+```
+
+Keep project-specific versions in the project's `mise.toml`. The global config is
+only for runtimes and tools that should exist everywhere.
+
+## The maintenance loop
+
+![Package maintenance loop: install, record, audit, commit](assets/package-loop.svg)
+
+Adding a package is two steps: install it normally, then record it in the
+matching list.
+
+```bash
+# 1. Install normally
+sudo pacman -S --needed <package>
+paru -S --needed <aur-package>
+
+# 2. Record it in the right file
+$EDITOR arch/packages/base.txt
+$EDITOR arch/packages/aur.txt
+
+# 3. Check that the lists and the machine agree
+just audit native
+./arch/audit.sh --profile wsl --check
+```
+
+Choose the list by scope:
+
+| Scope | Official file | AUR file |
+| --- | --- | --- |
+| Both profiles | `arch/packages/base.txt` | `arch/packages/aur.txt` |
+| Native only | `arch/packages/native.txt` | `arch/packages/aur-native.txt` |
+| WSL only | `arch/packages/wsl.txt` | `arch/packages/aur-wsl.txt` |
+
+Removing a package is also two steps: delete the line, then uninstall it
+manually. Bootstrap will not do it for you.
+
+### Inspecting a package
+
+```bash
+pacman -Si bat                         # official repo metadata
+paru -Si gitbutler-bin                 # AUR metadata
+pacman -Qi bat                         # installed metadata
+pacman -Qo /usr/bin/bat                # which package owns a file
+pacman -Qqen | sort                    # explicit native packages
+pacman -Qqem | sort                    # explicit AUR/foreign packages
+```
+
+### Auditing drift
+
+```bash
+just audit native
+just audit wsl
+./arch/audit.sh --profile native --check
+./arch/audit.sh --profile wsl --check
+```
+
+The audit expands package groups such as `gnome`, so group members do not show
+up as false drift. It reports installed-but-untracked packages as well as tracked
+packages that are missing. Treat both directions as information, not as an
+instruction to regenerate the lists blindly.
+
+On a desktop installed with GNOME, many GNOME and system packages appear as
+untracked by design: they belong to the OS/desktop layer, not these lists.
+
+## Gotchas worth knowing
+
+- `gitbutler-bin` includes both the GUI and `but`. Do not also add
+  `gitbutler-cli-bin`; the two packages conflict over `/usr/bin/but`.
+- `yt-dlp` is installed without `ffmpeg`. Add `ffmpeg` if you need stream
+  merging, audio extraction, or format conversion.
+- `restic` is installed without a repository, password, or backup schedule.
+- `tailscale` is installed on both profiles, but WSL without systemd needs a
+  manually started `tailscaled`.
+- The native list intentionally does not include the `gnome` group, the kernel,
+  firmware, microcode, or GPU drivers. Those belong to the OS installation step.
+- `visual-studio-code-bin`, `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are
+  native-only. `pass` and `wslu` are WSL-only.
+- AUR packages execute code at build time. Review the PKGBUILD before using
+  `--yes`.
+
+## Next
+
+- [Tips and tricks](tips-and-tricks.md) — shell, Git, chezmoi, mise, WSL, and
+  secrets workflows.
+- [Back to the documentation index](README.md)
+- [Back to the project README](../README.md)

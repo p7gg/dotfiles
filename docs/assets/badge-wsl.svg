@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="24" viewBox="0 0 76 24" role="img" aria-labelledby="title desc">
+  <title id="title">WSL</title>
+  <desc id="desc">Available on the Arch Linux in WSL profile</desc>
+  <rect x="0.5" y="0.5" width="75" height="23" rx="11.5" fill="#0d2444" stroke="#58a6ff"/>
+  <rect x="8.5" y="6.5" width="11" height="10" rx="1.2" fill="none" stroke="#58a6ff" stroke-width="1.3"/>
+  <path d="M8.5 9.5h11M12 9.5v7" stroke="#58a6ff" stroke-width="1.1"/>
+  <text x="26" y="16.2" fill="#cfe8ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="700" letter-spacing="1.2">WSL</text>
+</svg>

@@ -16,6 +16,14 @@ The bootstrap does **not** partition disks, install a bootloader, configure
 encryption, install hardware drivers, or manage secrets. Those are separate
 concerns.
 
+## Documentation
+
+- [Package catalog](docs/packages.md) — all 59 tracked packages with Native/WSL
+  badges, per-list counts, mise toolchains, and the install/record/audit loop.
+- [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
+  secrets, OpenCode, recovery, and local SVG illustrations.
+- [Documentation index](docs/README.md).
+
 ## Safety
 
 - Run `arch/bootstrap.sh` as your normal user, never as root.
@@ -72,6 +80,11 @@ concerns.
 │       └── aur-wsl.txt
 ├── windows/
 │   └── README.md
+├── docs/
+│   ├── README.md                 # documentation index
+│   ├── packages.md               # complete package catalog
+│   ├── tips-and-tricks.md        # shell/Git/WSL/secrets workflows
+│   └── assets/                   # local SVG badges and illustrations
 ├── .github/workflows/ci.yml
 ├── .editorconfig
 ├── .gitattributes
@@ -181,6 +194,9 @@ Tracked lists live in `arch/packages/`:
 - `aur.txt` — AUR packages used by both profiles: GitButler CLI/GUI, `bws-bin`, `google-cloud-cli`, the GKE auth plugin, and `lefthook`
 - `aur-native.txt` — native-only AUR packages: `t3code-nightly-bin` and `visual-studio-code-bin`
 - `aur-wsl.txt` — WSL-only AUR packages: `wslu`
+
+See the [package catalog](docs/packages.md) for every package with its
+environment badge, purpose, and configuration notes.
 
 The native package list deliberately does **not** include the `gnome` group,
 the kernel, firmware, microcode, or GPU drivers. Those belong to the OS

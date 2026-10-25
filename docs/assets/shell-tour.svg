@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">A short fish shell tour</title>
+  <desc id="desc">A terminal illustration showing eza, fd, ripgrep, and zoxide, plus fzf and Atuin key bindings.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#0b1512"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#0f1411"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="640" rx="28" fill="url(#bg)"/>
+
+  <!-- Terminal window -->
+  <rect x="40" y="32" width="1120" height="576" rx="18" fill="url(#screen)" stroke="#30363d"/>
+  <path d="M40 50a18 18 0 0 1 18-18h1084a18 18 0 0 1 18 18v26H40z" fill="#161b22"/>
+  <circle cx="68" cy="55" r="5.5" fill="#ff7b72"/>
+  <circle cx="88" cy="55" r="5.5" fill="#d29922"/>
+  <circle cx="108" cy="55" r="5.5" fill="#3fb950"/>
+  <text x="600" y="60" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" text-anchor="middle">fish · starship · ~/Projects/dotfiles</text>
+  <text x="1128" y="60" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" text-anchor="end">Ctrl+R history</text>
+
+  <!-- Prompt -->
+  <text x="72" y="112" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12">gabriel</text>
+  <text x="144" y="112" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12">~/Projects/dotfiles</text>
+  <text x="300" y="112" fill="#d29922" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12">main</text>
+  <text x="352" y="112" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
+  <line x1="72" y1="132" x2="1128" y2="132" stroke="#21262d"/>
+
+  <!-- Row 1: eza -->
+  <text x="72" y="174" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
+  <text x="94" y="174" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">eza --icons --git --group-directories-first</text>
+  <text x="1128" y="174" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">READABLE FILES</text>
+  <text x="72" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">arch</text>
+  <text x="120" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">docs</text>
+  <text x="164" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">home</text>
+  <text x="212" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">windows</text>
+  <text x="282" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">README.md</text>
+  <text x="370" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">justfile</text>
+
+  <!-- Row 2: fd -->
+  <text x="72" y="252" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
+  <text x="94" y="252" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">fd -e fish</text>
+  <text x="1128" y="252" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">FIND</text>
+  <text x="72" y="279" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">home/dot_config/fish/config.fish</text>
+  <text x="72" y="299" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">home/dot_config/fish/functions/bws.fish</text>
+
+  <!-- Row 3: rg -->
+  <text x="72" y="348" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
+  <text x="94" y="348" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">rg -n 'systemd' arch/bootstrap.sh</text>
+  <text x="1128" y="348" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">SEARCH</text>
+  <text x="72" y="375" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">333:</text>
+  <text x="116" y="375" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">if [[ ! -d /run/systemd/system ]]; then</text>
+  <text x="72" y="395" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">438:</text>
+  <text x="116" y="395" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">if [[ ! -d /run/systemd/system ]]; then</text>
+
+  <!-- Row 4: zoxide -->
+  <text x="72" y="446" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
+  <text x="94" y="446" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">z dotfiles</text>
+  <text x="1128" y="446" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">JUMP</text>
+  <text x="72" y="473" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5"># zoxide ranks directories by frecency; use zi for an interactive picker</text>
+
+  <!-- Key strip -->
+  <rect x="72" y="514" width="1056" height="58" rx="12" fill="#161b22" stroke="#30363d"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">
+    <rect x="92" y="530" width="78" height="24" rx="6" fill="#0d2444" stroke="#1f6feb"/>
+    <text x="131" y="546" fill="#cfe8ff" text-anchor="middle">Ctrl+R</text>
+    <text x="182" y="546" fill="#c9d1d9">Atuin history</text>
+
+    <rect x="310" y="530" width="78" height="24" rx="6" fill="#0d2444" stroke="#1f6feb"/>
+    <text x="349" y="546" fill="#cfe8ff" text-anchor="middle">Ctrl+T</text>
+    <text x="400" y="546" fill="#c9d1d9">fzf files</text>
+
+    <rect x="516" y="530" width="78" height="24" rx="6" fill="#0d2444" stroke="#1f6feb"/>
+    <text x="555" y="546" fill="#cfe8ff" text-anchor="middle">Alt+C</text>
+    <text x="606" y="546" fill="#c9d1d9">fzf cd</text>
+
+    <rect x="700" y="530" width="58" height="24" rx="6" fill="#1f2937" stroke="#374151"/>
+    <text x="729" y="546" fill="#c9d1d9" text-anchor="middle">Tab</text>
+    <text x="770" y="546" fill="#c9d1d9">completions</text>
+
+    <rect x="892" y="530" width="58" height="24" rx="6" fill="#1f2937" stroke="#374151"/>
+    <text x="921" y="546" fill="#c9d1d9" text-anchor="middle">ll</text>
+    <text x="962" y="546" fill="#c9d1d9">ls -lah</text>
+  </g>
+
+  <text x="72" y="594" fill="#6e7681" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11">Illustrative session. The prompt is Starship; the key bindings come from the tracked fish config.</text>
+</svg>

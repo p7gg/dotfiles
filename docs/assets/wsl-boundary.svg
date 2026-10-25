@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+  <title id="title">Windows and WSL boundary</title>
+  <desc id="desc">Keep the dotfiles repository in the WSL ext4 filesystem, use WSLg for Linux GUI apps, and treat systemd and Tailscale as optional WSL services.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#0c1420"/>
+    </linearGradient>
+    <marker id="blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="muted-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6e7681"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="480" rx="28" fill="url(#bg)"/>
+  <text x="48" y="60" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="29" font-weight="700">Keep the fast path fast</text>
+  <text x="48" y="90" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="14">Windows runs the desktop. WSL runs the Linux toolchain. The boundary is deliberate.</text>
+
+  <!-- Windows card -->
+  <rect x="40" y="118" width="520" height="250" rx="16" fill="#161b22" stroke="#30363d"/>
+  <rect x="64" y="142" width="126" height="24" rx="12" fill="#1f2937" stroke="#4b5563"/>
+  <circle cx="77" cy="154" r="3" fill="#8b949e"/>
+  <text x="86" y="158" fill="#d1d5db" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" font-weight="700" letter-spacing="1.1">WINDOWS HOST</text>
+  <text x="64" y="196" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="650">Terminal + GUI apps</text>
+  <text x="64" y="226" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">Windows Terminal launches the distro.</text>
+  <text x="64" y="249" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">WSLg renders Linux GUI apps next to Windows.</text>
+  <text x="64" y="272" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">/mnt/c is convenient for sharing, not for Git.</text>
+  <rect x="64" y="300" width="250" height="34" rx="8" fill="#2b1113" stroke="#7d2e2e"/>
+  <text x="80" y="321" fill="#ffb3ad" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">Keep the repo on ext4, not /mnt/c</text>
+
+  <!-- WSL card -->
+  <rect x="640" y="118" width="520" height="250" rx="16" fill="#161b22" stroke="#30363d"/>
+  <rect x="664" y="142" width="80" height="24" rx="12" fill="#0f2a1d" stroke="#3fb950"/>
+  <circle cx="677" cy="154" r="3" fill="#3fb950"/>
+  <text x="686" y="158" fill="#d2f8d2" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" font-weight="700" letter-spacing="1.1">WSL · ARCH</text>
+  <text x="664" y="196" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="650">~/Projects/dotfiles</text>
+  <text x="664" y="226" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">Linux filesystem: correct modes, fast Git.</text>
+  <text x="664" y="249" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">fish + mise + chezmoi + tracked packages.</text>
+  <text x="664" y="272" fill="#c9d1d9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12.5">systemd optional; Tailscale follows systemd.</text>
+  <rect x="664" y="300" width="170" height="34" rx="8" fill="#0f2a1d" stroke="#2d6a3e"/>
+  <text x="680" y="321" fill="#b7f7c0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">This is the fast path</text>
+
+  <!-- Boundary -->
+  <line x1="600" y1="140" x2="600" y2="348" stroke="#30363d" stroke-width="1.4" stroke-dasharray="6 6"/>
+  <path d="M 620 186 L 580 186" fill="none" stroke="#58a6ff" stroke-width="2" marker-end="url(#blue-arrow)"/>
+  <rect x="570" y="168" width="60" height="20" rx="10" fill="#0d2444" stroke="#1f6feb"/>
+  <text x="600" y="182" fill="#cfe8ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" text-anchor="middle">WSLg</text>
+  <path d="M 580 302 L 620 302" fill="none" stroke="#6e7681" stroke-width="2" marker-end="url(#muted-arrow)"/>
+  <rect x="556" y="312" width="88" height="20" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text x="600" y="326" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" text-anchor="middle">wsl.exe</text>
+
+  <!-- Notes -->
+  <rect x="40" y="392" width="560" height="58" rx="12" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="416" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1.1">SYSTEMD</text>
+  <text x="60" y="437" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">wsl-init.sh --systemd  →  wsl --shutdown  →  reopen</text>
+
+  <rect x="620" y="392" width="540" height="58" rx="12" fill="#161b22" stroke="#30363d"/>
+  <text x="640" y="416" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1.1">TAILSCALE</text>
+  <text x="640" y="437" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">systemd: tailscaled.service  ·  without: sudo tailscaled &amp; then tailscale up</text>
+
+  <text x="48" y="470" fill="#6e7681" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10.5">If WSL cannot create a TUN device, run tailscaled with --tun=userspace-networking and use its proxy.</text>
+</svg>
