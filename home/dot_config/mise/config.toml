@@ -1,0 +1,12 @@
+[tools]
+node = "latest"
+bun = "latest"
+pnpm = "latest"
+"npm:@antfu/ni" = "latest"
+"github:gittower/git-flow-next" = { version = "2.1.0", rename_exe = "git-flow" }
+
+# Add global runtimes here, but keep project-specific versions in each
+# project's mise.toml.
+# python = "3.13"
+# go = "1.24"
+# rust = "stable"

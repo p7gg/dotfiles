@@ -1,0 +1,33 @@
+add_newline = false
+format = "$directory$git_branch$git_status$nodejs$python$cmd_duration$line_break$character"
+
+[character]
+success_symbol = "[>](bold green)"
+error_symbol = "[>](bold red)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+symbol = "git:"
+
+[git_status]
+conflicted = "!"
+ahead = ">"
+behind = "<"
+diverged = "<>"
+untracked = "?"
+modified = "!"
+staged = "+"
+renamed = ">"
+deleted = "x"
+
+[nodejs]
+format = "via [node $version](bold green) "
+
+[python]
+format = "via [python $version](bold yellow) "
+
+[cmd_duration]
+min_time = 2000
