@@ -21,6 +21,7 @@ ASSUME_YES=0
 NON_INTERACTIVE=0
 CHECK_ONLY=0
 DO_PACKAGES=1
+DO_FONTS=1
 DO_DOTFILES=1
 DO_MISE=1
 DO_SERVICES=1
@@ -28,6 +29,7 @@ DO_SHELL=1
 DO_COMPLETIONS=1
 DO_SYSTEM=1
 DO_HOOKS=1
+FONT_SELECTION="${FONT_SELECTION:-}"
 CHEZMOI_NAME="${CHEZMOI_NAME:-}"
 CHEZMOI_EMAIL="${CHEZMOI_EMAIL:-}"
 CHEZMOI_WORK_EMAIL="${CHEZMOI_WORK_EMAIL:-}"
@@ -51,6 +53,10 @@ Options:
   --work-email EMAIL    Set the optional work email
   --non-interactive     Fail instead of prompting for missing chezmoi data
   --no-packages         Skip pacman/AUR package installation
+  --fonts LIST          Install selected Nerd Fonts without prompting; LIST is
+                        all or a comma-separated list of numbers, packages, or
+                        display names (implies the fonts step)
+  --no-fonts            Skip the optional Nerd Fonts step
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
   --no-completions      Skip fish completion generation
@@ -163,6 +169,60 @@ install_packages() {
     ensure_paru "$profile"
     paru_install_file "$REPO_ROOT/arch/packages/aur.txt"
     paru_install_file "$REPO_ROOT/arch/packages/aur-${profile}.txt"
+}
+
+setup_fonts() {
+    local script="$REPO_ROOT/arch/fonts.sh"
+    local -a args=()
+
+    if [[ ! -x "$script" ]]; then
+        warn "font script not found or not executable: $script"
+        return 0
+    fi
+
+    if [[ -n "$FONT_SELECTION" ]]; then
+        if [[ "${FONT_SELECTION,,}" == "none" ]]; then
+            log "No optional fonts selected"
+            return 0
+        fi
+
+        if [[ "${FONT_SELECTION,,}" == "all" ]]; then
+            args+=(--all)
+        else
+            args+=(--font "$FONT_SELECTION")
+        fi
+
+        if ((DRY_RUN)); then
+            if [[ "${FONT_SELECTION,,}" == "all" ]]; then
+                log "Would install all optional Nerd Fonts"
+            else
+                log "Would install selected optional fonts: $FONT_SELECTION"
+            fi
+            return 0
+        fi
+
+        ((ASSUME_YES)) && args+=(--yes)
+        log "Installing selected optional fonts"
+        run_optional "$script" "${args[@]}" ||
+            warn "optional font installation failed; rerun ./arch/fonts.sh with the same selection"
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would prompt for optional Nerd Fonts; available fonts:"
+        "$script" --list || warn "could not list optional fonts"
+        log "Use --fonts all or --fonts LIST to select fonts non-interactively."
+        return 0
+    fi
+
+    if ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+        log "Skipping optional Nerd Fonts; pass --fonts all|LIST or run ./arch/fonts.sh"
+        return 0
+    fi
+
+    log "Selecting optional Nerd Fonts"
+    run_optional "$script" ||
+        warn "optional font installation failed; rerun ./arch/fonts.sh"
 }
 
 chezmoi_config_path() {
@@ -641,6 +701,14 @@ check_environment() {
             status=1
     fi
 
+    if ((DO_FONTS)); then
+        if [[ ! -x "$REPO_ROOT/arch/fonts.sh" ]]; then
+            warn "font script is not executable: arch/fonts.sh"
+            status=1
+        fi
+        validate_font_catalog "$REPO_ROOT/arch/packages/fonts.txt" || status=1
+    fi
+
     if [[ "$PROFILE" == "native" ]] && is_wsl; then
         warn "native profile selected inside WSL; desktop packages may not be appropriate"
     elif [[ "$PROFILE" == "wsl" ]] && ! is_wsl; then
@@ -712,6 +780,21 @@ while (($# > 0)); do
         ;;
     --no-packages)
         DO_PACKAGES=0
+        shift
+        ;;
+    --fonts)
+        [[ $# -ge 2 ]] || die "--fonts requires an argument"
+        FONT_SELECTION="$2"
+        DO_FONTS=1
+        shift 2
+        ;;
+    --fonts=*)
+        FONT_SELECTION="${1#*=}"
+        DO_FONTS=1
+        shift
+        ;;
+    --no-fonts)
+        DO_FONTS=0
         shift
         ;;
     --no-dotfiles)
@@ -803,8 +886,16 @@ fi
 
 if ((DO_PACKAGES)); then
     install_packages "$PROFILE"
+    if ((DO_FONTS)); then
+        setup_fonts
+    else
+        log "Skipping optional fonts"
+    fi
 else
     log "Skipping packages"
+    if ((DO_FONTS)); then
+        log "Skipping optional fonts because packages are disabled"
+    fi
 fi
 
 if ((DO_SYSTEM)); then

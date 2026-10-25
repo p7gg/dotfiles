@@ -19,7 +19,8 @@ concerns.
 ## Documentation
 
 - [Package catalog](docs/packages.md) — all 63 tracked packages with Native/WSL
-  badges, per-list counts, mise toolchains, and the install/record/audit loop.
+  badges, the 18 optional Nerd Fonts, per-list counts, mise toolchains, and the
+  install/record/audit loop.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
   secrets, OpenCode, recovery, and local SVG illustrations.
 - [Authentication and SSH](docs/auth.md) — key, GitHub, gcloud, Tailscale,
@@ -74,6 +75,7 @@ concerns.
 │   ├── bootstrap.sh              # user-level provisioning
 │   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale/BWS/MCP auth
 │   ├── completions.sh            # fish completion generation
+│   ├── fonts.sh                  # interactive optional Nerd Font installer
 │   ├── wsl-init.sh               # one-time WSL root setup
 │   ├── audit.sh                  # package drift report
 │   ├── lib/common.sh             # shared shell helpers
@@ -85,6 +87,7 @@ concerns.
 │       ├── aur.txt
 │       ├── aur-native.txt
 │       ├── aur-wsl.txt
+│       ├── fonts.txt             # optional Nerd Font catalog
 │       └── audit-ignore.txt      # bootstrap/OS-layer audit allowlist
 ├── scripts/
 │   ├── lint.sh                   # shared local/CI lint entry point
@@ -226,6 +229,8 @@ Tracked lists live in `arch/packages/`:
 - `aur-native.txt` — native-only AUR packages: `brave-bin`,
   `opencode-desktop-bin`, `t3code-nightly-bin`, and `visual-studio-code-bin`
 - `aur-wsl.txt` — WSL-only AUR packages: `wslu`
+- `fonts.txt` — optional Nerd Fonts; nothing is installed unless you select it
+  in the interactive font step
 
 See the [package catalog](docs/packages.md) for every package with its
 environment badge, purpose, and configuration notes.
@@ -284,6 +289,28 @@ default `--check` therefore only fails on missing tracked packages; use
 Adding a package is a two-step operation: install it normally, then add its name
 to the appropriate list. The bootstrap is not a package manager UI.
 
+### Optional Nerd Fonts
+
+Bootstrap ends the package phase with an interactive font selection. Nothing is
+selected by default: enter numbers or ranges such as `1 3-5` to install only
+those fonts, or press Enter to skip. Already installed fonts are marked in the
+menu and are not reinstalled.
+
+The catalog is `arch/packages/fonts.txt`; every entry comes from the official
+`extra` repository. For non-interactive runs:
+
+```bash
+./arch/bootstrap.sh --profile native --no-fonts
+./arch/bootstrap.sh --profile native --fonts all
+./arch/bootstrap.sh --profile native --fonts "JetBrains Mono,Fira Code"
+./arch/fonts.sh --list
+./arch/fonts.sh --font "Zed Mono"
+./arch/fonts.sh --all
+```
+
+`--fonts` also accepts catalog numbers and package names. The audit recognizes
+installed fonts as tracked, but never reports unselected fonts as missing.
+
 ## System maintenance
 
 The bootstrap applies:
@@ -331,6 +358,8 @@ just audit-check native
 just lint
 just fmt
 just test
+just fonts --list
+just fonts --all
 just doctor
 just auth-check
 just auth

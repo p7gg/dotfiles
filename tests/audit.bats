@@ -81,3 +81,22 @@ teardown() {
     echo "$output" | jq -e '.aur_untracked | index("paru-debug") == null'
     echo "$output" | jq -e '.missing_drift == false'
 }
+
+@test "--strict recognizes installed optional fonts and does not require them all" {
+    local font_pkg
+
+    font_pkg="$(filter_optional_packages "$REPO_ROOT/arch/packages/fonts.txt" | sed -n '1p')"
+    [ -n "$font_pkg" ]
+
+    filter_packages "$REPO_ROOT/arch/packages/base.txt" >"$TEST_DATA/native-all"
+    filter_packages "$REPO_ROOT/arch/packages/native.txt" >>"$TEST_DATA/native-all"
+    printf '%s\n' "$font_pkg" >>"$TEST_DATA/native-all"
+    LC_ALL=C sort -u -o "$TEST_DATA/native-all" "$TEST_DATA/native-all"
+    cp "$TEST_DATA/native-all" "$TEST_DATA/native-explicit"
+
+    run "$REPO_ROOT/arch/audit.sh" --profile native --json --check --strict
+
+    [ "$status" -eq 0 ]
+    echo "$output" | jq -e '.native_untracked == []'
+    echo "$output" | jq -e '.native_missing == []'
+}

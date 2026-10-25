@@ -126,6 +126,59 @@ list_has_packages() {
     [[ -f "$file" ]] && [[ -n "$(filter_packages "$file")" ]]
 }
 
+# Emit package names from an optional catalog whose entries use the format
+# "package|Display Name". The display name is only used by arch/fonts.sh.
+filter_optional_packages() {
+    local file="$1"
+
+    filter_packages "$file" | while IFS='|' read -r pkg _; do
+        [[ -n "$pkg" ]] && printf '%s\n' "$pkg"
+    done
+
+    return 0
+}
+
+# Validate an optional "package|Display Name" catalog before it is offered to the
+# user or used to allow packages during an audit.
+validate_font_catalog() {
+    local file="$1"
+    local line pkg name status=0
+    local -A seen=()
+
+    if [[ ! -f "$file" ]]; then
+        warn "font catalog not found: $file"
+        return 1
+    fi
+
+    while IFS= read -r line; do
+        if [[ "$line" != *"|"* ]]; then
+            warn "invalid font entry in ${file#"$REPO_ROOT/"}: $line (expected package|Display Name)"
+            status=1
+            continue
+        fi
+
+        pkg="${line%%|*}"
+        name="${line#*|}"
+
+        if [[ ! "$pkg" =~ ^[a-z0-9@_+][a-z0-9@._+-]*$ ]]; then
+            warn "invalid font package in ${file#"$REPO_ROOT/"}: $pkg"
+            status=1
+        elif [[ -n "${seen[$pkg]:-}" ]]; then
+            warn "duplicate font package in ${file#"$REPO_ROOT/"}: $pkg"
+            status=1
+        else
+            seen["$pkg"]=1
+        fi
+
+        if [[ -z "$name" || "$name" == *"|"* ]]; then
+            warn "invalid font display name in ${file#"$REPO_ROOT/"}: $line"
+            status=1
+        fi
+    done < <(filter_packages "$file")
+
+    return "$status"
+}
+
 # Refuse package names that pacman would interpret as options or that cannot be
 # valid Arch package names. This catches typos before a long pacman transaction.
 validate_package_lists() {

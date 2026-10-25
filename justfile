@@ -21,6 +21,9 @@ audit-check profile="native" *args:
 completions *args:
     ./arch/completions.sh {{ args }}
 
+fonts *args:
+    ./arch/fonts.sh {{ args }}
+
 auth *args:
     ./arch/auth.sh --generate-key {{ args }}
 

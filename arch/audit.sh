@@ -37,6 +37,9 @@ The audit reports:
 Packages listed in arch/packages/audit-ignore.txt are omitted from the
 untracked sections. That file is for bootstrap artifacts and OS-layer packages,
 not for hiding real drift.
+
+Optional Nerd Fonts from arch/packages/fonts.txt are recognized when installed
+but are never required.
 EOF
 }
 
@@ -93,7 +96,7 @@ json_array() {
 }
 
 main() {
-    local tmpdir ignore_file duplicates
+    local tmpdir ignore_file duplicates fonts_file
     local missing_drift=0 untracked_drift=0
 
     while (($# > 0)); do
@@ -163,6 +166,12 @@ main() {
         "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" ||
         die "fix the invalid package lists before auditing"
 
+    fonts_file="$REPO_ROOT/arch/packages/fonts.txt"
+    if [[ -f "$fonts_file" ]]; then
+        validate_font_catalog "$fonts_file" ||
+            die "fix the invalid font catalog before auditing"
+    fi
+
     tmpdir="$(mktemp -d)"
     AUDIT_TMPDIR="$tmpdir"
     trap 'rm -rf "${AUDIT_TMPDIR:-}"' EXIT
@@ -173,6 +182,14 @@ main() {
     filter_packages "$REPO_ROOT/arch/packages/aur.txt" >"$tmpdir/desired-aur-raw.txt"
     filter_packages "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" >>"$tmpdir/desired-aur-raw.txt"
     LC_ALL=C sort -u "$tmpdir/desired-aur-raw.txt" >"$tmpdir/desired-aur.txt"
+
+    if [[ -f "$fonts_file" ]]; then
+        filter_optional_packages "$fonts_file" >"$tmpdir/optional-native.txt"
+    else
+        : >"$tmpdir/optional-native.txt"
+    fi
+    cat "$tmpdir/desired-native.txt" "$tmpdir/optional-native.txt" |
+        LC_ALL=C sort -u >"$tmpdir/allowed-native.txt"
 
     if ! pacman -Qqen >"$tmpdir/current-native-explicit.txt"; then
         die "pacman -Qqen failed"
@@ -192,7 +209,7 @@ main() {
     LC_ALL=C sort -u -o "$tmpdir/current-aur-explicit.txt" "$tmpdir/current-aur-explicit.txt"
     LC_ALL=C sort -u -o "$tmpdir/current-aur-all.txt" "$tmpdir/current-aur-all.txt"
 
-    LC_ALL=C comm -23 "$tmpdir/current-native-explicit.txt" "$tmpdir/desired-native.txt" \
+    LC_ALL=C comm -23 "$tmpdir/current-native-explicit.txt" "$tmpdir/allowed-native.txt" \
         >"$tmpdir/native-untracked.txt"
     LC_ALL=C comm -13 "$tmpdir/current-native-all.txt" "$tmpdir/desired-native.txt" \
         >"$tmpdir/native-missing.txt"

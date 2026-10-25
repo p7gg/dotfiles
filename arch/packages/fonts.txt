@@ -1,0 +1,25 @@
+# Optional Nerd Fonts installed by arch/fonts.sh.
+#
+# This file is not part of the required base/native/wsl package lists. Bootstrap
+# offers an interactive selection, and automation can pass --fonts. Installed
+# fonts are recognized by arch/audit.sh but are never required by it.
+#
+# Format: package|Display Name
+ttf-cascadia-code-nerd|Cascadia Code
+ttf-cascadia-mono-nerd|Cascadia Mono
+ttf-firacode-nerd|Fira Code
+otf-firamono-nerd|Fira Mono
+otf-geist-mono-nerd|Geist Mono
+ttf-hack-nerd|Hack
+otf-hasklig-nerd|Hasklig
+ttf-ibmplex-mono-nerd|IBM Plex Mono
+ttf-jetbrains-mono-nerd|JetBrains Mono
+ttf-meslo-nerd|Meslo
+otf-monaspace-nerd|Monaspace
+ttf-noto-nerd|Noto
+ttf-roboto-mono-nerd|Roboto Mono
+ttf-sourcecodepro-nerd|Source Code Pro
+ttf-space-mono-nerd|Space Mono
+ttf-ubuntu-nerd|Ubuntu
+ttf-ubuntu-mono-nerd|Ubuntu Mono
+ttf-zed-mono-nerd|Zed Mono

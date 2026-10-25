@@ -1,28 +1,36 @@
 # Package catalog
 
-This is the complete inventory of `arch/packages/`: every package the bootstrap
-tracks, the profile it lands on, and the reason it is there.
+This is the complete inventory of `arch/packages/`: every required package the
+bootstrap tracks, the profile it lands on, and the reason it is there. The
+catalog also contains the optional Nerd Fonts offered by the interactive font
+step.
 
-The lists are **install-only**. Bootstrap adds missing packages with `--needed`
-and never removes anything. Removing a package is a deliberate manual step.
+The required lists are **install-only**. Bootstrap adds missing packages with
+`--needed` and never removes anything. Removing a package is a deliberate manual
+step. Optional fonts are selected at install time and are likewise never removed
+automatically.
 
 ![Provisioning flow: native Arch and WSL share package lists and dotfiles](assets/provisioning-flow.svg)
 
 ## At a glance
 
-There are **63 tracked package names**:
+There are **63 tracked required package names**:
 
 - **52** are installed on both profiles: 47 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
 - **2** are WSL-only: 1 official package plus 1 AUR package
+
+There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
+not installed by default and are never required by the audit.
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
 | <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./arch/bootstrap.sh --profile native` |
 | <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 54 | `./arch/bootstrap.sh --profile wsl` |
 
-Counts are package names only. `paru` is bootstrapped automatically when an AUR
-list is non-empty, so it is not tracked as a package. `base-devel` is a meta
+Counts are required package names only; the optional fonts are additional.
+`paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
+tracked as a package. `base-devel` is a meta
 package in current Arch, not a group. Counts are current for this revision; the
 files in `arch/packages/` remain the source of truth.
 
@@ -143,6 +151,47 @@ Source: `arch/packages/aur-wsl.txt` — 1 package.
 | --- | :---: | --- | --- |
 | `wslu` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | WSL convenience utilities, including `wslview`. | WSL only. |
 
+## Optional — Nerd Fonts
+
+Source: `arch/packages/fonts.txt` — 18 packages, all from the official `extra`
+repository.
+
+Bootstrap presents these in an interactive menu after package installation.
+Nothing is selected by default: enter numbers or ranges to install a subset, or
+press Enter to skip. Use `--no-fonts` to skip the step, or select explicitly:
+
+```bash
+./arch/bootstrap.sh --profile native --fonts all
+./arch/bootstrap.sh --profile native --fonts "JetBrains Mono,Fira Code"
+./arch/fonts.sh --list
+./arch/fonts.sh --font "Zed Mono"
+```
+
+Installed fonts are recognized by `arch/audit.sh` but are never required. The
+font selection is not persisted; rerun the step or pass `--fonts` to add fonts
+on a later bootstrap.
+
+| Package | Font family |
+| --- | --- |
+| `ttf-cascadia-code-nerd` | Cascadia Code |
+| `ttf-cascadia-mono-nerd` | Cascadia Mono |
+| `ttf-firacode-nerd` | Fira Code |
+| `otf-firamono-nerd` | Fira Mono |
+| `otf-geist-mono-nerd` | Geist Mono |
+| `ttf-hack-nerd` | Hack |
+| `otf-hasklig-nerd` | Hasklig |
+| `ttf-ibmplex-mono-nerd` | IBM Plex Mono |
+| `ttf-jetbrains-mono-nerd` | JetBrains Mono |
+| `ttf-meslo-nerd` | Meslo |
+| `otf-monaspace-nerd` | Monaspace |
+| `ttf-noto-nerd` | Noto |
+| `ttf-roboto-mono-nerd` | Roboto Mono |
+| `ttf-sourcecodepro-nerd` | Source Code Pro |
+| `ttf-space-mono-nerd` | Space Mono |
+| `ttf-ubuntu-nerd` | Ubuntu |
+| `ttf-ubuntu-mono-nerd` | Ubuntu Mono |
+| `ttf-zed-mono-nerd` | Zed Mono |
+
 ## mise-managed toolchains
 
 These are not pacman packages. They are installed by `mise` from the global
@@ -197,6 +246,9 @@ Choose the list by scope:
 | Both profiles | `arch/packages/base.txt` | `arch/packages/aur.txt` |
 | Native only | `arch/packages/native.txt` | `arch/packages/aur-native.txt` |
 | WSL only | `arch/packages/wsl.txt` | `arch/packages/aur-wsl.txt` |
+
+Optional fonts do not use this loop. They are selected at install time from
+`arch/packages/fonts.txt`, and the audit accepts any installed subset.
 
 Removing a package is also two steps: delete the line, then uninstall it
 manually. Bootstrap will not do it for you.
