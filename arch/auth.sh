@@ -27,6 +27,11 @@ SKIP_JIRA=0
 AUTH_INCOMPLETE=0
 AUTH_EMAIL="${AUTH_EMAIL:-}"
 BWS_ACCOUNT="${BWS_ACCOUNT:-personal}"
+if [[ -x "$HOME/.opencode/bin/opencode" ]]; then
+    OPENCODE_BIN="$HOME/.opencode/bin/opencode"
+else
+    OPENCODE_BIN="$(command -v opencode 2>/dev/null || true)"
+fi
 ROOT_RUNNER=run_sudo
 export ROOT_RUNNER
 
@@ -69,7 +74,7 @@ EOF
 }
 
 mcp_list_output() {
-    opencode mcp list 2>/dev/null
+    "$OPENCODE_BIN" mcp list 2>/dev/null
 }
 
 mcp_matches() {
@@ -111,7 +116,7 @@ authenticate_mcp() {
     fi
 
     log "Authenticating $label MCP in OpenCode (a browser window will open)"
-    if ! opencode mcp auth "$name"; then
+    if ! "$OPENCODE_BIN" mcp auth "$name"; then
         warn "$label MCP authentication failed; retry: opencode mcp auth $name"
         AUTH_INCOMPLETE=1
         return
@@ -622,7 +627,7 @@ if ((SKIP_BWS == 0)); then
 fi
 
 if ((SKIP_LINEAR == 0 || SKIP_JIRA == 0)); then
-    if ! command -v opencode >/dev/null 2>&1; then
+    if [[ -z "$OPENCODE_BIN" ]]; then
         warn "opencode is not installed; run arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     else

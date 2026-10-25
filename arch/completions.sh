@@ -14,6 +14,7 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/arch/lib/common.sh"
 
 COMPLETIONS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
+OPENCODE_BIN="${OPENCODE_BIN:-$HOME/.opencode/bin/opencode}"
 MISE_AVAILABLE=0
 DRY_RUN=0
 STRICT=0
@@ -189,6 +190,15 @@ if command -v but >/dev/null 2>&1; then
     generate_direct but but completions fish
 else
     warn "but is not available; skipping but completion"
+    FAILURES=$((FAILURES + 1))
+fi
+
+if [[ -x "$OPENCODE_BIN" ]]; then
+    generate_direct opencode "$OPENCODE_BIN" --completions fish
+elif command -v opencode >/dev/null 2>&1; then
+    generate_direct opencode opencode --completions fish
+else
+    warn "opencode is not available; skipping opencode completion"
     FAILURES=$((FAILURES + 1))
 fi
 

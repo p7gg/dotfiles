@@ -31,7 +31,6 @@ libsecret
 man-db
 mise
 nano
-opencode
 openssh
 pacman-contrib
 reflector

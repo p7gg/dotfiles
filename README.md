@@ -1,8 +1,8 @@
 # Dotfiles and machine provisioning
 
 Personal Arch Linux configuration: chezmoi for user dotfiles, pacman/AUR for
-system packages, mise for development toolchains, and fish as the interactive
-shell.
+system packages, the official installer for the OpenCode CLI, mise for
+development toolchains, and fish as the interactive shell.
 
 Supported targets:
 
@@ -18,9 +18,9 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 67 tracked packages with Native/WSL
-  badges, the 18 optional Nerd Fonts, per-list counts, mise toolchains, and the
-  install/record/audit loop.
+- [Package catalog](docs/packages.md) — all 66 tracked packages with Native/WSL
+  badges, the installer-managed OpenCode CLI, the 18 optional Nerd Fonts,
+  per-list counts, mise toolchains, and the install/record/audit loop.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
   secrets, OpenCode, recovery, and local SVG illustrations.
 - [Authentication and SSH](docs/auth.md) — key, GitHub, gcloud, Tailscale,
@@ -38,6 +38,8 @@ concerns.
 - Use `--non-interactive --name ... --email ...` for unattended provisioning.
 - Use `arch/auth.sh --check` to inspect authentication without changing it.
 - Package reconciliation is install-only. The bootstrap never removes packages.
+- The OpenCode CLI is installer-managed; remove an older pacman `opencode`
+  package once by hand after the user binary is in place.
 - AUR packages execute code at build time. Review them before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
   inspect `chezmoi diff` first.
@@ -235,6 +237,9 @@ Tracked lists live in `arch/packages/`:
 - `fonts.txt` — optional Nerd Fonts; nothing is installed unless you select it
   in the interactive font step
 
+The OpenCode CLI is not in a package list. `arch/bootstrap.sh` installs it from
+the official installer into `~/.opencode/bin`; see [OpenCode](#opencode).
+
 See the [package catalog](docs/packages.md) for every package with its
 environment badge, purpose, and configuration notes.
 
@@ -429,9 +434,8 @@ invoke the `go` command. `~/.go/bin` is added to `PATH` by fish.
 ## Completions
 
 Package-provided fish completions in `/usr/share/fish/vendor_completions.d`
-load automatically. That covers tools such as `gh`, `opencode`, `yt-dlp`,
-`mise`, `chezmoi`, `starship`, `zoxide`, `ripgrep`, `tailscale`, `just`, and
-`atuin`.
+load automatically. That covers tools such as `gh`, `yt-dlp`, `mise`,
+`chezmoi`, `starship`, `zoxide`, `ripgrep`, `tailscale`, `just`, and `atuin`.
 
 `arch/completions.sh` generates the rest into
 `~/.config/fish/completions/`:
@@ -440,6 +444,7 @@ load automatically. That covers tools such as `gh`, `opencode`, `yt-dlp`,
 - npm's bundled `completion.fish`
 - `bun completions`
 - `but completions fish`
+- `opencode --completions fish`
 
 The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 
@@ -452,12 +457,26 @@ The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 
 ## OpenCode
 
-OpenCode is installed from the official `extra` repository via
-`arch/packages/base.txt`. Do not use the self-updater or put
-`~/.opencode/bin` ahead of `/usr/bin`; `just doctor` warns when a self-managed
-binary shadows the package. If an older installer is still on the machine,
-remove `~/.opencode` and its `PATH` line from the shell profile after restarting
-OpenCode.
+The OpenCode CLI is installed from the official script, not from pacman:
+
+```bash
+curl -fsSL https://opencode.ai/v2/install | bash
+```
+
+`arch/bootstrap.sh` runs the installer with `--no-modify-path` on every
+provisioning run, so the binary lands in `~/.opencode/bin/opencode` and stays
+current. Fish adds `~/.opencode/bin` to `PATH` through
+`home/dot_config/fish/conf.d/10-path.fish`; `just doctor` verifies that
+`opencode` resolves there. Update manually with `opencode upgrade`, or rerun
+bootstrap.
+
+The pacman package `opencode` is no longer tracked. If an older machine still
+has it, install the user-managed CLI first and then remove the package once so
+stale system-wide copies and scripts do not keep using `/usr/bin/opencode`:
+
+```bash
+sudo pacman -Rns opencode
+```
 
 The desktop app is a separate native-only AUR package,
 `opencode-desktop-bin` in `arch/packages/aur-native.txt`. It installs

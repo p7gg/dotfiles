@@ -301,8 +301,12 @@ path.
 
 ## OpenCode and MCP
 
-OpenCode comes from the official `extra` package. Do not use the self-updater
-or put `~/.opencode/bin` ahead of `/usr/bin`; `just doctor` catches that.
+The OpenCode CLI comes from the official installer, not pacman. Bootstrap keeps
+it current at `~/.opencode/bin/opencode`, and fish adds that directory to `PATH`.
+If an older machine still has the pacman package, remove it once with
+`sudo pacman -Rns opencode`; `just doctor` warns when the pacman package is
+present or when `opencode` resolves somewhere else. Update with
+`opencode upgrade` or by rerunning bootstrap.
 
 The global OpenCode config tracks three MCP servers:
 

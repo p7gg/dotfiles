@@ -1,6 +1,7 @@
 # Keep user-local binaries ahead of system binaries, with ~/.local/bin before
-# the Go bin directory, and avoid duplicate PATH entries.
-set -l preferred $HOME/.local/bin $HOME/.go/bin
+# the OpenCode installer directory and the Go bin directory, and avoid duplicate
+# PATH entries.
+set -l preferred $HOME/.local/bin $HOME/.opencode/bin $HOME/.go/bin
 set -l new_path
 
 for dir in $preferred

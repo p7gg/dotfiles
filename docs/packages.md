@@ -2,8 +2,8 @@
 
 This is the complete inventory of `arch/packages/`: every required package the
 bootstrap tracks, the profile it lands on, and the reason it is there. The
-catalog also contains the optional Nerd Fonts offered by the interactive font
-step.
+catalog also covers the OpenCode CLI installed by the bootstrap outside pacman
+and the optional Nerd Fonts offered by the interactive font step.
 
 The required lists are **install-only**. Bootstrap adds missing packages with
 `--needed` and never removes anything. Removing a package is a deliberate manual
@@ -14,19 +14,20 @@ automatically.
 
 ## At a glance
 
-There are **67 tracked required package names**:
+There are **66 tracked required package names**:
 
-- **52** are installed on both profiles: 47 official packages plus 5 AUR packages
+- **51** are installed on both profiles: 46 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
 - **6** are WSL-only: 5 official packages plus 1 AUR package
 
 There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
-not installed by default and are never required by the audit.
+not installed by default and are never required by the audit. The OpenCode CLI
+is installer-managed, is not counted here, and is not audited as a package.
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./arch/bootstrap.sh --profile wsl` |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 60 | `./arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 57 | `./arch/bootstrap.sh --profile wsl` |
 
 Counts are required package names only; the optional fonts are additional.
 `paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
@@ -43,11 +44,13 @@ files in `arch/packages/` remain the source of truth.
 | <img src="assets/badge-wsl.svg" alt="WSL" height="20"> | Arch inside WSL only |
 | <img src="assets/badge-aur.svg" alt="AUR" height="18"> | Built from the Arch User Repository |
 
-Everything outside an `aur*.txt` list comes from the official Arch repositories.
+Everything in an `aur*.txt` list is built from the Arch User Repository; the
+other package lists come from the official Arch repositories. The OpenCode CLI
+and mise toolchains are installer-managed and live outside these lists.
 
 ## Both profiles — official repositories
 
-Source: `arch/packages/base.txt` — 47 packages.
+Source: `arch/packages/base.txt` — 46 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -81,7 +84,6 @@ Source: `arch/packages/base.txt` — 47 packages.
 | `man-db` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Manual pages and the `man` command. | — |
 | `mise` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Toolchain manager for Node, Bun, pnpm, and friends. | Global config: `~/.config/mise/config.toml`. |
 | `nano` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Small terminal editor. | Fallback `EDITOR` when Neovim/Vim are absent. |
-| `opencode` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal AI coding agent. | Installed from `extra`; do not use the self-updater. MCP servers live in `~/.config/opencode/opencode.json`. |
 | `openssh` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `ssh`, `ssh-keygen`, and `ssh-agent`. | Also powers Git commit signing. |
 | `pacman-contrib` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `paccache` and other pacman helpers. | `paccache.timer` is enabled when systemd is active. |
 | `reflector` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mirrorlist updater. | Brazil-first config; `reflector.timer` refreshes it. |
@@ -154,6 +156,21 @@ Source: `arch/packages/aur-wsl.txt` — 1 package.
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
 | `wslu` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | WSL convenience utilities, including `wslview`. | WSL only. |
+
+## Installer-managed tools
+
+These are not pacman packages and are not included in the package totals above.
+`arch/bootstrap.sh` installs them into the user's home directory.
+
+| Tool | Source | What it gives you | Notes |
+| --- | --- | --- | --- |
+| `opencode` | `curl -fsSL https://opencode.ai/v2/install` | Terminal AI coding agent. | Installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
+
+The bootstrap installs the CLI with `--no-modify-path` and does not remove
+packages. If an older machine still has the pacman `opencode` package, remove it
+once with `sudo pacman -Rns opencode` after the installer-managed binary is in
+place. `just doctor` warns when the pacman package is present or when `opencode`
+resolves somewhere other than `~/.opencode/bin/opencode`.
 
 ## Optional — Nerd Fonts
 
@@ -255,7 +272,11 @@ Optional fonts do not use this loop. They are selected at install time from
 `arch/packages/fonts.txt`, and the audit accepts any installed subset.
 
 Removing a package is also two steps: delete the line, then uninstall it
-manually. Bootstrap will not do it for you.
+manually. Bootstrap will not do it for you. The same applies when retiring the
+old pacman `opencode` package in favor of the installer-managed CLI.
+
+Installer-managed tools are outside this loop. Update OpenCode with
+`opencode upgrade` or by rerunning `arch/bootstrap.sh`.
 
 ### Inspecting a package
 

@@ -38,16 +38,23 @@ else
     warn "tailscale is not installed"
 fi
 
-if command -v opencode >/dev/null 2>&1; then
-    opencode_path="$(command -v opencode)"
-    if [[ "$opencode_path" != "/usr/bin/opencode" ]]; then
-        warn "opencode resolves to $opencode_path; expected /usr/bin/opencode from extra"
-    fi
-    if [[ ":$PATH:" == *":$HOME/.opencode/bin:"* ]]; then
-        warn "$HOME/.opencode/bin is on PATH and can shadow the extra package"
+opencode_bin="$HOME/.opencode/bin/opencode"
+
+if pacman -Q opencode >/dev/null 2>&1; then
+    warn "pacman package opencode is installed; remove it with: sudo pacman -Rns opencode"
+fi
+
+if [[ -x "$opencode_bin" ]]; then
+    log "==> OpenCode"
+    run_optional "$opencode_bin" --version || true
+    opencode_path="$(command -v opencode || true)"
+    if [[ -z "$opencode_path" ]]; then
+        warn "opencode is not on PATH; expected $opencode_bin"
+    elif [[ "$(realpath -m -- "$opencode_path")" != "$(realpath -m -- "$opencode_bin")" ]]; then
+        warn "opencode resolves to $opencode_path; expected $opencode_bin"
     fi
 else
-    warn "opencode is not installed"
+    warn "opencode is not installed at $opencode_bin; run ./arch/bootstrap.sh"
 fi
 
 log "==> repository"

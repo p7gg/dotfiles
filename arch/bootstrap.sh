@@ -22,6 +22,7 @@ NON_INTERACTIVE=0
 CHECK_ONLY=0
 DO_PACKAGES=1
 DO_FONTS=1
+DO_OPENCODE=1
 DO_DOTFILES=1
 DO_MISE=1
 DO_SERVICES=1
@@ -57,6 +58,7 @@ Options:
                         all or a comma-separated list of numbers, packages, or
                         display names (implies the fonts step)
   --no-fonts            Skip the optional Nerd Fonts step
+  --no-opencode         Skip installing/updating the OpenCode CLI
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
   --no-completions      Skip fish completion generation
@@ -169,6 +171,34 @@ install_packages() {
     ensure_paru "$profile"
     paru_install_file "$REPO_ROOT/arch/packages/aur.txt"
     paru_install_file "$REPO_ROOT/arch/packages/aur-${profile}.txt"
+}
+
+setup_opencode() {
+    local install_url="https://opencode.ai/v2/install"
+    local opencode_bin="$HOME/.opencode/bin/opencode"
+    local version
+
+    if pacman -Q opencode >/dev/null 2>&1; then
+        warn "pacman package 'opencode' is still installed; remove it once with: sudo pacman -Rns opencode"
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would install/update OpenCode from $install_url into $HOME/.opencode/bin"
+        log "Would run: curl -fsSL $install_url | bash -s -- --no-modify-path"
+        return 0
+    fi
+
+    require_cmd curl
+
+    log "Installing/updating OpenCode with the official installer"
+    curl -fsSL "$install_url" | bash -s -- --no-modify-path ||
+        die "OpenCode installation failed; retry: curl -fsSL $install_url | bash"
+
+    [[ -x "$opencode_bin" ]] ||
+        die "OpenCode installer did not create $opencode_bin"
+
+    version="$("$opencode_bin" --version 2>/dev/null | tail -n 1 || true)"
+    log "OpenCode installed at $opencode_bin${version:+ ($version)}"
 }
 
 setup_fonts() {
@@ -683,6 +713,17 @@ check_environment() {
         status=1
     fi
 
+    if ((DO_OPENCODE)); then
+        if ! command -v curl >/dev/null 2>&1; then
+            warn "curl not found; required by the OpenCode installer"
+            status=1
+        fi
+        if ! command -v tar >/dev/null 2>&1; then
+            warn "tar not found; required by the OpenCode installer"
+            status=1
+        fi
+    fi
+
     if ((DO_HOOKS)) && ! command -v lefthook >/dev/null 2>&1; then
         warn "lefthook not found; Git hooks will be skipped"
     fi
@@ -797,6 +838,10 @@ while (($# > 0)); do
         DO_FONTS=0
         shift
         ;;
+    --no-opencode)
+        DO_OPENCODE=0
+        shift
+        ;;
     --no-dotfiles)
         DO_DOTFILES=0
         shift
@@ -896,6 +941,12 @@ else
     if ((DO_FONTS)); then
         log "Skipping optional fonts because packages are disabled"
     fi
+fi
+
+if ((DO_OPENCODE)); then
+    setup_opencode
+else
+    log "Skipping OpenCode CLI"
 fi
 
 if ((DO_SYSTEM)); then
