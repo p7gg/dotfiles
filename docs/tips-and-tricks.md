@@ -287,6 +287,10 @@ pass insert bitwarden/bws-token
 pass show bitwarden/bws-token
 ```
 
+`arch/auth.sh` initializes an empty store automatically when exactly one GPG
+secret key exists. If the store is not initialized yet, `pass insert` fails, so
+create the key and run `pass init` first (or rerun the helper).
+
 Use a read-only machine account token scoped to one project, and rotate it. For
 application secrets, prefer `bws run -- <command>` over exporting a shell full
 of environment variables.

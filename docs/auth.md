@@ -50,6 +50,11 @@ gnome-keyring. In WSL the helper starts one and writes `~/.ssh/agent.env`; fish
 sources that file in new shells and retries it when a stale socket is found. If
 the retry also fails, the shell prints a hint to run `arch/auth.sh`.
 
+On WSL the BWS token is stored in `pass`; create a GPG key with
+`gpg --full-generate-key` if you do not have one. The helper initializes an
+empty password store when exactly one secret key exists, and otherwise prints
+the `pass init <gpg-key-id>` command to run.
+
 Work Cloud Source Repositories setup is partly manual because Google does not
 provide a CLI command to register an SSH key for Cloud Source Repositories.
 The helper prints the steps:

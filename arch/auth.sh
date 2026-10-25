@@ -135,14 +135,62 @@ bws_token_present() {
         secret-tool lookup service bws account "$BWS_ACCOUNT" >/dev/null 2>&1
 }
 
+pass_store_initialized() {
+    local store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+    [[ -s "$store_dir/.gpg-id" ]]
+}
+
+gpg_secret_key_ids() {
+    gpg --list-secret-keys --keyid-format=long --with-colons 2>/dev/null |
+        awk -F: '/^sec:/ { print $5 }' || true
+}
+
+ensure_pass_store() {
+    local key_ids key_count
+
+    if pass_store_initialized; then
+        return 0
+    fi
+
+    if ! command -v gpg >/dev/null 2>&1; then
+        warn "gpg is not installed; run arch/bootstrap.sh"
+        return 1
+    fi
+
+    key_ids="$(gpg_secret_key_ids)"
+    if [[ -z "$key_ids" ]]; then
+        warn "pass is not initialized and no GPG secret key was found"
+        warn "create one with 'gpg --full-generate-key', then run 'pass init <gpg-key-id>'"
+        return 1
+    fi
+
+    key_count="$(wc -l <<<"$key_ids")"
+    if ((key_count > 1)); then
+        warn "pass is not initialized and multiple GPG secret keys exist"
+        warn "initialize it with one of these key IDs: $(tr '\n' ' ' <<<"$key_ids")"
+        warn "run 'pass init <gpg-key-id>', then rerun arch/auth.sh"
+        return 1
+    fi
+
+    log "Initializing pass with GPG key $key_ids"
+    if ! pass init "$key_ids"; then
+        warn "could not initialize pass; run 'pass init $key_ids'"
+        return 1
+    fi
+}
+
 store_bws_token() {
     if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
         if ! command -v pass >/dev/null 2>&1; then
             warn "pass is not installed; run arch/bootstrap.sh"
             return 1
         fi
+        ensure_pass_store || return 1
         log "Storing the BWS access token in pass"
-        pass insert bitwarden/bws-token
+        if ! pass insert bitwarden/bws-token; then
+            warn "could not insert the BWS token into pass"
+            return 1
+        fi
         return
     fi
 

@@ -534,6 +534,19 @@ Optional additions are listed in [docs/decisions.md](docs/decisions.md).
 [the secrets section in docs/tips-and-tricks.md](docs/tips-and-tricks.md#secrets-not-plaintext-at-rest)
 for the manual commands and operational notes.
 
+On WSL, `pass` also needs a GPG key and an initialized password store. If you do
+not have a key yet:
+
+```bash
+gpg --full-generate-key
+gpg --list-secret-keys --keyid-format=long
+pass init <gpg-key-id>
+```
+
+`arch/auth.sh` initializes an empty store automatically when exactly one GPG
+secret key exists; otherwise it prints the `pass init <gpg-key-id>` command to
+run.
+
 ## WSL defaults
 
 WSL defaults:
