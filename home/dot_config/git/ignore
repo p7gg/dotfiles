@@ -1,0 +1,7 @@
+# Global Git ignore.
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
