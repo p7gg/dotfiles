@@ -1,0 +1,4 @@
+[data]
+    name = {{ promptStringOnce . "name" "Your full name" | quote }}
+    email = {{ promptStringOnce . "email" "Your email address" | quote }}
+    work_email = {{ promptStringOnce . "work_email" "Work email address (used under ~/Projects/work)" | quote }}

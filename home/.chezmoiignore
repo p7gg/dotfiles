@@ -1,0 +1,6 @@
+# Runtime state that must never be managed.
+dot_config/fish/fish_variables
+dot_config/fish/fish_history
+dot_config/fish/completions
+dot_config/opencode/service.json
+dot_config/git/allowed_signers
