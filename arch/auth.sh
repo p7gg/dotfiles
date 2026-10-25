@@ -59,7 +59,7 @@ Options:
 
 What this does:
   - ensures a per-machine SSH key exists
-  - starts/reuses an ssh-agent and loads the key
+  - activates the systemd ssh-agent socket and loads the key
   - authenticates `gh` for personal GitHub and uploads the key
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
@@ -411,52 +411,72 @@ if ((have_key)) && [[ -n "$email" ]]; then
     fi
 fi
 
-agent_started=0
 if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
-    if ((DRY_RUN)); then
+    agent_socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ssh-agent.socket"
+    agent_ready=0
+    agent_exported=0
+
+    # On WSL, always prefer the systemd socket so new shells and later sessions
+    # can find it. On native systems, a live session agent (GNOME Keyring) wins.
+    use_session_agent=0
+    if [[ -n "${SSH_AUTH_SOCK:-}" ]] &&
+        { [[ "$SSH_AUTH_SOCK" == "$agent_socket" ]] || ! is_wsl; }; then
+        use_session_agent=1
+    fi
+
+    if ((use_session_agent)); then
         agent_status=0
-        if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
-            agent_status=2
-        else
-            ssh-add -l >/dev/null 2>&1 || agent_status=$?
+        ssh-add -l >/dev/null 2>&1 || agent_status=$?
+        if [[ "$agent_status" -eq 0 || "$agent_status" -eq 1 ]]; then
+            agent_ready=1
         fi
-        if [[ "$agent_status" -ne 0 ]]; then
-            warn "ssh-agent is not ready; would start it and load $KEY"
+    fi
+
+    if ((agent_ready == 0)); then
+        if [[ -S "$agent_socket" ]]; then
+            export SSH_AUTH_SOCK="$agent_socket"
+            unset SSH_AGENT_PID
+            agent_ready=1
+            agent_exported=1
+        elif ! command -v systemctl >/dev/null 2>&1 ||
+            ! systemctl --user show-environment >/dev/null 2>&1; then
+            warn "no SSH agent and no systemd user manager; set SSH_AUTH_SOCK manually"
             AUTH_INCOMPLETE=1
+        elif ((DRY_RUN)); then
+            warn "ssh-agent socket is not active; would run: systemctl --user enable --now ssh-agent.socket"
+            AUTH_INCOMPLETE=1
+        elif systemctl --user enable --now ssh-agent.socket >/dev/null 2>&1; then
+            export SSH_AUTH_SOCK="$agent_socket"
+            unset SSH_AGENT_PID
+            agent_ready=1
+            agent_exported=1
         else
-            log "ssh-agent is running"
+            warn "could not enable ssh-agent.socket; check: systemctl --user status ssh-agent.socket"
+            AUTH_INCOMPLETE=1
         fi
-    else
-        if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
-            eval "$(ssh-agent -s)" >/dev/null
-            agent_started=1
-        else
-            agent_status=0
-            ssh-add -l >/dev/null 2>&1 || agent_status=$?
-            if [[ "$agent_status" -eq 2 ]]; then
-                eval "$(ssh-agent -s)" >/dev/null
-                agent_started=1
-            fi
-        fi
+    fi
 
-        if ((agent_started)); then
-            {
-                printf "set -gx SSH_AUTH_SOCK '%s'\n" "$SSH_AUTH_SOCK"
-                printf "set -gx SSH_AGENT_PID '%s'\n" "${SSH_AGENT_PID:-}"
-            } >"$HOME/.ssh/agent.env"
-            chmod 600 "$HOME/.ssh/agent.env"
-        fi
-
-        if ! ssh-add "$KEY"; then
+    key_fingerprint="$(ssh-keygen -lf "${KEY}.pub" | awk '{print $2}')"
+    if ((agent_ready)); then
+        agent_keys="$(ssh-add -l 2>/dev/null || true)"
+        if grep -qF "$key_fingerprint" <<<"$agent_keys"; then
+            log "SSH key is already loaded in the agent"
+        elif ((DRY_RUN)); then
+            warn "SSH key is not loaded; would run: ssh-add $KEY"
+            AUTH_INCOMPLETE=1
+        elif ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+            warn "SSH key is not loaded; run 'ssh-add $KEY' in a terminal"
+            AUTH_INCOMPLETE=1
+        elif ! ssh-add "$KEY"; then
             warn "could not load $KEY into the ssh-agent"
             AUTH_INCOMPLETE=1
         fi
     fi
 
-    log "SSH key fingerprint: $(ssh-keygen -lf "${KEY}.pub" | awk '{print $2}')"
-    if ((agent_started)); then
-        log "A new ssh-agent was started; new fish shells will load ~/.ssh/agent.env."
-        log "For the current fish shell, run: source ~/.ssh/agent.env"
+    log "SSH key fingerprint: $key_fingerprint"
+    if ((agent_exported)); then
+        log "SSH agent socket: $SSH_AUTH_SOCK (new fish shells pick it up automatically)"
+        log "For the current fish shell: set -gx SSH_AUTH_SOCK '$SSH_AUTH_SOCK'"
     fi
 fi
 

@@ -10,4 +10,3 @@ dot_config/bws/state
 # gh auth state can contain an OAuth token; only config.yml is managed.
 dot_config/gh/hosts.yml
 dot_config/git/allowed_signers
-private_dot_ssh/agent.env

@@ -35,7 +35,6 @@ home/dot_config/bws/state
 home/dot_config/fish/fish_variables
 home/dot_config/fish/fish_history
 home/dot_config/fish/completions/
-home/private_dot_ssh/agent.env
 
 # Credential files that must stay out of the repository.
 .env

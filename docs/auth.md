@@ -46,9 +46,11 @@ needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
 `--bws-account NAME` if your keyring label is not `personal`. For non-interactive
 runs, pass `--email` and `--non-interactive`; missing optional pieces are
 reported instead of prompted for. Native GNOME already has an SSH agent through
-gnome-keyring. In WSL the helper starts one and writes `~/.ssh/agent.env`; fish
-sources that file in new shells and retries it when a stale socket is found. If
-the retry also fails, the shell prints a hint to run `arch/auth.sh`.
+gnome-keyring. On WSL the helper enables the `ssh-agent.socket` user unit, so
+systemd starts an agent on first use at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
+Fish exports that path in new shells and runs `ssh-add` when the agent has no
+keys, so a protected key prompts once per boot. There is no socket cache to go
+stale across restarts.
 
 On WSL the BWS token is stored in `pass`; create a GPG key with
 `gpg --full-generate-key` if you do not have one. The helper initializes an
