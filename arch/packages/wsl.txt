@@ -1,7 +1,13 @@
 # Extra packages for Arch inside WSL.
-# WSL is CLI-only here: no GNOME, PipeWire, NetworkManager, or hardware packages.
+# WSL is CLI-only here: no GNOME, PipeWire, or NetworkManager.
 
+# Hardware accelerated rendering through the Windows GPU. mesa ships the d3d12
+# Gallium driver for OpenGL and vulkan-dzn the experimental dzn Vulkan driver;
+# lib32-vulkan-icd-loader is omitted because multilib stays disabled here.
+mesa
 pass
+vulkan-dzn
+vulkan-icd-loader
 
 # Desktop integration helpers for CLI tools that call xdg-open/xdg-mime.
 xdg-utils

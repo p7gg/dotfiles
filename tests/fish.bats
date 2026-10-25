@@ -84,3 +84,27 @@ teardown() {
     [ "$status" -eq 0 ]
     [ "$(git branch --show-current)" = "from-args" ]
 }
+
+@test "WSL GPU drivers are selected inside WSL" {
+    run env -u GALLIUM_DRIVER -u LIBVA_DRIVER_NAME WSL_DISTRO_NAME=arch \
+        fish -c "source '$REPO_ROOT/home/dot_config/fish/conf.d/50-wsl-gpu.fish'; echo \$GALLIUM_DRIVER \$LIBVA_DRIVER_NAME"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "d3d12 d3d12" ]
+}
+
+@test "WSL GPU environment keeps an explicit driver override" {
+    run env WSL_DISTRO_NAME=arch GALLIUM_DRIVER=zink \
+        fish -c "source '$REPO_ROOT/home/dot_config/fish/conf.d/50-wsl-gpu.fish'; echo \$GALLIUM_DRIVER"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "zink" ]
+}
+
+@test "WSL GPU environment stays unset outside WSL" {
+    run env -u WSL_DISTRO_NAME -u GALLIUM_DRIVER -u LIBVA_DRIVER_NAME \
+        fish -c "source '$REPO_ROOT/home/dot_config/fish/conf.d/50-wsl-gpu.fish'; echo \"[\$GALLIUM_DRIVER][\$LIBVA_DRIVER_NAME]\""
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "[][]" ]
+}

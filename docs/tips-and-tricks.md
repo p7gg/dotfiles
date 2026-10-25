@@ -223,6 +223,14 @@ GUI notes:
 - WSLg makes Linux GUI apps appear next to Windows. GitButler's GUI needs WSLg.
 - Windows VS Code can connect to WSL through the Remote WSL extension.
 - `wslview <url>` (from `wslu`) opens a URL in the Windows browser.
+- Rendering is GPU accelerated: `arch/packages/wsl.txt` installs `mesa` (the
+  `d3d12` Gallium driver) plus `vulkan-dzn` and `vulkan-icd-loader`, and
+  `conf.d/50-wsl-gpu.fish` exports `GALLIUM_DRIVER=d3d12` and
+  `LIBVA_DRIVER_NAME=d3d12` when `WSL_DISTRO_NAME` is set. Verify with
+  `glxinfo -B` (look for `d3d12`, not `llvmpipe`).
+- On Intel GPUs OpenGL can still fall back to `llvmpipe` because Mesa expects
+  `libedit.so.2`. The wiki workaround is a system symlink, so it is manual:
+  `sudo ln -s /usr/lib/libedit.so /usr/lib/libedit.so.2`.
 
 systemd is optional. To enable it, rerun the root init script from Windows or
 inside WSL, then restart the distro:

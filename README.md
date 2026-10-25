@@ -226,7 +226,8 @@ Tracked lists live in `arch/packages/`:
 
 - `base.txt` — common CLI tools, fish, chezmoi, mise, git, Git tooling, atuin, tealdeer, dust/duf, kubectl, lint/test tooling, system maintenance, and build tools
 - `native.txt` — native-only extras: `fwupd`, `restic`, `ufw`, `zellij`, and `gnome-tweaks`
-- `wsl.txt` — CLI-only WSL additions
+- `wsl.txt` — CLI-only WSL additions, plus the `mesa`/`vulkan-dzn` drivers that
+  enable hardware accelerated rendering through the Windows GPU
 - `aur.txt` — AUR packages used by both profiles: GitButler CLI/GUI, `bws-bin`, `google-cloud-cli`, the GKE auth plugin, and `lefthook`
 - `aur-native.txt` — native-only AUR packages: `brave-bin`,
   `opencode-desktop-bin`, `t3code-nightly-bin`, and `visual-studio-code-bin`

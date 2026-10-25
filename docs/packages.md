@@ -14,11 +14,11 @@ automatically.
 
 ## At a glance
 
-There are **63 tracked required package names**:
+There are **67 tracked required package names**:
 
 - **52** are installed on both profiles: 47 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
-- **2** are WSL-only: 1 official package plus 1 AUR package
+- **6** are WSL-only: 5 official packages plus 1 AUR package
 
 There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
 not installed by default and are never required by the audit.
@@ -26,7 +26,7 @@ not installed by default and are never required by the audit.
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
 | <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 54 | `./arch/bootstrap.sh --profile wsl` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./arch/bootstrap.sh --profile wsl` |
 
 Counts are required package names only; the optional fonts are additional.
 `paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
@@ -137,11 +137,15 @@ Source: `arch/packages/aur-native.txt` — 4 packages.
 
 ## WSL only — official repositories
 
-Source: `arch/packages/wsl.txt` — 1 package.
+Source: `arch/packages/wsl.txt` — 5 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
+| `mesa` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | OpenGL and the `d3d12` Gallium driver. | Provides GPU rendering; without it WSLg falls back to `llvmpipe`. |
 | `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `arch/auth.sh` stores it. |
+| `vulkan-dzn` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Experimental `dzn` (`microsoft-experimental`) Vulkan driver. | Upstream calls the driver experimental; expect rough edges. |
+| `vulkan-icd-loader` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Loader that lets Vulkan applications find `vulkan-dzn`. | `lib32-vulkan-icd-loader` is deliberately absent; multilib stays disabled. |
+| `xdg-utils` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | `xdg-open`, `xdg-mime`, and related desktop integration helpers. | Lets CLI tools that expect a desktop opener resolve URLs and MIME types via `wslu`/WSLg. |
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
