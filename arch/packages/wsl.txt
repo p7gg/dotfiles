@@ -3,6 +3,9 @@
 
 pass
 
+# Desktop integration helpers for CLI tools that call xdg-open/xdg-mime.
+xdg-utils
+
 # Examples:
 # neovim
 # tmux
