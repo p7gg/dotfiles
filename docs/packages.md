@@ -96,7 +96,7 @@ automatically the first time an AUR list is non-empty.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
-| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL). |
+| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL); `arch/auth.sh` stores it once. |
 | `gitbutler-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GitButler GUI and the `but` CLI. | Do not add `gitbutler-cli-bin`; both packages own `/usr/bin/but`. WSL GUI needs WSLg. |
 | `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `arch/auth.sh` handles OAuth login and application default credentials. |
 | `google-cloud-cli-component-gke-gcloud-auth-plugin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GKE authentication plugin for `kubectl`. | Used by `gcloud container clusters get-credentials`. |
@@ -129,7 +129,7 @@ Source: `arch/packages/wsl.txt` — 1 package.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
-| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first. |
+| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `arch/auth.sh` stores it. |
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 

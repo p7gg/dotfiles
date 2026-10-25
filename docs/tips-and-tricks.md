@@ -248,7 +248,11 @@ add explicit Windows helpers.
 ## Secrets: not plaintext at rest
 
 The `bws` fish wrapper never exports the token globally. It loads the token only
-for the `bws` process and its children.
+for the `bws` process and its children. `./arch/auth.sh` offers to store the
+token once, skips the prompt when an entry already exists, and accepts
+`--skip-bws` to leave it manual. Because the wrapper is a fish function, bash
+scripts and systemd units do not inherit the token; pass `BWS_ACCESS_TOKEN`
+explicitly in those contexts.
 
 **Native GNOME** <img src="assets/badge-native.svg" alt="Native" height="18">
 

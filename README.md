@@ -442,12 +442,15 @@ It will:
 - add the key to personal GitHub for both authentication and signing
 - authenticate `gcloud` and application default credentials
 - authenticate Tailscale when the daemon is running
+- offer to store the Bitwarden Secrets Manager token in GNOME Keyring or `pass`
 - authenticate the Linear and Jira MCP servers in OpenCode with OAuth
 - print the public key and the Cloud Source Repositories registration URL
 
 The helper skips MCP sign-in when a server is already connected. Use
 `--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
-needs no sign-in. Native GNOME already has an SSH agent through gnome-keyring.
+needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
+`--bws-account NAME` if your keyring label is not `personal`. Native GNOME
+already has an SSH agent through gnome-keyring.
 In WSL the helper starts one and writes `~/.ssh/agent.env`; fish sources that
 file in new shells.
 
@@ -532,11 +535,14 @@ I would avoid `merge.ff = only` unless every repo enforces linear history.
 
 The token is loaded by the fish wrapper in
 `home/dot_config/fish/functions/bws.fish`, not by a plaintext file.
+`./arch/auth.sh` offers to store it once: it detects an existing keyring or
+`pass` entry and otherwise prompts for the token. Skip that step with
+`--skip-bws`.
 
 ### Native GNOME
 
 GNOME Keyring is the native desktop secret service. Store the machine-account
-token interactively:
+token interactively (the auth helper offers this too):
 
 ```bash
 secret-tool store --label='BWS access token' service bws account personal
@@ -548,7 +554,8 @@ is only available to the `bws` process and its children.
 ### WSL
 
 GNOME Keyring is normally not running in WSL. Use `pass` instead. Generate a
-GPG key first if you do not have one, then initialize the store:
+GPG key first if you do not have one, then initialize the store (the auth
+helper offers to run `pass insert` for you):
 
 ```bash
 gpg --full-generate-key
@@ -557,11 +564,17 @@ pass insert bitwarden/bws-token
 ```
 
 The same fish wrapper reads `pass show bitwarden/bws-token` when
-`WSL_DISTRO_NAME` is set.
+`WSL_DISTRO_NAME` is set. The auth helper uses the same path.
 
 ### Notes
 
 - Use a read-only machine account token scoped to one project, with rotation.
+- The wrapper is a fish function. `bws` called from bash, scripts, or systemd
+  units does not inherit `BWS_ACCESS_TOKEN`; set it explicitly for that process
+  rather than exporting it in a global profile.
+- `BWS_ACCOUNT` selects the keyring `account` label on native (default:
+  `personal`). `arch/auth.sh` honors the variable; use `--bws-account NAME`
+  when running it outside fish with a different label.
 - Environment variables are visible to same-user processes. The goal here is
   “not plaintext at rest,” not process isolation. Use `bws run` for application
   secrets instead of exporting everything into your shell.

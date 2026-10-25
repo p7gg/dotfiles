@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Interactive SSH/personal GitHub/gcloud/Tailscale/OpenCode MCP authentication
-# helper.
+# Interactive SSH/personal GitHub/gcloud/Tailscale/BWS/OpenCode MCP
+# authentication helper.
 #
 # This does not run during bootstrap. Run it once per machine after the
 # packages and dotfiles are applied.
@@ -13,9 +13,11 @@ GENERATE_KEY=0
 SKIP_GH=0
 SKIP_GCLOUD=0
 SKIP_TAILSCALE=0
+SKIP_BWS=0
 SKIP_LINEAR=0
 SKIP_JIRA=0
 AUTH_INCOMPLETE=0
+BWS_ACCOUNT="${BWS_ACCOUNT:-personal}"
 
 usage() {
     cat <<'EOF'
@@ -27,6 +29,8 @@ Options:
   --skip-gh          Do not configure or authenticate the GitHub CLI
   --skip-gcloud      Do not configure or authenticate the gcloud CLI
   --skip-tailscale   Do not authenticate Tailscale
+  --skip-bws         Do not set up the Bitwarden Secrets Manager token
+  --bws-account NAME Keyring account label for the BWS token (default: personal)
   --skip-linear      Do not authenticate the Linear MCP server
   --skip-jira        Do not authenticate the Jira MCP server
   --skip-mcp         Do not authenticate the Linear or Jira MCP servers
@@ -39,6 +43,7 @@ What this does:
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
   - authenticates Tailscale when its daemon is running
+  - offers to store the Bitwarden Secrets Manager token in Keyring or `pass`
   - authenticates the Linear and Jira MCP servers in OpenCode
   - prints Cloud Source Repositories SSH registration instructions for work
 
@@ -109,6 +114,35 @@ authenticate_mcp() {
     fi
 }
 
+bws_token_present() {
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        command -v pass >/dev/null 2>&1 &&
+            pass show bitwarden/bws-token >/dev/null 2>&1
+        return
+    fi
+    command -v secret-tool >/dev/null 2>&1 &&
+        secret-tool lookup service bws account "$BWS_ACCOUNT" >/dev/null 2>&1
+}
+
+store_bws_token() {
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        if ! command -v pass >/dev/null 2>&1; then
+            warn "pass is not installed; run arch/bootstrap.sh"
+            return 1
+        fi
+        log "Storing the BWS access token in pass"
+        pass insert bitwarden/bws-token
+        return
+    fi
+
+    if ! command -v secret-tool >/dev/null 2>&1; then
+        warn "secret-tool is not installed; run arch/bootstrap.sh"
+        return 1
+    fi
+    log "Storing the BWS access token in GNOME Keyring"
+    secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"
+}
+
 while (($# > 0)); do
     case "$1" in
     --generate-key)
@@ -134,6 +168,19 @@ while (($# > 0)); do
         ;;
     --skip-tailscale)
         SKIP_TAILSCALE=1
+        shift
+        ;;
+    --skip-bws)
+        SKIP_BWS=1
+        shift
+        ;;
+    --bws-account)
+        [[ $# -ge 2 ]] || die "--bws-account requires an argument"
+        BWS_ACCOUNT="$2"
+        shift 2
+        ;;
+    --bws-account=*)
+        BWS_ACCOUNT="${1#*=}"
         shift
         ;;
     --skip-linear)
@@ -322,6 +369,30 @@ if ((SKIP_TAILSCALE == 0)); then
         if ! sudo tailscale set --operator="$USER"; then
             warn "could not set Tailscale operator"
             AUTH_INCOMPLETE=1
+        fi
+    fi
+fi
+
+if ((SKIP_BWS == 0)); then
+    if ! command -v bws >/dev/null 2>&1; then
+        warn "bws is not installed; run arch/bootstrap.sh and rerun this script"
+        AUTH_INCOMPLETE=1
+    elif bws_token_present; then
+        log "Bitwarden Secrets Manager token is already stored"
+    elif [[ ! -t 0 ]]; then
+        warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
+        AUTH_INCOMPLETE=1
+    else
+        read -r -p "Store the Bitwarden Secrets Manager access token now? [y/N] " bws_answer
+        if [[ "$bws_answer" =~ ^[Yy]$ ]]; then
+            if store_bws_token; then
+                log "Bitwarden Secrets Manager token stored"
+            else
+                warn "could not store the BWS token; see README: Bitwarden Secrets Manager"
+                AUTH_INCOMPLETE=1
+            fi
+        else
+            log "Skipping BWS token setup; see README: Bitwarden Secrets Manager"
         fi
     fi
 fi
