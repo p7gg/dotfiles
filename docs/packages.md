@@ -302,8 +302,9 @@ is why the default `--check` does not fail on untracked packages.
 - The native list intentionally does not include the `gnome` group, the kernel,
   firmware, microcode, or GPU drivers. Those belong to the OS installation step.
 - `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`,
-  `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `pass` and
-  `wslu` are WSL-only.
+  `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `mesa`,
+  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `xdg-utils`, and `wslu` are
+  WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`.
 
