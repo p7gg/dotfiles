@@ -44,13 +44,16 @@ concerns.
 │       │   ├── config.fish
 │       │   ├── conf.d/
 │       │   └── functions/bws.fish
+│       ├── gh/config.yml
 │       ├── git/
 │       │   ├── ignore
 │       │   └── work.inc.tmpl
 │       ├── go/env.tmpl
+│       ├── mimeapps.list
 │       ├── mise/config.toml
 │       ├── opencode/cli.json
-│       └── starship.toml
+│       ├── starship.toml
+│       └── zed/settings.json
 ├── arch/
 │   ├── bootstrap.sh              # user-level provisioning
 │   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale auth
@@ -366,6 +369,13 @@ Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings. OpenCode provider credentials live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
 local service password.
+
+## Editor and app defaults
+
+Chezmoi manages `~/.config/zed/settings.json` (keymap, fonts, telemetry off) and
+`~/.config/mimeapps.list` for default application associations. The GitHub CLI
+config is tracked as `~/.config/gh/config.yml`; `hosts.yml` stays untracked
+because it is machine auth state and can contain an OAuth token.
 
 ## Authentication and SSH
 

@@ -3,4 +3,6 @@ dot_config/fish/fish_variables
 dot_config/fish/fish_history
 dot_config/fish/completions
 dot_config/opencode/service.json
+# gh auth state can contain an OAuth token; only config.yml is managed.
+dot_config/gh/hosts.yml
 dot_config/git/allowed_signers
