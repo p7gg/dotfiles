@@ -18,7 +18,7 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 61 tracked packages with Native/WSL
+- [Package catalog](docs/packages.md) — all 63 tracked packages with Native/WSL
   badges, per-list counts, mise toolchains, and the install/record/audit loop.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
   secrets, OpenCode, recovery, and local SVG illustrations.
@@ -223,7 +223,8 @@ Tracked lists live in `arch/packages/`:
 - `native.txt` — native-only extras: `fwupd`, `restic`, `ufw`, `zellij`, and `gnome-tweaks`
 - `wsl.txt` — CLI-only WSL additions
 - `aur.txt` — AUR packages used by both profiles: GitButler CLI/GUI, `bws-bin`, `google-cloud-cli`, the GKE auth plugin, and `lefthook`
-- `aur-native.txt` — native-only AUR packages: `t3code-nightly-bin` and `visual-studio-code-bin`
+- `aur-native.txt` — native-only AUR packages: `brave-bin`,
+  `opencode-desktop-bin`, `t3code-nightly-bin`, and `visual-studio-code-bin`
 - `aur-wsl.txt` — WSL-only AUR packages: `wslu`
 
 See the [package catalog](docs/packages.md) for every package with its
@@ -233,12 +234,14 @@ The native package list deliberately does **not** include the `gnome` group,
 the kernel, firmware, microcode, or GPU drivers. Those belong to the OS
 installation step and are machine-specific.
 
-`google-cloud-cli`, `bws-bin`, `gitbutler-bin`, and
-`t3code-nightly-bin` are in the AUR; the bootstrap bootstraps `paru` when any
-AUR list is non-empty. On WSL, the GitButler GUI requires WSLg.
+`google-cloud-cli`, `bws-bin`, `gitbutler-bin`, `brave-bin`,
+`opencode-desktop-bin`, and `t3code-nightly-bin` are in the AUR; the bootstrap
+bootstraps `paru` when any AUR list is non-empty. On WSL, the GitButler GUI
+requires WSLg.
 `gitbutler-bin` includes both the GUI and the `but` CLI; do not add
 `gitbutler-cli-bin`, because both packages own `/usr/bin/but`.
-`visual-studio-code-bin` is installed only on the native profile.
+`visual-studio-code-bin`, `brave-bin`, and `opencode-desktop-bin` are installed
+only on the native profile.
 `yt-dlp` is installed without `ffmpeg`; add `ffmpeg` if you need stream merging
 or audio extraction.
 
@@ -417,6 +420,11 @@ OpenCode is installed from the official `extra` repository via
 binary shadows the package. If an older installer is still on the machine,
 remove `~/.opencode` and its `PATH` line from the shell profile after restarting
 OpenCode.
+
+The desktop app is a separate native-only AUR package,
+`opencode-desktop-bin` in `arch/packages/aur-native.txt`. It installs
+`/usr/bin/opencode-desktop` and runs on system `electron44`; it does not replace
+the `opencode` CLI.
 
 Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings, and `~/.config/opencode/opencode.json` with the global MCP

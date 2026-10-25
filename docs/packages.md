@@ -10,15 +10,15 @@ and never removes anything. Removing a package is a deliberate manual step.
 
 ## At a glance
 
-There are **61 tracked package names**:
+There are **63 tracked package names**:
 
 - **52** are installed on both profiles: 47 official packages plus 5 AUR packages
-- **7** are native-only: 5 official packages plus 2 AUR packages
+- **9** are native-only: 5 official packages plus 4 AUR packages
 - **2** are WSL-only: 1 official package plus 1 AUR package
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 59 | `./arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./arch/bootstrap.sh --profile native` |
 | <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 54 | `./arch/bootstrap.sh --profile wsl` |
 
 Counts are package names only. `paru` is bootstrapped automatically when an AUR
@@ -118,10 +118,12 @@ Source: `arch/packages/native.txt` — 5 packages.
 
 ## Native only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `arch/packages/aur-native.txt` — 2 packages.
+Source: `arch/packages/aur-native.txt` — 4 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
+| `brave-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Brave browser with built-in ad and tracker blocking. | Binary release; native only. |
+| `opencode-desktop-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | OpenCode desktop app, alongside the `opencode` CLI. | Runs on system `electron44`; native only. |
 | `t3code-nightly-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Nightly desktop control surface for local coding agents. | Nightly build; native only. |
 | `visual-studio-code-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Microsoft Visual Studio Code. | Native only by design. |
 
@@ -243,8 +245,9 @@ is why the default `--check` does not fail on untracked packages.
   manually started `tailscaled`.
 - The native list intentionally does not include the `gnome` group, the kernel,
   firmware, microcode, or GPU drivers. Those belong to the OS installation step.
-- `visual-studio-code-bin`, `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are
-  native-only. `pass` and `wslu` are WSL-only.
+- `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`,
+  `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `pass` and
+  `wslu` are WSL-only.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`.
 

@@ -2,5 +2,7 @@
 # The bootstrap installs this file in addition to aur.txt when the native
 # profile is selected.
 
+brave-bin
+opencode-desktop-bin
 t3code-nightly-bin
 visual-studio-code-bin
