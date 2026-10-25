@@ -18,7 +18,7 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 63 tracked packages with Native/WSL
+- [Package catalog](docs/packages.md) — all 67 tracked packages with Native/WSL
   badges, the 18 optional Nerd Fonts, per-list counts, mise toolchains, and the
   install/record/audit loop.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
