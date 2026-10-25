@@ -683,7 +683,7 @@ fi
 
 log "Bootstrap complete."
 if ((DRY_RUN == 0 && DO_DOTFILES)); then
-    log "Next: ./arch/auth.sh --generate-key  (SSH, personal GitHub, gcloud)"
+    log "Next: ./arch/auth.sh --generate-key  (SSH, personal GitHub, gcloud, Linear/Jira MCP)"
 fi
 if ((DRY_RUN == 0 && DO_SHELL)); then
     log "Log out and back in (or start a new shell) to pick up fish and mise."

@@ -51,12 +51,14 @@ concerns.
 │       ├── go/env.tmpl
 │       ├── mimeapps.list
 │       ├── mise/config.toml
-│       ├── opencode/cli.json
+│       ├── opencode/
+│       │   ├── cli.json
+│       │   └── opencode.json
 │       ├── starship.toml
 │       └── zed/settings.json
 ├── arch/
 │   ├── bootstrap.sh              # user-level provisioning
-│   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale auth
+│   ├── auth.sh                   # one-time SSH/gh/gcloud/tailscale/MCP auth
 │   ├── completions.sh            # fish completion generation
 │   ├── wsl-init.sh               # one-time WSL root setup
 │   ├── audit.sh                  # package drift report
@@ -366,7 +368,22 @@ The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 ## OpenCode
 
 Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
-tree settings. OpenCode provider credentials live outside the repo, and
+tree settings, and `~/.config/opencode/opencode.json` with the global MCP
+servers:
+
+- `linear` — Linear's remote MCP server at `https://mcp.linear.app/mcp` (OAuth)
+- `jira` — Atlassian's remote MCP server for Jira, Confluence, and related
+  products at `https://mcp.atlassian.com/v2/mcp` (OAuth)
+- `context7` — Context7 documentation lookup at `https://mcp.context7.com/mcp`
+  (no authentication required)
+
+`arch/auth.sh` signs in to Linear and Jira through their OAuth flows. To
+authenticate later, run `opencode mcp auth linear` or `opencode mcp auth jira`,
+or use `/mcps` in OpenCode. Context7 works without an API key; set
+`CONTEXT7_API_KEY` and add it as a `CONTEXT7_API_KEY` header in `opencode.json`
+only if you want the higher rate limits.
+
+OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
 local service password.
 
@@ -409,10 +426,14 @@ It will:
 - add the key to personal GitHub for both authentication and signing
 - authenticate `gcloud` and application default credentials
 - authenticate Tailscale when the daemon is running
+- authenticate the Linear and Jira MCP servers in OpenCode with OAuth
 - print the public key and the Cloud Source Repositories registration URL
 
-Native GNOME already has an SSH agent through gnome-keyring. In WSL the helper
-starts one and writes `~/.ssh/agent.env`; fish sources that file in new shells.
+The helper skips MCP sign-in when a server is already connected. Use
+`--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
+needs no sign-in. Native GNOME already has an SSH agent through gnome-keyring.
+In WSL the helper starts one and writes `~/.ssh/agent.env`; fish sources that
+file in new shells.
 
 Work Cloud Source Repositories setup is partly manual because Google does not
 provide a CLI command to register an SSH key for Cloud Source Repositories.
@@ -466,7 +487,8 @@ ssh -p 2022 -T <work-email>@source.developers.google.com
 If you prefer to manage authentication yourself, use the individual commands
 above; the helper only automates them. It exits nonzero when a required
 component is missing or a requested authentication step is incomplete; use
-`--skip-gh`, `--skip-gcloud`, or `--skip-tailscale` for intentional skips.
+`--skip-gh`, `--skip-gcloud`, `--skip-tailscale`, `--skip-linear`,
+`--skip-jira`, or `--skip-mcp` for intentional skips.
 
 ## Git defaults
 
@@ -621,7 +643,7 @@ The repo is intentionally not automatically updating packages during
 - Private SSH keys, GPG keys, Bitwarden tokens, password stores
 - Restic repository/password and backup schedule
 - Tailscale account authentication and ACLs
-- OpenCode provider credentials
+- OpenCode provider credentials and MCP OAuth tokens
 - Windows apps, WSL installation, Windows Terminal settings
 - `/etc` generally; `wsl-init.sh` only handles the WSL-specific bootstrap files
 

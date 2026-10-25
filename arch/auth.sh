@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Interactive SSH/personal GitHub/gcloud/Tailscale authentication helper.
+# Interactive SSH/personal GitHub/gcloud/Tailscale/OpenCode MCP authentication
+# helper.
 #
 # This does not run during bootstrap. Run it once per machine after the
 # packages and dotfiles are applied.
@@ -12,6 +13,8 @@ GENERATE_KEY=0
 SKIP_GH=0
 SKIP_GCLOUD=0
 SKIP_TAILSCALE=0
+SKIP_LINEAR=0
+SKIP_JIRA=0
 AUTH_INCOMPLETE=0
 
 usage() {
@@ -24,6 +27,9 @@ Options:
   --skip-gh          Do not configure or authenticate the GitHub CLI
   --skip-gcloud      Do not configure or authenticate the gcloud CLI
   --skip-tailscale   Do not authenticate Tailscale
+  --skip-linear      Do not authenticate the Linear MCP server
+  --skip-jira        Do not authenticate the Jira MCP server
+  --skip-mcp         Do not authenticate the Linear or Jira MCP servers
   -h, --help         Show this help
 
 What this does:
@@ -33,6 +39,7 @@ What this does:
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
   - authenticates Tailscale when its daemon is running
+  - authenticates the Linear and Jira MCP servers in OpenCode
   - prints Cloud Source Repositories SSH registration instructions for work
 
 SSH commit signing is configured by chezmoi. Work projects under
@@ -64,6 +71,44 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
+mcp_list_output() {
+    opencode mcp list 2>/dev/null || true
+}
+
+mcp_matches() {
+    local output="$1" name="$2" state="$3"
+    grep -Eq "(^|[[:space:]])${name}[[:space:]]+${state}([[:space:]]|$)" <<<"$output"
+}
+
+authenticate_mcp() {
+    local name="$1" label="$2" output
+    output="$(mcp_list_output)"
+    if mcp_matches "$output" "$name" "connected"; then
+        log "$label MCP is already connected"
+        return
+    fi
+    if ! mcp_matches "$output" "$name" "needs authentication"; then
+        warn "$label MCP is not waiting for authentication; check: opencode mcp list"
+        AUTH_INCOMPLETE=1
+        return
+    fi
+
+    log "Authenticating $label MCP in OpenCode (a browser window will open)"
+    if ! opencode mcp auth "$name"; then
+        warn "$label MCP authentication failed; retry: opencode mcp auth $name"
+        AUTH_INCOMPLETE=1
+        return
+    fi
+
+    output="$(mcp_list_output)"
+    if mcp_matches "$output" "$name" "connected"; then
+        log "$label MCP connected"
+    else
+        warn "$label MCP is still not connected; check: opencode mcp list"
+        AUTH_INCOMPLETE=1
+    fi
+}
+
 while (($# > 0)); do
     case "$1" in
     --generate-key)
@@ -89,6 +134,19 @@ while (($# > 0)); do
         ;;
     --skip-tailscale)
         SKIP_TAILSCALE=1
+        shift
+        ;;
+    --skip-linear)
+        SKIP_LINEAR=1
+        shift
+        ;;
+    --skip-jira)
+        SKIP_JIRA=1
+        shift
+        ;;
+    --skip-mcp)
+        SKIP_LINEAR=1
+        SKIP_JIRA=1
         shift
         ;;
     -h | --help)
@@ -264,6 +322,20 @@ if ((SKIP_TAILSCALE == 0)); then
         if ! sudo tailscale set --operator="$USER"; then
             warn "could not set Tailscale operator"
             AUTH_INCOMPLETE=1
+        fi
+    fi
+fi
+
+if ((SKIP_LINEAR == 0 || SKIP_JIRA == 0)); then
+    if ! command -v opencode >/dev/null 2>&1; then
+        warn "opencode is not installed; run arch/bootstrap.sh and rerun this script"
+        AUTH_INCOMPLETE=1
+    else
+        if ((SKIP_LINEAR == 0)); then
+            authenticate_mcp linear "Linear"
+        fi
+        if ((SKIP_JIRA == 0)); then
+            authenticate_mcp jira "Jira"
         fi
     fi
 fi
