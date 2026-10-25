@@ -171,12 +171,15 @@ image, open it as root. If the repo is not inside WSL yet, clone it on the
 Windows side and run the script through `/mnt/c`:
 
 ```bash
-sudo /mnt/c/Users/<you>/dotfiles/arch/wsl-init.sh --user <your-linux-user> --systemd
+sudo /mnt/c/Users/<you>/dotfiles/arch/wsl-init.sh \
+  --user <your-linux-user> --hostname <machine-name> --systemd
 ```
 
 Or install `git` manually in WSL, clone the repo inside WSL, and run the same
-script from there. `wsl-init.sh` installs `git`, so after it finishes and WSL
-restarts you can clone the repo inside the WSL filesystem for normal use.
+script from there. Omit `--hostname` to be prompted interactively for the machine
+name, or accept the `arch-wsl` default. `wsl-init.sh` installs `git`, so after it
+finishes and WSL restarts you can clone the repo inside the WSL filesystem for
+normal use.
 
 Use `--systemd` for a normal service-managed WSL installation; this is also the
 recommended path for Tailscale. The script backs up any existing `/etc/wsl.conf`
@@ -184,11 +187,13 @@ and merges the required settings instead of skipping the file.
 
 `wsl-init.sh` handles:
 
-- a root password prompt first, if the root account is locked or has none; an
-  existing root password is left unchanged
+- a machine-name (hostname) prompt when `--hostname` is omitted; the value is
+  applied through `/etc/wsl.conf` after the WSL restart
 - pacman keyring initialization if it is empty
 - `pacman -Syu`
 - installing `sudo` and `git`
+- a root password prompt right before the user is created, if the root account
+  is locked or has none; an existing root password is left unchanged
 - creating the user and adding them to `wheel`
 - a password prompt for the new user if the account is locked
 - a sudoers drop-in for `wheel`

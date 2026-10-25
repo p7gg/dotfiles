@@ -15,6 +15,7 @@ source "$REPO_ROOT/arch/lib/common.sh"
 
 TARGET_USER="${SUDO_USER:-}"
 TARGET_HOSTNAME="arch-wsl"
+HOSTNAME_SET=0
 ENABLE_SYSTEMD=0
 DRY_RUN=0
 ASSUME_YES=0
@@ -30,7 +31,7 @@ Usage: sudo arch/wsl-init.sh [options]
 
 Options:
   --user NAME        Linux user to create/configure (default: SUDO_USER)
-  --hostname NAME    WSL hostname (default: arch-wsl)
+  --hostname NAME    Machine name for WSL (default: arch-wsl; prompted when omitted)
   --systemd          Enable systemd in /etc/wsl.conf
   --dry-run          Print actions without changing anything
   --yes              Pass --noconfirm to pacman
@@ -40,8 +41,10 @@ Run this inside WSL, as root, once after importing the Arch image. Then run
 `wsl --shutdown` from Windows and reopen the distro. The target user must not be
 root; create or name a normal Linux user instead.
 
-The root password is set first if the root account is locked or has none. An
-existing root password is left unchanged.
+The machine name (hostname) is prompted when --hostname is omitted and a
+terminal is attached. The root password is set right before the target user is
+created, if the root account is locked or has none. An existing root password is
+left unchanged.
 EOF
 }
 
@@ -214,10 +217,12 @@ while (($# > 0)); do
     --hostname)
         [[ $# -ge 2 ]] || die "--hostname requires an argument"
         TARGET_HOSTNAME="$2"
+        HOSTNAME_SET=1
         shift 2
         ;;
     --hostname=*)
         TARGET_HOSTNAME="${1#*=}"
+        HOSTNAME_SET=1
         shift
         ;;
     --systemd)
@@ -264,13 +269,16 @@ fi
 [[ "$TARGET_USER" != "root" ]] ||
     die "refusing to use root as the WSL default user; pass --user NAME"
 [[ "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid username: $TARGET_USER"
+
+if ((HOSTNAME_SET == 0)) && [[ -t 0 ]]; then
+    read -r -p "Machine name (hostname) [$TARGET_HOSTNAME]: " hostname_input
+    [[ -z "$hostname_input" ]] || TARGET_HOSTNAME="$hostname_input"
+fi
+
 [[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] ||
     die "invalid hostname: $TARGET_HOSTNAME"
 
 require_cmd passwd
-
-# Secure root before anything else changes system state.
-ensure_password root
 
 require_cmd pacman
 require_cmd pacman-key
@@ -301,6 +309,9 @@ fi
 if ((DRY_RUN == 0)); then
     require_cmd visudo
 fi
+
+# Secure root right before creating the unprivileged login.
+ensure_password root
 
 if id -u "$TARGET_USER" >/dev/null 2>&1; then
     log "User $TARGET_USER already exists; ensuring wheel membership"
