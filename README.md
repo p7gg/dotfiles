@@ -47,6 +47,7 @@ concerns.
 │       ├── git/
 │       │   ├── ignore
 │       │   └── work.inc.tmpl
+│       ├── go/env.tmpl
 │       ├── mise/config.toml
 │       ├── opencode/cli.json
 │       └── starship.toml
@@ -306,9 +307,9 @@ The config uses `set -gx` and `abbr --add --global` rather than universal
 variables, so nothing important is hidden in `fish_variables`. Fish history and
 fish variables are not tracked.
 
-`~/.local/bin` is prepended once. `mise`, starship, fzf, zoxide, and atuin are
-activated only in interactive shells. Atuin is local-only; no sync login is set
-up.
+`~/.local/bin` and `~/.go/bin` are prepended once. `mise`, starship, fzf,
+zoxide, and atuin are activated only in interactive shells. Atuin is local-only;
+no sync login is set up.
 
 ## mise
 
@@ -327,6 +328,13 @@ global config. After bootstrap:
 mise install
 mise ls
 ```
+
+## Go
+
+Go keeps its module cache and installed binaries in `~/.go` instead of the
+default `~/go`. The location is set in `~/.config/go/env` via
+`home/dot_config/go/env.tmpl`, so it applies in every shell and to tools that
+invoke the `go` command. `~/.go/bin` is added to `PATH` by fish.
 
 ## Completions
 
