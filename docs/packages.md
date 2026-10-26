@@ -14,7 +14,7 @@ automatically.
 
 ## At a glance
 
-There are **66 tracked required package names**:
+There are **67 tracked required package names**:
 
 - **51** are installed on both profiles: 46 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
@@ -300,13 +300,13 @@ just audit-check native
 ./arch/audit.sh --profile native --json
 ```
 
-The audit expands package groups such as `gnome`, so group members do not show
-up as false drift. `--check` fails only when tracked packages are missing;
+The audit expands package groups when a tracked list names one, so group members
+do not show up as false drift. `--check` fails only when tracked packages are missing;
 `--strict` also fails on untracked packages. `--json` is available for scripts
 and agents.
 
-`arch/packages/audit-ignore.txt` omits bootstrap artifacts such as `paru` and
-`paru-debug`. It is not a place to hide real drift.
+`arch/packages/audit-ignore.txt` omits the OS `base` meta package and bootstrap
+artifacts such as `paru` and `paru-debug`. It is not a place to hide real drift.
 
 On a desktop installed with GNOME, many GNOME and system packages appear as
 untracked by design: they belong to the OS/desktop layer, not these lists. That

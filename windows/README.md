@@ -2,6 +2,8 @@
 
 Intentionally empty for now.
 
+Back to [the documentation index](../docs/README.md) or [the project README](../README.md).
+
 This machine is expected to use WSL for Linux development, so the Windows side
 only needs a small number of applications and a few host settings. When that is
 actually needed, add:

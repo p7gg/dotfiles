@@ -46,7 +46,7 @@ Options:
   --dry-run           Print actions without changing anything
   --generate-key      Generate ~/.ssh/id_ed25519 if it does not exist
   --email EMAIL       Email address for the SSH key comment
-  --non-interactive   Never prompt; report missing pieces instead
+  --non-interactive   Skip steps that need a browser or TTY; report them instead
   --skip-gh           Do not configure or authenticate the GitHub CLI
   --skip-gcloud       Do not configure or authenticate the gcloud CLI
   --skip-tailscale    Do not authenticate Tailscale
@@ -103,8 +103,8 @@ authenticate_mcp() {
         state_text="not waiting for authentication"
     fi
 
-    if ((DRY_RUN)); then
-        warn "$label MCP $state_text; would authenticate with: opencode mcp auth $name"
+    if ((DRY_RUN || NON_INTERACTIVE)); then
+        warn "$label MCP $state_text; run: opencode mcp auth $name"
         AUTH_INCOMPLETE=1
         return
     fi
@@ -131,13 +131,18 @@ authenticate_mcp() {
 }
 
 bws_token_present() {
+    local store_dir
+
+    # Do not decrypt secrets just to check for them: `pass show` can trigger a
+    # pinentry prompt, and `secret-tool lookup` can unlock the keyring.
     if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-        command -v pass >/dev/null 2>&1 &&
-            pass show bitwarden/bws-token >/dev/null 2>&1
+        store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+        [[ -f "$store_dir/bitwarden/bws-token.gpg" ]]
         return
     fi
+
     command -v secret-tool >/dev/null 2>&1 &&
-        secret-tool lookup service bws account "$BWS_ACCOUNT" >/dev/null 2>&1
+        secret-tool search --all service bws account "$BWS_ACCOUNT" >/dev/null 2>&1
 }
 
 pass_store_initialized() {
@@ -354,8 +359,8 @@ if [[ -f "$KEY" ]]; then
     have_key=1
 else
     if ((GENERATE_KEY)); then
-        if ((DRY_RUN)); then
-            warn "SSH key is missing; would generate $KEY"
+        if ((DRY_RUN || NON_INTERACTIVE)); then
+            warn "SSH key is missing; rerun interactively with --generate-key"
             AUTH_INCOMPLETE=1
         else
             log "Generating a new ed25519 SSH key at $KEY"
@@ -374,8 +379,8 @@ if ((have_key)); then
     fi
 
     if [[ ! -f "${KEY}.pub" ]]; then
-        if ((DRY_RUN)); then
-            warn "public key is missing: ${KEY}.pub"
+        if ((DRY_RUN || NON_INTERACTIVE)); then
+            warn "public key is missing: ${KEY}.pub; rerun interactively to derive it"
             AUTH_INCOMPLETE=1
             have_key=0
         else
@@ -497,8 +502,8 @@ if ((SKIP_GH == 0)); then
         warn "gh is not installed; run arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     elif ! gh auth status --hostname github.com >/dev/null 2>&1; then
-        if ((DRY_RUN)); then
-            warn "GitHub CLI is not authenticated; would run: gh auth login"
+        if ((DRY_RUN || NON_INTERACTIVE)); then
+            warn "GitHub CLI is not authenticated; run: gh auth login"
             AUTH_INCOMPLETE=1
         else
             log "Authenticating GitHub CLI with the SSH Git protocol"
@@ -509,7 +514,7 @@ if ((SKIP_GH == 0)); then
             fi
         fi
     elif ! gh_has_scopes; then
-        if ((DRY_RUN)); then
+        if ((DRY_RUN || NON_INTERACTIVE)); then
             warn "GitHub CLI token is missing admin:public_key or admin:ssh_signing_key"
             AUTH_INCOMPLETE=1
         else
@@ -544,8 +549,8 @@ if ((SKIP_GCLOUD == 0)); then
     else
         active_account="$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 || true)"
         if [[ -z "$active_account" ]]; then
-            if ((DRY_RUN)); then
-                warn "gcloud is not authenticated; would run: gcloud auth login"
+            if ((DRY_RUN || NON_INTERACTIVE)); then
+                warn "gcloud is not authenticated; run: gcloud auth login"
                 AUTH_INCOMPLETE=1
             else
                 log "Authenticating gcloud (OAuth; SSH is not used for gcloud CLI auth)"
@@ -560,8 +565,8 @@ if ((SKIP_GCLOUD == 0)); then
         fi
 
         if [[ -z "$(gcloud auth application-default print-access-token 2>/dev/null || true)" ]]; then
-            if ((DRY_RUN)); then
-                warn "gcloud application default credentials are missing; would run the login"
+            if ((DRY_RUN || NON_INTERACTIVE)); then
+                warn "gcloud application default credentials are missing; run: gcloud auth application-default login"
                 AUTH_INCOMPLETE=1
             else
                 log "Configuring gcloud application default credentials"
@@ -611,15 +616,15 @@ if ((SKIP_TAILSCALE == 0)); then
 
         if [[ "$tailscale_state" == "Running" ]]; then
             log "Tailscale is already connected"
-        elif ((DRY_RUN)); then
-            warn "Tailscale is not connected (state: ${tailscale_state:-unknown}); would run: sudo tailscale up"
+        elif ((DRY_RUN || NON_INTERACTIVE)); then
+            warn "Tailscale is not connected (state: ${tailscale_state:-unknown}); run: sudo tailscale up"
             AUTH_INCOMPLETE=1
         else
             log "Authenticating Tailscale (current state: ${tailscale_state:-unknown})"
             run_optional sudo tailscale up || AUTH_INCOMPLETE=1
         fi
 
-        if ((DRY_RUN)); then
+        if ((DRY_RUN || NON_INTERACTIVE)); then
             log "Would ensure Tailscale operator is $(id -un)"
         elif ! run_optional sudo tailscale set --operator="$(id -un)"; then
             warn "could not set Tailscale operator"
@@ -673,12 +678,18 @@ if ((SKIP_LINEAR == 0 || SKIP_JIRA == 0)); then
 fi
 
 if ((AUTH_INCOMPLETE)); then
-    log "Authentication setup incomplete; review the warnings above."
+    if ((CHECK_ONLY)); then
+        log "Authentication check incomplete; review the warnings above."
+    else
+        log "Authentication setup incomplete; review the warnings above."
+    fi
     exit 1
 fi
 
 if ((CHECK_ONLY)); then
     log "Authentication check complete."
+elif ((DRY_RUN)); then
+    log "Authentication dry run complete; no changes were made."
 else
     log "Authentication setup complete."
     log "Commit signing is enabled globally by chezmoi; work email applies under ~/Projects/work/."

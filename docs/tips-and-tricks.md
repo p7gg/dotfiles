@@ -30,7 +30,7 @@ The interactive shell also receives:
 - **fzf** on `Ctrl+T` — pick a file, insert its path
 - **fzf** on `Alt+C` — jump to a directory
 - **zoxide** — `z <fragment>` jumps by frecency; `zi` opens a picker
-- **Starship** — directory, Git branch, Node/Python versions, and command duration
+- **Starship** — directory, Git branch and status, and a compact prompt
 
 Useful moves:
 
@@ -227,7 +227,7 @@ GUI notes:
   `d3d12` Gallium driver) plus `vulkan-dzn` and `vulkan-icd-loader`, and
   `conf.d/50-wsl-gpu.fish` exports `GALLIUM_DRIVER=d3d12` and
   `LIBVA_DRIVER_NAME=d3d12` when `WSL_DISTRO_NAME` is set. Verify with
-  `glxinfo -B` (look for `d3d12`, not `llvmpipe`).
+  `glxinfo -B` (install `mesa-utils` first; it is not in the tracked list).
 - On Intel GPUs OpenGL can still fall back to `llvmpipe` because Mesa expects
   `libedit.so.2`. The wiki workaround is a system symlink, so it is manual:
   `sudo ln -s /usr/lib/libedit.so /usr/lib/libedit.so.2`.
@@ -288,8 +288,8 @@ pass show bitwarden/bws-token
 ```
 
 `arch/auth.sh` initializes an empty store automatically when exactly one GPG
-secret key exists. If the store is not initialized yet, `pass insert` fails, so
-create the key and run `pass init` first (or rerun the helper).
+secret key exists. If it cannot choose a key, create one and run
+`pass init <gpg-key-id>` first, then rerun the helper.
 
 Use a read-only machine account token scoped to one project, and rotate it. For
 application secrets, prefer `bws run -- <command>` over exporting a shell full
@@ -326,8 +326,9 @@ Inside a session, `/mcps` shows server status. `arch/auth.sh` connects the OAuth
 servers and skips ones that are already connected; use `--skip-mcp`,
 `--skip-linear`, or `--skip-jira` for intentional skips.
 
-Context7 works without a key. Set `CONTEXT7_API_KEY` only if you want higher rate
-limits, and add it as a header in `opencode.json` rather than committing a token.
+Context7 works without a key. Set `CONTEXT7_API_KEY` in your environment only if
+you want higher rate limits. The tracked `opencode.json` interpolates
+`{env:CONTEXT7_API_KEY}`; never paste a literal token into it.
 
 ## Recovery moves
 
@@ -353,7 +354,7 @@ bad dotfile changes with Git in the repo, then run `chezmoi apply`.
 For package problems:
 
 ```bash
-./arch/bootstrap.sh --profile native --dry-run
+./arch/bootstrap.sh --profile auto --dry-run
 sudo pacman-key --refresh-keys
 arch-audit
 sudo systemctl list-timers --all
@@ -369,10 +370,11 @@ but nothing is listening on port 22. Check `systemctl status sshd` and enable it
 with `sudo systemctl enable --now sshd.service`; bootstrap does this when systemd
 is available.
 
-Bootstrap also installs key-only auth once `~/.ssh/authorized_keys` exists
-(`/etc/ssh/sshd_config.d/10-hardening.conf`). That file is chezmoi-managed from
-`home/private_dot_ssh/private_authorized_keys`, so add new keys in the repo;
-editing the deployed file is undone by the next `chezmoi apply`. If hardening
+Bootstrap also installs key-only auth once `~/.ssh/authorized_keys` contains a
+usable key (`/etc/ssh/sshd_config.d/10-hardening.conf`). The authorized-keys
+file is chezmoi-managed from `home/private_dot_ssh/private_authorized_keys`, so
+add new keys in the repo; editing the deployed file is undone by the next
+`chezmoi apply`. If hardening
 locks you out, log in on the machine itself, remove the drop-in, and reload sshd.
 
 ## A small maintenance rhythm
@@ -382,7 +384,7 @@ locks you out, log in on the machine itself, remove the drop-in, and reload sshd
 | Start of a session | `gs`, `mise outdated` |
 | After editing dotfiles | `chezmoi diff`, then `chezmoi apply` |
 | Before committing | `just lint`, `just test` |
-| After package changes | `just dry-run native`, `just audit-check native` |
+| After package changes | `just dry-run`, `just audit-check` |
 | Weekly | `sudo pacman -Syu`, `paru -Sua`, `paccache -r`, `arch-audit` |
 | After changing `wsl.conf` | `wsl --shutdown` |
 | After upgrading tools | `./arch/completions.sh` |

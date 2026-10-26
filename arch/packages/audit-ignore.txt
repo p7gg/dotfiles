@@ -1,5 +1,6 @@
 # Packages installed by the bootstrap or the OS layer that are intentionally
 # not tracked in aur*.txt. Keep this list small: it is not a place to hide real
 # package drift.
+base
 paru
 paru-debug

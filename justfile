@@ -3,19 +3,19 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-bootstrap profile="native" *args:
+bootstrap profile="auto" *args:
     ./arch/bootstrap.sh --profile {{ quote(profile) }} {{ args }}
 
-dry-run profile="native" *args:
+dry-run profile="auto" *args:
     ./arch/bootstrap.sh --profile {{ quote(profile) }} --dry-run {{ args }}
 
-check profile="native" *args:
+check profile="auto" *args:
     ./arch/bootstrap.sh --profile {{ quote(profile) }} --check {{ args }}
 
-audit profile="native" *args:
+audit profile="auto" *args:
     ./arch/audit.sh --profile {{ quote(profile) }} {{ args }}
 
-audit-check profile="native" *args:
+audit-check profile="auto" *args:
     ./arch/audit.sh --profile {{ quote(profile) }} --check {{ args }}
 
 completions *args:

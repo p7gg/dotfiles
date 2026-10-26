@@ -96,6 +96,16 @@ EOF
     [ ! -e "$TEST_TMP/should-not-exist" ]
 }
 
+@test "has_authorized_key rejects comment-only files" {
+    printf '%s\n' '# comment' '' >"$TEST_TMP/comments-only"
+    run has_authorized_key "$TEST_TMP/comments-only"
+    [ "$status" -ne 0 ]
+
+    printf '%s\n' 'ssh-ed25519 AAAA test@example' >"$TEST_TMP/key"
+    run has_authorized_key "$TEST_TMP/key"
+    [ "$status" -eq 0 ]
+}
+
 @test "cleanup_tmp removes registered files" {
     touch "$TEST_TMP/temp-file"
     register_tmp "$TEST_TMP/temp-file"

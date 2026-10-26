@@ -85,6 +85,17 @@ teardown() {
     [ "$(git branch --show-current)" = "from-args" ]
 }
 
+@test "branch names starting with a dash are not treated as options" {
+    git update-ref refs/heads/-danger HEAD
+    git switch -q main
+    export FZF_STUB_SELECT="-danger"
+
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/fzf-checkout.fish'; fzf-checkout"
+
+    [ "$status" -eq 0 ]
+    [ "$(git branch --show-current)" = "-danger" ]
+}
+
 @test "WSL GPU drivers are selected inside WSL" {
     run env -u GALLIUM_DRIVER -u LIBVA_DRIVER_NAME WSL_DISTRO_NAME=arch \
         fish -c "source '$REPO_ROOT/home/dot_config/fish/conf.d/50-wsl-gpu.fish'; echo \$GALLIUM_DRIVER \$LIBVA_DRIVER_NAME"

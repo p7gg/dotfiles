@@ -18,22 +18,23 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 66 tracked packages with Native/WSL
+- [Package catalog](docs/packages.md) — all 67 tracked packages with Native/WSL
   badges, the installer-managed OpenCode CLI, the 18 optional Nerd Fonts,
   per-list counts, mise toolchains, and the install/record/audit loop.
+- [Documentation index](docs/README.md) — task-based navigation for the docs.
+- [Windows notes](windows/README.md) — the intentionally empty Windows side.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
   secrets, OpenCode, recovery, and local SVG illustrations.
 - [Authentication and SSH](docs/auth.md) — key, GitHub, gcloud, Tailscale,
   BWS, and MCP setup and troubleshooting.
 - [Decisions](docs/decisions.md) — tooling-language notes, optional Git
   defaults, and the BWS private-key decision.
-- [Documentation index](docs/README.md).
 
 ## Safety
 
 - Run `arch/bootstrap.sh` as your normal user, never as root.
-- Run `arch/wsl-init.sh` as root, only inside WSL, only once after importing the
-  Arch image.
+- Run `arch/wsl-init.sh` as root, only inside WSL, once for the initial import.
+  Rerun it with `--systemd` if you later enable systemd.
 - Start with `--check`, then `--dry-run`; dry-run previews `chezmoi diff`.
 - Use `--non-interactive --name ... --email ...` for unattended provisioning.
 - Use `arch/auth.sh --check` to inspect authentication without changing it.
@@ -55,12 +56,16 @@ concerns.
 │   ├── .chezmoiignore
 │   ├── .chezmoiversion
 │   ├── dot_gitconfig.tmpl
-│   ├── private_dot_ssh/private_config.tmpl
+│   ├── private_dot_ssh/
+│   │   ├── private_authorized_keys
+│   │   └── private_config.tmpl
 │   └── dot_config/
 │       ├── fish/
 │       │   ├── config.fish
 │       │   ├── conf.d/
-│       │   └── functions/bws.fish
+│       │   └── functions/
+│       │       ├── bws.fish
+│       │       └── fzf-checkout.fish
 │       ├── gh/config.yml
 │       ├── git/
 │       │   ├── ignore
@@ -80,8 +85,11 @@ concerns.
 │   ├── fonts.sh                  # interactive optional Nerd Font installer
 │   ├── wsl-init.sh               # one-time WSL root setup
 │   ├── audit.sh                  # package drift report
+│   ├── vscode-server-env-setup.sh # Remote-WSL SSH agent bridge
 │   ├── lib/common.sh             # shared shell helpers
-│   ├── system/reflector.conf     # Brazil-prioritized mirrors
+│   ├── system/
+│   │   ├── reflector.conf        # Brazil-prioritized mirrors
+│   │   └── sshd-hardening.conf   # key-only SSH drop-in
 │   └── packages/
 │       ├── base.txt
 │       ├── native.txt
@@ -99,7 +107,9 @@ concerns.
 ├── tests/
 │   ├── render-templates.sh       # render every chezmoi template
 │   ├── common.bats
-│   └── audit.bats
+│   ├── audit.bats
+│   ├── fish.bats
+│   └── fonts.bats
 ├── windows/
 │   └── README.md
 ├── docs/
@@ -142,14 +152,14 @@ cd ~/Projects/dotfiles
 ./arch/bootstrap.sh --profile native
 ```
 
-The first chezmoi run prompts for your name, personal email, and work email.
-Work email is optional; leave it blank on a personal-only machine. The values are
-stored in `~/.config/chezmoi/chezmoi.toml`; subsequent prompts are skipped. Use
-`chezmoi edit-config` to change them later.
+The first chezmoi run prompts for your name, personal email, and work email
+when it cannot seed them from Git. Work email is optional; leave it blank on a
+personal-only machine. The values are stored in `~/.config/chezmoi/chezmoi.toml`;
+subsequent prompts are skipped. Use `chezmoi edit-config` to change them later.
 
-For unattended provisioning, pass the data explicitly. `--yes` only affects
-pacman/paru confirmation prompts; it does not bypass chezmoi prompts, so use
-`--non-interactive` when no terminal is available:
+For unattended provisioning, pass the data explicitly. `--non-interactive`
+also implies `--yes` and disables chezmoi, mise, and font prompts, so use it
+when no terminal is available:
 
 ```bash
 ./arch/bootstrap.sh --profile native --non-interactive \
@@ -252,14 +262,15 @@ The native package list deliberately does **not** include the `gnome` group,
 the kernel, firmware, microcode, or GPU drivers. Those belong to the OS
 installation step and are machine-specific.
 
-`google-cloud-cli`, `bws-bin`, `gitbutler-bin`, `brave-bin`,
-`opencode-desktop-bin`, and `t3code-nightly-bin` are in the AUR; the bootstrap
+The AUR lists contain `bws-bin`, `gitbutler-bin`, `google-cloud-cli`, the GKE
+auth plugin, `lefthook`, `brave-bin`, `opencode-desktop-bin`,
+`t3code-nightly-bin`, `visual-studio-code-bin`, and `wslu`. The bootstrap
 bootstraps `paru` when any AUR list is non-empty. On WSL, the GitButler GUI
 requires WSLg.
 `gitbutler-bin` includes both the GUI and the `but` CLI; do not add
 `gitbutler-cli-bin`, because both packages own `/usr/bin/but`.
-`visual-studio-code-bin`, `brave-bin`, and `opencode-desktop-bin` are installed
-only on the native profile.
+`visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`, and
+`t3code-nightly-bin` are installed only on the native profile.
 `yt-dlp` is installed without `ffmpeg`; add `ffmpeg` if you need stream merging
 or audio extraction.
 
@@ -274,8 +285,8 @@ To reconcile:
 ./arch/bootstrap.sh --profile native
 ```
 
-The bootstrap runs `pacman -Syu`, initializes the keyring only if it is empty,
-installs missing packages with `--needed`, bootstraps `paru` when either
+The bootstrap runs `pacman -Syu`, initializes or repopulates the keyring when
+needed, installs missing packages with `--needed`, bootstraps `paru` when either
 `aur.txt` or `aur-<profile>.txt` contains packages, and then installs both AUR
 lists.
 
@@ -288,8 +299,8 @@ To inspect drift without changing anything:
 ./arch/audit.sh --profile native --json     # machine-readable output
 ```
 
-The audit expands package groups such as `gnome` so group members do not show up
-as false drift. `base-devel` is a meta package in current Arch, not a group, so
+The audit expands a tracked package group when one is listed, so members do not
+show up as false drift. `base-devel` is a meta package in current Arch, not a group, so
 it is compared directly. Untracked packages from `arch/packages/audit-ignore.txt`
 (for example the bootstrap's `paru` and `paru-debug`) are omitted from the
 untracked sections.
@@ -351,8 +362,9 @@ without systemd, bootstrap prints the manual `sudo tailscaled` setup and
 create a TUN device, run `tailscaled --tun=userspace-networking` and use its
 SOCKS/HTTP proxy for applications that need tailnet access.
 
-Use `./arch/bootstrap.sh --no-system` to skip the pacman/reflector/timer/
-firewall/Tailscale changes, and `--no-hooks` to skip `lefthook install`.
+Use `./arch/bootstrap.sh --no-system` to skip the pacman, reflector, timer,
+firewall, sshd, and Tailscale changes, and `--no-hooks` to skip
+`lefthook install`.
 
 ## Backups
 
@@ -414,8 +426,8 @@ branch with the same name that tracks it. With arguments, `ch` defers to
 `git checkout`, so `ch <branch>` and `ch -b <branch>` keep working. The Git alias
 `git ch` uses the same picker.
 
-`~/.local/bin` and `~/.go/bin` are prepended once, with `~/.local/bin` taking
-precedence. `mise`, starship, fzf,
+`~/.local/bin`, `~/.opencode/bin`, and `~/.go/bin` are prepended once, in that
+order of precedence. `mise`, starship, fzf,
 zoxide, and atuin are activated only in interactive shells. Atuin is local-only;
 no sync login is set up.
 
@@ -588,7 +600,8 @@ WSL defaults:
 - `[interop] appendWindowsPath` is `true`.
 - `[boot] systemd` is `false` unless the distro image enables it.
 
-This repo does not change either automatically.
+`wsl-init.sh` writes `appendWindowsPath=true` into a new `/etc/wsl.conf` and
+preserves an existing value. It only enables systemd when you pass `--systemd`.
 
 - Leaving `appendWindowsPath=true` keeps Windows GUI integration convenient. If
   Windows `node.exe`, `git.exe`, or `python.exe` starts shadowing Linux/mise
@@ -660,7 +673,9 @@ The repo is intentionally not automatically updating packages during
 - Tailscale account authentication and ACLs
 - OpenCode provider credentials and MCP OAuth tokens
 - Windows apps, WSL installation, Windows Terminal settings
-- `/etc` generally; `wsl-init.sh` only handles the WSL-specific bootstrap files
+- `/etc` broadly; the bootstrap only manages the pacman, reflector, firewall,
+  and sshd files listed above, and `wsl-init.sh` handles the WSL-specific
+  bootstrap files
 
 If you later need reproducible desktop packages, add a `desktop.txt` list. If you
 later target multiple machines with different GPUs, add a host-specific overlay.
@@ -683,7 +698,8 @@ Do not add that complexity before it is needed.
 
 ## Validation
 
-CI runs in an Arch container so local and CI tool versions match. It executes
+CI uses an Arch container and the same entry points; update your local system
+if you need its tool versions to match CI exactly. It executes
 the same entry points used locally:
 
 ```bash

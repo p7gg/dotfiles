@@ -103,11 +103,13 @@ function fzf-checkout --description 'Interactively switch Git branches with fzf'
 
     switch $kind
         case local
-            command git switch $fields[2]
+            command git switch -- $fields[2]
         case remote
             # The fourth field carries the local branch name computed while
             # building the list. It is hidden from the picker by --with-nth.
-            command git switch --track --create $fields[4] $fields[2]
+            # Use --create=<name> and -- so branch names starting with "-" are
+            # never interpreted as git options.
+            command git switch --track --create=$fields[4] -- $fields[2]
         case '*'
             echo "fzf-checkout: unexpected selection: $picked" >&2
             return 1

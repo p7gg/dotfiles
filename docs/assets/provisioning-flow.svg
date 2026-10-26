@@ -25,7 +25,7 @@
   <text x="86" y="164" fill="#d2f8d2" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" font-weight="700" letter-spacing="1.1">NATIVE</text>
   <text x="154" y="166" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="650">Arch + GNOME</text>
   <text x="64" y="192" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12">Bare-metal desktop profile</text>
-  <text x="500" y="166" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11" font-weight="600" text-anchor="end">57 packages</text>
+  <text x="500" y="166" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11" font-weight="600" text-anchor="end">60 packages</text>
 
   <rect x="64" y="206" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="78" y="222" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">1 · BOOTSTRAP</text>
@@ -67,7 +67,7 @@
   <text x="676" y="164" fill="#cfe8ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" font-weight="700" letter-spacing="1.1">WSL</text>
   <text x="724" y="166" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="650">Arch inside Windows</text>
   <text x="654" y="192" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12">CLI-first WSL profile</text>
-  <text x="1080" y="166" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11" font-weight="600" text-anchor="end">52 packages</text>
+  <text x="1080" y="166" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11" font-weight="600" text-anchor="end">58 packages</text>
 
   <rect x="654" y="206" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="668" y="222" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">1 · ROOT, ONCE</text>

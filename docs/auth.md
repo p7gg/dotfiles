@@ -38,14 +38,14 @@ It will:
 - authenticate Tailscale when the daemon is running
 - offer to store the Bitwarden Secrets Manager token in GNOME Keyring or `pass`
 - authenticate the Linear and Jira MCP servers in OpenCode with OAuth
-- print the public key and the Cloud Source Repositories registration URL
+- print the key fingerprint and the Cloud Source Repositories registration URL
 
 The helper skips MCP sign-in when a server is already connected. Use
 `--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
 needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
 `--bws-account NAME` if your keyring label is not `personal`. For non-interactive
-runs, pass `--email` and `--non-interactive`; missing optional pieces are
-reported instead of prompted for. Native GNOME already has an SSH agent through
+runs, pass `--email` and `--non-interactive`; steps that need a browser or TTY
+are reported instead of prompted for. Native GNOME already has an SSH agent through
 gnome-keyring. On WSL the helper enables the `ssh-agent.socket` user unit, so
 systemd starts an agent on first use at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
 Fish exports that path in new shells and runs `ssh-add` when the agent has no

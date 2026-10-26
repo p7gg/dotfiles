@@ -48,11 +48,11 @@ Options:
   --profile native|wsl  Target profile (default: auto-detect)
   --dry-run             Print actions without changing anything
   --check               Validate prerequisites without changing anything
-  --yes                 Pass --noconfirm to pacman/paru where supported
+  --yes                 Pass --noconfirm to pacman/paru/makepkg where supported
   --name NAME           Set the chezmoi name when initializing a new config
   --email EMAIL         Set the chezmoi email when initializing a new config
   --work-email EMAIL    Set the optional work email
-  --non-interactive     Fail instead of prompting for missing chezmoi data
+  --non-interactive     Never prompt (implies --yes); fail if data is missing
   --no-packages         Skip pacman/AUR package installation
   --fonts LIST          Install selected Nerd Fonts without prompting; LIST is
                         all or a comma-separated list of numbers, packages, or
@@ -62,7 +62,7 @@ Options:
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
   --no-completions      Skip fish completion generation
-  --no-system           Skip pacman/reflector/timer/firewall/Tailscale setup
+  --no-system           Skip pacman/reflector/timer/firewall/sshd/Tailscale setup
   --no-hooks            Skip `lefthook install`
   --no-services         Skip enabling desktop systemd services
   --no-shell            Do not change the login shell to fish
@@ -135,11 +135,13 @@ ensure_paru() {
 
     (
         local tmp
+        local -a makepkg_args=(makepkg -si)
         tmp="$(mktemp -d)"
         trap 'rm -rf "$tmp"' EXIT
 
+        ((ASSUME_YES)) && makepkg_args+=(--noconfirm)
         run_cmd git clone --depth=1 https://aur.archlinux.org/paru.git "$tmp/paru"
-        (cd -- "$tmp/paru" && run_cmd makepkg -si)
+        (cd -- "$tmp/paru" && run_cmd "${makepkg_args[@]}")
     )
 
     hash -r
@@ -269,7 +271,7 @@ toml_quote() {
 # Pre-seed chezmoi data so a new machine can be provisioned without a TTY.
 # An existing config is never overwritten here.
 seed_chezmoi_config() {
-    local config name email work_email tmp
+    local config name email work_email tmp value
 
     config="$(chezmoi_config_path)"
     [[ -f "$config" ]] && return 0
@@ -278,7 +280,16 @@ seed_chezmoi_config() {
     email="${CHEZMOI_EMAIL:-$(git config --global --get user.email 2>/dev/null || true)}"
     work_email="${CHEZMOI_WORK_EMAIL:-}"
 
+    for value in "$name" "$email" "$work_email"; do
+        [[ "$value" != *[[:cntrl:]]* ]] ||
+            die "chezmoi data must not contain control characters"
+    done
+
     if [[ -z "$name" || -z "$email" ]]; then
+        if ((DRY_RUN)); then
+            log "Would prompt for missing chezmoi data (or require --name and --email)"
+            return 0
+        fi
         if ((NON_INTERACTIVE)); then
             die "non-interactive init needs --name and --email, or git user.name/user.email"
         fi
@@ -305,7 +316,7 @@ seed_chezmoi_config() {
 }
 
 configure_chezmoi_source() {
-    local config backup escaped tmp
+    local config backup escaped tmp actual expected
 
     config="$(chezmoi_config_path)"
     if ((DRY_RUN)); then
@@ -321,9 +332,12 @@ configure_chezmoi_source() {
     escaped="${REPO_ROOT//\\/\\\\}"
     escaped="${escaped//\"/\\\"}"
 
-    if grep -qF "sourceDir = \"$escaped\"" "$config" ||
-        grep -qF "sourceDir = \"$escaped/home\"" "$config"; then
-        log "chezmoi sourceDir already points at $REPO_ROOT"
+    expected="$(cd -- "$REPO_ROOT/home" && pwd -P)"
+    actual="$(chezmoi --config "$config" source-path 2>/dev/null || true)"
+
+    if [[ "$actual" == "$expected" ]]; then
+        log "chezmoi sourceDir already points at $expected"
+        chmod 600 "$config"
         return 0
     fi
 
@@ -364,8 +378,12 @@ apply_dotfiles() {
     require_cmd chezmoi
 
     seed_chezmoi_config
+
+    local -a chezmoi_args=(init --apply --source "$REPO_ROOT")
+    ((NON_INTERACTIVE)) && chezmoi_args=(--no-tty "${chezmoi_args[@]}")
+
     log "Applying dotfiles with chezmoi"
-    chezmoi init --apply --source "$REPO_ROOT"
+    chezmoi "${chezmoi_args[@]}"
     configure_chezmoi_source
 }
 
@@ -407,8 +425,11 @@ setup_mise() {
         return 0
     fi
 
+    local -a args=(mise install)
+    ((ASSUME_YES)) && args+=(-y)
+
     log "Installing mise toolchains"
-    run_cmd mise install
+    run_cmd "${args[@]}"
 }
 
 setup_completions() {
@@ -422,6 +443,26 @@ setup_completions() {
     log "Generating fish completions"
     if ! run_optional "$script"; then
         warn "completion generation failed; rerun ./arch/completions.sh after fixing the cause"
+    fi
+}
+
+ensure_systemd_unit() {
+    local unit="$1"
+    local active=0 enabled=0
+
+    systemctl is-active --quiet "$unit" 2>/dev/null && active=1
+    systemctl is-enabled --quiet "$unit" 2>/dev/null && enabled=1
+
+    if ((enabled == 0)); then
+        log "Enabling $unit"
+        run_optional sudo systemctl enable "$unit" || warn "could not enable $unit"
+    fi
+
+    if ((active == 0)); then
+        log "Starting $unit"
+        run_optional sudo systemctl start "$unit" || warn "could not start $unit"
+    elif ((enabled)); then
+        log "$unit is enabled and active"
     fi
 }
 
@@ -445,21 +486,7 @@ setup_services() {
             continue
         fi
 
-        if systemctl is-active --quiet "${svc}.service" 2>/dev/null; then
-            log "${svc}.service already active"
-            continue
-        fi
-
-        if systemctl is-enabled --quiet "${svc}.service" 2>/dev/null; then
-            log "Starting ${svc}.service"
-            run_optional sudo systemctl start "${svc}.service" ||
-                warn "could not start ${svc}.service"
-            continue
-        fi
-
-        log "Enabling ${svc}.service"
-        run_optional sudo systemctl enable --now "${svc}.service" ||
-            warn "could not enable ${svc}.service"
+        ensure_systemd_unit "${svc}.service"
     done
 }
 
@@ -561,19 +588,7 @@ enable_timer() {
         return 0
     fi
 
-    if systemctl is-active --quiet "$timer" 2>/dev/null; then
-        log "$timer already active"
-        return 0
-    fi
-
-    if systemctl is-enabled --quiet "$timer" 2>/dev/null; then
-        log "Starting $timer"
-        run_optional sudo systemctl start "$timer" || warn "could not start $timer"
-        return 0
-    fi
-
-    log "Enabling $timer"
-    run_optional sudo systemctl enable --now "$timer" || warn "could not enable $timer"
+    ensure_systemd_unit "$timer"
 }
 
 setup_timers() {
@@ -639,22 +654,22 @@ setup_sshd() {
         return 0
     fi
 
-    if systemctl is-active --quiet sshd.service 2>/dev/null; then
-        log "sshd.service is running"
-    elif systemctl is-enabled --quiet sshd.service 2>/dev/null; then
-        log "Starting sshd.service"
-        run_optional sudo systemctl start sshd.service ||
-            warn "could not start sshd.service"
-    else
-        log "Enabling sshd.service"
-        run_optional sudo systemctl enable --now sshd.service ||
-            warn "could not start sshd.service"
-    fi
+    ensure_systemd_unit sshd.service
 
     if [[ "$profile" == "wsl" ]]; then
         log "WSL: sshd listens inside the distro; external SSH needs mirrored"
         log "networking or a Windows port proxy for port 22."
     fi
+}
+
+sshd_hardening_effective() {
+    local effective
+
+    effective="$(sudo sshd -T 2>/dev/null)" || return 1
+    grep -qx 'passwordauthentication no' <<<"$effective" &&
+        grep -qx 'kbdinteractiveauthentication no' <<<"$effective" &&
+        grep -qx 'permitrootlogin no' <<<"$effective" &&
+        grep -qx 'pubkeyauthentication yes' <<<"$effective"
 }
 
 setup_sshd_hardening() {
@@ -667,11 +682,6 @@ setup_sshd_hardening() {
         return 0
     fi
 
-    if [[ ! -d /run/systemd/system ]]; then
-        log "systemd is not running; skipping key-only hardening"
-        return 0
-    fi
-
     if [[ ! -f "$src" ]]; then
         warn "sshd hardening config not found: $src"
         return 0
@@ -679,14 +689,20 @@ setup_sshd_hardening() {
 
     # Key-only auth would lock out a host without a usable public key, so leave
     # password auth alone until an authorized key is in place.
-    if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]]; then
-        warn "no key in ${HOME:-~}/.ssh/authorized_keys; skipping key-only hardening"
+    if ! has_authorized_key "${HOME:-}/.ssh/authorized_keys"; then
+        warn "no usable key in ${HOME:-~}/.ssh/authorized_keys; skipping key-only hardening"
         warn "  add one to home/private_dot_ssh/private_authorized_keys or run ssh-copy-id"
         return 0
     fi
 
     if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
-        log "sshd key-only hardening is up to date"
+        if ((DRY_RUN)); then
+            log "Would verify the effective sshd hardening"
+        elif sshd_hardening_effective; then
+            log "sshd key-only hardening is up to date"
+        else
+            warn "sshd hardening file exists but is not effective; check other sshd_config.d files"
+        fi
         return 0
     fi
 
@@ -694,7 +710,7 @@ setup_sshd_hardening() {
 
     if ((DRY_RUN)); then
         run_sudo install -Dm644 "$src" "$dest"
-        log "Would validate the config with sshd -t and reload sshd.service"
+        log "Would validate with sshd -t, verify with sshd -T, and reload sshd.service"
         return 0
     fi
 
@@ -715,6 +731,19 @@ setup_sshd_hardening() {
 
     if ! sudo sshd -t; then
         warn "sshd rejected the hardening config; restoring the previous one"
+        if [[ -n "$backup" ]]; then
+            run_optional sudo install -Dm644 "$backup" "$dest" ||
+                warn "could not restore $dest"
+        else
+            run_optional sudo rm -f "$dest" ||
+                warn "could not remove $dest"
+        fi
+        rm -f "$backup"
+        return 0
+    fi
+
+    if ! sshd_hardening_effective; then
+        warn "sshd accepts the config but the effective settings differ; restoring the previous one"
         if [[ -n "$backup" ]]; then
             run_optional sudo install -Dm644 "$backup" "$dest" ||
                 warn "could not restore $dest"
@@ -750,17 +779,7 @@ setup_tailscale() {
             return 0
         fi
 
-        if systemctl is-active --quiet tailscaled.service 2>/dev/null; then
-            log "tailscaled.service is running"
-        elif systemctl is-enabled --quiet tailscaled.service 2>/dev/null; then
-            log "Starting tailscaled.service"
-            run_optional sudo systemctl start tailscaled.service ||
-                warn "could not start tailscaled.service"
-        else
-            log "Enabling tailscaled.service"
-            run_optional sudo systemctl enable --now tailscaled.service ||
-                warn "could not start tailscaled.service"
-        fi
+        ensure_systemd_unit tailscaled.service
         return 0
     fi
 
@@ -817,29 +836,52 @@ check_environment() {
     fi
 
     if ((DO_SYSTEM)) && command -v sshd >/dev/null 2>&1; then
-        if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]] &&
-            [[ ! -s "$REPO_ROOT/home/private_dot_ssh/private_authorized_keys" ]]; then
+        if ((DO_DOTFILES)) &&
+            has_authorized_key "$REPO_ROOT/home/private_dot_ssh/private_authorized_keys"; then
+            :
+        elif ! has_authorized_key "${HOME:-}/.ssh/authorized_keys"; then
             warn "no SSH authorized keys; sshd key-only hardening will be skipped"
         fi
     fi
 
     if ((DO_DOTFILES)) && ! command -v chezmoi >/dev/null 2>&1; then
-        warn "chezmoi not found; required by the dotfiles step"
-        status=1
+        if ((DO_PACKAGES)); then
+            warn "chezmoi not found; the package step will install it"
+        else
+            warn "chezmoi not found; required by the dotfiles step"
+            status=1
+        fi
     fi
 
     if ((DO_MISE)) && ! command -v mise >/dev/null 2>&1; then
-        warn "mise not found; required by the toolchain step"
-        status=1
+        if ((DO_PACKAGES)); then
+            warn "mise not found; the package step will install it"
+        else
+            warn "mise not found; required by the toolchain step"
+            status=1
+        fi
+    fi
+
+    if ((DO_SHELL)) && ! command -v fish >/dev/null 2>&1; then
+        if ((DO_PACKAGES)); then
+            warn "fish not found; the package step will install it"
+        else
+            warn "fish not found; required by the login-shell step"
+            status=1
+        fi
     fi
 
     if ((DO_OPENCODE)); then
         if ! command -v curl >/dev/null 2>&1; then
-            warn "curl not found; required by the OpenCode installer"
-            status=1
+            if ((DO_PACKAGES)); then
+                warn "curl not found; the package step will install it"
+            else
+                warn "curl not found; required by the OpenCode installer"
+                status=1
+            fi
         fi
         if ! command -v tar >/dev/null 2>&1; then
-            warn "tar not found; required by the OpenCode installer"
+            warn "tar not found; required by the OpenCode installer (part of the base system)"
             status=1
         fi
     fi
@@ -1000,6 +1042,11 @@ while (($# > 0)); do
     esac
 done
 
+# Unattended provisioning must not stop at a pacman/paru confirmation prompt.
+if ((NON_INTERACTIVE)); then
+    ASSUME_YES=1
+fi
+
 [[ $EUID -ne 0 ]] || die "do not run this script as root; run it as your user"
 
 # shellcheck source=/dev/null
@@ -1016,8 +1063,11 @@ native | wsl) ;;
 esac
 
 if ((CHECK_ONLY)); then
-    check_environment
-    exit $?
+    if check_environment; then
+        exit 0
+    else
+        exit 1
+    fi
 fi
 
 require_cmd pacman
@@ -1030,7 +1080,11 @@ fi
 if ((DRY_RUN == 0 && needs_sudo)); then
     require_cmd sudo
     log "Requesting sudo access"
-    sudo -v || die "sudo access is required for package/service/shell changes"
+    if ((NON_INTERACTIVE)); then
+        sudo -n -v || die "sudo credentials are required; run 'sudo -v' first or run interactively"
+    else
+        sudo -v || die "sudo access is required for package/service/shell changes"
+    fi
 fi
 
 if [[ "$PROFILE" == "native" ]] && is_wsl; then

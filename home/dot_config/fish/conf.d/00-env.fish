@@ -13,4 +13,7 @@ set -gx MANPAGER "less -R"
 set -gx LESS -R
 
 # Bitwarden Secrets Manager account label used by functions/bws.fish.
-set -gx BWS_ACCOUNT personal
+# Keep an explicitly configured account (for example, from a local config).
+if not set -q BWS_ACCOUNT
+    set -gx BWS_ACCOUNT personal
+end

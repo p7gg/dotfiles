@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
     # shellcheck source=arch/lib/common.sh
@@ -73,7 +75,7 @@ teardown() {
 }
 
 @test "--json reports untracked packages and honors audit-ignore.txt" {
-    run "$REPO_ROOT/arch/audit.sh" --profile native --json
+    run --separate-stderr "$REPO_ROOT/arch/audit.sh" --profile native --json
 
     [ "$status" -eq 0 ]
     echo "$output" | jq -e '.native_untracked | index("untracked-pkg") != null'
@@ -94,7 +96,7 @@ teardown() {
     LC_ALL=C sort -u -o "$TEST_DATA/native-all" "$TEST_DATA/native-all"
     cp "$TEST_DATA/native-all" "$TEST_DATA/native-explicit"
 
-    run "$REPO_ROOT/arch/audit.sh" --profile native --json --check --strict
+    run --separate-stderr "$REPO_ROOT/arch/audit.sh" --profile native --json --check --strict
 
     [ "$status" -eq 0 ]
     echo "$output" | jq -e '.native_untracked == []'

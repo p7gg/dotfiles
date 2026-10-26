@@ -45,14 +45,24 @@ EOF
 
 expand_groups() {
     local pkg members
+    local -A groups=()
+
+    # `pacman -Sgq` costs about a tenth of a second per call. Load the (small)
+    # group-name index once and only ask for members of actual groups.
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] && groups["$pkg"]=1
+    done < <(pacman -Sg 2>/dev/null || true)
 
     while IFS= read -r pkg; do
         [[ -n "$pkg" ]] || continue
-        if members="$(pacman -Sgq "$pkg" 2>/dev/null)" && [[ -n "$members" ]]; then
-            printf '%s\n' "$members"
-        else
-            printf '%s\n' "$pkg"
+        if [[ -n "${groups[$pkg]:-}" ]]; then
+            members="$(pacman -Sgq "$pkg" 2>/dev/null || true)"
+            if [[ -n "$members" ]]; then
+                printf '%s\n' "$members"
+                continue
+            fi
         fi
+        printf '%s\n' "$pkg"
     done
 
     return 0
@@ -255,8 +265,8 @@ main() {
             }'
     else
         log "Package audit for profile: $PROFILE"
-        print_section "Native installed but not tracked" "$tmpdir/native-untracked.txt"
-        print_section "Native tracked but not installed" "$tmpdir/native-missing.txt"
+        print_section "Official installed but not tracked" "$tmpdir/native-untracked.txt"
+        print_section "Official tracked but not installed" "$tmpdir/native-missing.txt"
         print_section "AUR/foreign installed but not tracked" "$tmpdir/aur-untracked.txt"
         print_section "AUR/foreign tracked but not installed" "$tmpdir/aur-missing.txt"
     fi

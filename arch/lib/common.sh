@@ -97,6 +97,14 @@ is_wsl() {
     [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
 }
 
+# A file with only comments or blank lines is not enough to keep password
+# authentication disabled, so require at least one key-like line.
+has_authorized_key() {
+    local file="$1"
+
+    [[ -s "$file" ]] && grep -Eqv '^[[:space:]]*(#|$)' "$file"
+}
+
 detect_profile() {
     if is_wsl; then
         printf 'wsl\n'
