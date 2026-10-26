@@ -18,7 +18,7 @@ There are **66 tracked required package names**:
 
 - **51** are installed on both profiles: 46 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
-- **6** are WSL-only: 5 official packages plus 1 AUR package
+- **7** are WSL-only: 6 official packages plus 1 AUR package
 
 There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
 not installed by default and are never required by the audit. The OpenCode CLI
@@ -27,7 +27,7 @@ is installer-managed, is not counted here, and is not audited as a package.
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
 | <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 60 | `./arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 57 | `./arch/bootstrap.sh --profile wsl` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./arch/bootstrap.sh --profile wsl` |
 
 Counts are required package names only; the optional fonts are additional.
 `paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
@@ -139,7 +139,7 @@ Source: `arch/packages/aur-native.txt` — 4 packages.
 
 ## WSL only — official repositories
 
-Source: `arch/packages/wsl.txt` — 5 packages.
+Source: `arch/packages/wsl.txt` — 6 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -147,6 +147,7 @@ Source: `arch/packages/wsl.txt` — 5 packages.
 | `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `arch/auth.sh` stores it. |
 | `vulkan-dzn` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Experimental `dzn` (`microsoft-experimental`) Vulkan driver. | Upstream calls the driver experimental; expect rough edges. |
 | `vulkan-icd-loader` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Loader that lets Vulkan applications find `vulkan-dzn`. | `lib32-vulkan-icd-loader` is deliberately absent; multilib stays disabled. |
+| `x11-ssh-askpass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Lightweight X11 passphrase dialog. | Lets the VS Code Remote-WSL server unlock the SSH key through WSLg. |
 | `xdg-utils` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | `xdg-open`, `xdg-mime`, and related desktop integration helpers. | Lets CLI tools that expect a desktop opener resolve URLs and MIME types via `wslu`/WSLg. |
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
@@ -324,8 +325,8 @@ is why the default `--check` does not fail on untracked packages.
   firmware, microcode, or GPU drivers. Those belong to the OS installation step.
 - `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`,
   `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `mesa`,
-  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `xdg-utils`, and `wslu` are
-  WSL-only; the GL/Vulkan drivers render through the Windows GPU.
+  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `x11-ssh-askpass`, `xdg-utils`,
+  and `wslu` are WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`.
 

@@ -50,7 +50,10 @@ gnome-keyring. On WSL the helper enables the `ssh-agent.socket` user unit, so
 systemd starts an agent on first use at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
 Fish exports that path in new shells and runs `ssh-add` when the agent has no
 keys, so a protected key prompts once per boot. There is no socket cache to go
-stale across restarts.
+stale across restarts. The helper also installs
+`~/.vscode-server/server-env-setup`, which gives the Remote-WSL server the same
+socket and asks for the passphrase through a WSLg dialog when no terminal has
+loaded the key yet.
 
 On WSL the BWS token is stored in `pass`; create a GPG key with
 `gpg --full-generate-key` if you do not have one. The helper initializes an

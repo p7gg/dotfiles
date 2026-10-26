@@ -9,6 +9,9 @@ pass
 vulkan-dzn
 vulkan-icd-loader
 
+# Passphrase dialog for the VS Code Remote-WSL SSH agent setup.
+x11-ssh-askpass
+
 # Desktop integration helpers for CLI tools that call xdg-open/xdg-mime.
 xdg-utils
 

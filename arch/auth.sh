@@ -473,6 +473,18 @@ if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
         fi
     fi
 
+    if is_wsl && ((agent_ready)); then
+        vscode_setup="$HOME/.vscode-server/server-env-setup"
+        if cmp -s "$REPO_ROOT/arch/vscode-server-env-setup.sh" "$vscode_setup"; then
+            log "$vscode_setup is up to date"
+        elif ((DRY_RUN)); then
+            log "Would install $vscode_setup for the VS Code Remote-WSL server"
+        else
+            install -Dm644 "$REPO_ROOT/arch/vscode-server-env-setup.sh" "$vscode_setup"
+            log "Installed $vscode_setup for the VS Code Remote-WSL server"
+        fi
+    fi
+
     log "SSH key fingerprint: $key_fingerprint"
     if ((agent_exported)); then
         log "SSH agent socket: $SSH_AUTH_SOCK (new fish shells pick it up automatically)"
