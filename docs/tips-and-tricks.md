@@ -364,6 +364,11 @@ Arch keyring. Do not leave the system in a `pacman -Sy`-only state. If a system
 upgrade breaks boot, use a btrfs snapshot if available, or boot an Arch ISO and
 chroot.
 
+If `ssh` over Tailscale reports `Connection refused`, the tailnet path is fine
+but nothing is listening on port 22. Check `systemctl status sshd` and enable it
+with `sudo systemctl enable --now sshd.service`; bootstrap does this when systemd
+is available.
+
 ## A small maintenance rhythm
 
 | When | Run |

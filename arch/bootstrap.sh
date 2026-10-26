@@ -623,6 +623,40 @@ setup_firewall() {
     run_sudo ufw --force enable
 }
 
+setup_sshd() {
+    local profile="$1"
+
+    if ! command -v sshd >/dev/null 2>&1; then
+        warn "sshd is not installed; skipping SSH server setup"
+        return 0
+    fi
+
+    if [[ ! -d /run/systemd/system ]]; then
+        warn "systemd is not running; cannot enable sshd"
+        if [[ "$profile" == "wsl" ]] || is_wsl; then
+            warn "  rerun arch/wsl-init.sh --systemd to manage sshd.service"
+        fi
+        return 0
+    fi
+
+    if systemctl is-active --quiet sshd.service 2>/dev/null; then
+        log "sshd.service is running"
+    elif systemctl is-enabled --quiet sshd.service 2>/dev/null; then
+        log "Starting sshd.service"
+        run_optional sudo systemctl start sshd.service ||
+            warn "could not start sshd.service"
+    else
+        log "Enabling sshd.service"
+        run_optional sudo systemctl enable --now sshd.service ||
+            warn "could not start sshd.service"
+    fi
+
+    if [[ "$profile" == "wsl" ]]; then
+        log "WSL: sshd listens inside the distro; external SSH needs mirrored"
+        log "networking or a Windows port proxy for port 22."
+    fi
+}
+
 setup_tailscale() {
     local profile="$1"
 
@@ -953,6 +987,7 @@ if ((DO_SYSTEM)); then
     configure_reflector
     setup_timers "$PROFILE"
     setup_firewall "$PROFILE"
+    setup_sshd "$PROFILE"
     setup_tailscale "$PROFILE"
 else
     log "Skipping system maintenance"

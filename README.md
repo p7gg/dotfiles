@@ -334,6 +334,9 @@ The bootstrap applies:
 - `fstrim.timer` and `fwupd-refresh.timer` on native only
 - `ufw` on native: default deny incoming, allow outgoing, allow SSH and `tailscale0`.
   Add extra rules in `setup_firewall` or directly in `/etc/ufw`.
+- `sshd` on both profiles: `sshd.service` is enabled and started when systemd is
+  available, so SSH over the LAN or Tailscale works after provisioning. WSL
+  still needs mirrored networking or a Windows port proxy for outside access.
 - `arch-audit` for package vulnerability checks
 
 Tailscale is installed on both profiles. Native enables `tailscaled.service`.
