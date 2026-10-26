@@ -51,7 +51,8 @@ Options:
   --skip-gcloud       Do not configure or authenticate the gcloud CLI
   --skip-tailscale    Do not authenticate Tailscale
   --skip-bws          Do not set up the Bitwarden Secrets Manager token
-  --bws-account NAME  Keyring account label for the BWS token (default: personal)
+  --bws-account NAME  Keyring account label for the BWS token (default:
+                      personal; native keyring only, WSL always uses pass)
   --skip-linear       Do not authenticate the Linear MCP server
   --skip-jira         Do not authenticate the Jira MCP server
   --skip-mcp          Do not authenticate the Linear or Jira MCP servers

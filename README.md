@@ -634,6 +634,10 @@ Optional additions are listed in [docs/decisions.md](docs/decisions.md).
 [the secrets section in docs/tips-and-tricks.md](docs/tips-and-tricks.md#secrets-not-plaintext-at-rest)
 for the manual commands and operational notes.
 
+`--bws-account NAME` selects the GNOME Keyring label on native systems only. WSL
+always reads the single `pass` entry at `bitwarden/bws-token`, so the wrapper's
+WSL error message does not suggest `--bws-account`.
+
 On WSL, `pass` also needs a GPG key and an initialized password store. If you do
 not have a key yet:
 

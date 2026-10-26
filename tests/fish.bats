@@ -119,3 +119,34 @@ teardown() {
     [ "$status" -eq 0 ]
     [ "$output" = "[][]" ]
 }
+
+@test "WSL bws wrapper points at pass instead of --bws-account" {
+    cat >"$TEST_BIN/pass" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$TEST_BIN/pass"
+
+    run env WSL_DISTRO_NAME=arch BWS_ACCOUNT=work \
+        fish --no-config -c "source '$REPO_ROOT/home/dot_config/fish/functions/bws.fish'; bws secret list"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"bitwarden/bws-token"* ]]
+    [[ "$output" == *"pass insert"* ]]
+    [[ "$output" != *"--bws-account"* ]]
+}
+
+@test "native bws wrapper keeps the keyring account guidance" {
+    cat >"$TEST_BIN/secret-tool" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$TEST_BIN/secret-tool"
+
+    run env -u WSL_DISTRO_NAME BWS_ACCOUNT=work \
+        fish --no-config -c "source '$REPO_ROOT/home/dot_config/fish/functions/bws.fish'; bws secret list"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"GNOME Keyring for account 'work'"* ]]
+    [[ "$output" == *"--bws-account work"* ]]
+}

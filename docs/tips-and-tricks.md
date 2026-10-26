@@ -271,6 +271,10 @@ token once, skips the prompt when an entry already exists, and accepts
 scripts and systemd units do not inherit the token; pass `BWS_ACCESS_TOKEN`
 explicitly in those contexts.
 
+`--bws-account NAME` selects the GNOME Keyring label on native systems. WSL
+always reads the single `pass` entry at `bitwarden/bws-token`, so the flag is a
+no-op there and the wrapper's WSL error message points at `pass` instead.
+
 **Native GNOME** <img src="assets/badge-native.svg" alt="Native" height="18">
 
 ```bash

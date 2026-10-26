@@ -43,10 +43,11 @@ It will:
 The helper skips MCP sign-in when a server is already connected. Use
 `--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
 needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
-`--bws-account NAME` if your keyring label is not `personal`. For non-interactive
-runs, pass `--email` and `--non-interactive`; steps that need a browser or TTY
-are reported instead of prompted for. Native GNOME already has an SSH agent through
-gnome-keyring. On WSL the helper enables the `ssh-agent.socket` user unit, so
+`--bws-account NAME` if your native keyring label is not `personal` (WSL always
+uses the single `pass` entry `bitwarden/bws-token`, so the flag has no effect
+there). For non-interactive runs, pass `--email` and `--non-interactive`; steps
+that need a browser or TTY are reported instead of prompted for. Native GNOME
+already has an SSH agent through gnome-keyring. On WSL the helper enables the `ssh-agent.socket` user unit, so
 systemd starts an agent on first use at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
 Fish exports that path in new shells and runs `ssh-add` when the agent has no
 keys, so a protected key prompts once per boot. There is no socket cache to go

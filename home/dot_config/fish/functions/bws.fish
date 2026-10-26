@@ -6,6 +6,9 @@
 # WSL: token is stored in pass:
 #   pass insert bitwarden/bws-token
 #
+# --bws-account only selects the GNOME Keyring label on native systems. WSL
+# always reads the single pass entry at bitwarden/bws-token.
+#
 # The token is exported only for the bws process and its children. Run
 # `./arch/auth.sh` to store it interactively, or see the README for the manual
 # commands.
@@ -16,7 +19,9 @@ function bws --wraps bws --description 'bws with access token from keyring'
     end
 
     set -l token
+    set -l token_store native
     if set -q WSL_DISTRO_NAME
+        set token_store wsl
         if not type -q pass
             echo "bws: pass is not installed; run arch/bootstrap.sh --profile wsl" >&2
             return 1
@@ -31,7 +36,11 @@ function bws --wraps bws --description 'bws with access token from keyring'
     end
 
     if test -z "$token"
-        echo "bws: no access token stored for account '$account'; run ./arch/auth.sh --bws-account $account" >&2
+        if test "$token_store" = wsl
+            echo "bws: no access token in pass at bitwarden/bws-token; run ./arch/auth.sh or: pass insert bitwarden/bws-token" >&2
+        else
+            echo "bws: no access token stored in GNOME Keyring for account '$account'; run ./arch/auth.sh --bws-account $account" >&2
+        end
         return 1
     end
 
