@@ -780,8 +780,9 @@ Do not add that complexity before it is needed.
 ## Validation
 
 CI uses an Arch container and the same entry points; update your local system
-if you need its tool versions to match CI exactly. It executes
-the same entry points used locally:
+if you need its tool versions to match CI exactly. The test suite runs as a
+regular user because the provisioning scripts refuse to run as root. It
+executes the same entry points used locally:
 
 ```bash
 just lint       # Bash syntax, ShellCheck, shfmt, fish, actionlint, Just, gitleaks

@@ -45,5 +45,10 @@ jobs:
       - name: Lint
         run: ./scripts/lint.sh
 
+      # The provisioning scripts refuse to run as root, so exercise them as a
+      # regular user, like a real machine.
+      - name: Create test user
+        run: useradd --create-home --user-group --shell /bin/bash tester
+
       - name: Test
-        run: ./scripts/test.sh
+        run: runuser -u tester -- env HOME=/home/tester ./scripts/test.sh
