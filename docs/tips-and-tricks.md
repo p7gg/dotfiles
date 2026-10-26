@@ -370,8 +370,10 @@ with `sudo systemctl enable --now sshd.service`; bootstrap does this when system
 is available.
 
 Bootstrap also installs key-only auth once `~/.ssh/authorized_keys` exists
-(`/etc/ssh/sshd_config.d/10-hardening.conf`). If that locks you out, log in on
-the machine itself, remove that file, and reload sshd.
+(`/etc/ssh/sshd_config.d/10-hardening.conf`). That file is chezmoi-managed from
+`home/private_dot_ssh/private_authorized_keys`, so add new keys in the repo;
+editing the deployed file is undone by the next `chezmoi apply`. If hardening
+locks you out, log in on the machine itself, remove the drop-in, and reload sshd.
 
 ## A small maintenance rhythm
 

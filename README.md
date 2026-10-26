@@ -338,9 +338,10 @@ The bootstrap applies:
   available, so SSH over the LAN or Tailscale works after provisioning. WSL
   still needs mirrored networking or a Windows port proxy for outside access.
 - `sshd` key-only hardening: `arch/system/sshd-hardening.conf` is installed as
-  `/etc/ssh/sshd_config.d/10-hardening.conf` once `~/.ssh/authorized_keys`
-  exists, validated with `sshd -t`, then reloaded. Without an authorized key the
-  step is skipped so password access is never lost.
+  `/etc/ssh/sshd_config.d/10-hardening.conf` after dotfiles are applied,
+  validated with `sshd -t`, then reloaded. `~/.ssh/authorized_keys` is managed
+  from `home/private_dot_ssh/private_authorized_keys`; without a key the step is
+  skipped so password access is never lost.
 - `arch-audit` for package vulnerability checks
 
 Tailscale is installed on both profiles. Native enables `tailscaled.service`.
@@ -525,8 +526,10 @@ because it is machine auth state and can contain an OAuth token.
 ## Authentication and SSH
 
 Chezmoi configures SSH commit signing with one per-machine key, and work
-projects under `~/Projects/work/` use the work email. Inspect state first, then
-run the helper once:
+projects under `~/Projects/work/` use the work email. `~/.ssh/authorized_keys`
+is managed too: `home/private_dot_ssh/private_authorized_keys` lists the keys
+allowed to log in, so a freshly provisioned host accepts them without a manual
+`ssh-copy-id`. Inspect state first, then run the helper once:
 
 ```bash
 ./arch/auth.sh --check

@@ -655,14 +655,22 @@ setup_sshd() {
         log "WSL: sshd listens inside the distro; external SSH needs mirrored"
         log "networking or a Windows port proxy for port 22."
     fi
-
-    setup_sshd_hardening
 }
 
 setup_sshd_hardening() {
     local src="$REPO_ROOT/arch/system/sshd-hardening.conf"
     local dest="/etc/ssh/sshd_config.d/10-hardening.conf"
     local backup=""
+
+    if ! command -v sshd >/dev/null 2>&1; then
+        log "sshd is not installed; skipping key-only hardening"
+        return 0
+    fi
+
+    if [[ ! -d /run/systemd/system ]]; then
+        log "systemd is not running; skipping key-only hardening"
+        return 0
+    fi
 
     if [[ ! -f "$src" ]]; then
         warn "sshd hardening config not found: $src"
@@ -673,7 +681,7 @@ setup_sshd_hardening() {
     # password auth alone until an authorized key is in place.
     if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]]; then
         warn "no key in ${HOME:-~}/.ssh/authorized_keys; skipping key-only hardening"
-        warn "  install one with: ssh-copy-id -i ~/.ssh/id_ed25519.pub <user>@<host>"
+        warn "  add one to home/private_dot_ssh/private_authorized_keys or run ssh-copy-id"
         return 0
     fi
 
@@ -809,8 +817,9 @@ check_environment() {
     fi
 
     if ((DO_SYSTEM)) && command -v sshd >/dev/null 2>&1; then
-        if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]]; then
-            warn "no key in ${HOME:-~}/.ssh/authorized_keys; sshd key-only hardening will be skipped"
+        if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]] &&
+            [[ ! -s "$REPO_ROOT/home/private_dot_ssh/private_authorized_keys" ]]; then
+            warn "no SSH authorized keys; sshd key-only hardening will be skipped"
         fi
     fi
 
@@ -1074,6 +1083,14 @@ if ((DO_DOTFILES)); then
     apply_dotfiles
 else
     log "Skipping dotfiles"
+fi
+
+# Run after dotfiles so a managed ~/.ssh/authorized_keys exists before password
+# auth is disabled.
+if ((DO_SYSTEM)); then
+    setup_sshd_hardening
+else
+    log "Skipping sshd hardening"
 fi
 
 if ((DO_HOOKS)); then
