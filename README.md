@@ -18,9 +18,10 @@ concerns.
 
 ## Documentation
 
-- [Package catalog](docs/packages.md) — all 67 tracked packages with Native/WSL
-  badges, the installer-managed OpenCode CLI, the 18 optional Nerd Fonts,
-  per-list counts, mise toolchains, and the install/record/audit loop.
+- [Package catalog](docs/packages.md) — all 67 tracked packages (60 native,
+  58 WSL) with Native/WSL badges, the bootstrap-managed OpenCode CLI, the 18
+  optional Nerd Fonts, per-list counts, mise toolchains, and the install/record/
+  audit loop.
 - [Documentation index](docs/README.md) — task-based navigation for the docs.
 - [Windows notes](windows/README.md) — the intentionally empty Windows side.
 - [Tips and tricks](docs/tips-and-tricks.md) — fish, Git, chezmoi, mise, WSL,
@@ -110,13 +111,20 @@ concerns.
 │   ├── lint.sh                   # shared local/CI lint entry point
 │   ├── fmt.sh
 │   ├── test.sh
+│   ├── check-docs.sh             # package counts, links, and local assets
 │   └── doctor.sh
 ├── tests/
 │   ├── render-templates.sh       # render every chezmoi template
-│   ├── common.bats
 │   ├── audit.bats
+│   ├── auth.bats
+│   ├── bootstrap.bats
+│   ├── common.bats
+│   ├── docs.bats
 │   ├── fish.bats
-│   └── fonts.bats
+│   ├── fonts.bats
+│   ├── ssh.bats
+│   ├── supply-chain.bats
+│   └── wsl-init.bats
 ├── windows/
 │   └── README.md
 ├── docs/
@@ -276,6 +284,10 @@ settings, not a second dotfiles manager.
 ## Package model
 
 Tracked lists live in `arch/packages/`:
+
+There are 67 tracked package names: 60 apply to the native profile and 58 to
+WSL. The 51 shared names are 46 official packages plus 5 AUR packages; the
+remaining 9 native-only and 7 WSL-only names are split by profile.
 
 - `base.txt` — common CLI tools, fish, chezmoi, mise, git, Git tooling, atuin, tealdeer, dust/duf, kubectl, lint/test tooling, system maintenance, and build tools
 - `native.txt` — native-only extras: `fwupd`, `restic`, `ufw`, `zellij`, and `gnome-tweaks`
@@ -762,11 +774,14 @@ the same entry points used locally:
 
 ```bash
 just lint       # Bash syntax, ShellCheck, shfmt, fish, actionlint, Just, gitleaks
-just test       # bats tests plus every chezmoi template render
+just test       # docs consistency, bats tests, and every chezmoi template render
 just render     # template rendering only
 lefthook run pre-commit
 ```
 
-`just lint` scans the full repository and Git history; the pre-commit hook calls
+`just test` runs `scripts/check-docs.sh` first. It verifies the 67/60/58 package
+counts in the README, docs, and provisioning SVG against `arch/packages/*.txt`,
+and checks every relative Markdown link and local asset. `just lint` scans the
+full repository and Git history; the pre-commit hook calls
 `scripts/lint.sh --staged` so it only checks staged shell/fish files and scans
 staged secrets.

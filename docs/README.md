@@ -17,7 +17,7 @@ Start with the task you need instead of reading everything:
 
 | Document | What it covers |
 | --- | --- |
-| [Package catalog](packages.md) | All 67 tracked packages plus the installer-managed OpenCode CLI and 18 optional Nerd Fonts, with Native/WSL badges, per-file counts, the mise toolchains, and the install → record → audit loop. |
+| [Package catalog](packages.md) | All 67 tracked packages (60 native, 58 WSL) plus the bootstrap-managed OpenCode CLI and 18 optional Nerd Fonts, with Native/WSL badges, per-file counts, the mise toolchains, and the install → record → audit loop. |
 | [Tips and tricks](tips-and-tricks.md) | Fish, Git, chezmoi, mise, WSL, secrets, OpenCode, recovery, and a small maintenance rhythm. |
 | [Authentication and SSH](auth.md) | Key, GitHub, gcloud, Tailscale, BWS, and MCP setup and troubleshooting. |
 | [Decisions](decisions.md) | Tooling-language rationale, optional Git defaults, and the BWS private-key decision. |
@@ -26,10 +26,13 @@ Start with the task you need instead of reading everything:
 
 ## Source of truth
 
-`arch/packages/*.txt` and the scripts are the source of truth. The counts and
-tables in these docs are descriptive; update them when the lists change. The
-package lists are install-only: bootstrap adds missing packages and never
-removes anything, and the audit makes drift visible.
+`arch/packages/*.txt` and the scripts are the source of truth. `just test` runs
+`scripts/check-docs.sh`, which verifies the 67 total / 60 native / 58 WSL counts
+here and in the README, package catalog, and provisioning SVG against those
+files, and checks every relative Markdown link and local asset. Update the docs
+and the checker together when a package list changes. The package lists are
+install-only: bootstrap adds missing packages and never removes anything, and
+the audit makes drift visible.
 
 ## Environment badges
 

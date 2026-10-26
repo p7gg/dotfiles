@@ -15,6 +15,7 @@ require_cmd bats
 
 cd "$REPO_ROOT"
 
+"$REPO_ROOT/scripts/check-docs.sh"
 "$REPO_ROOT/tests/render-templates.sh"
 bats "$REPO_ROOT/tests"
 
