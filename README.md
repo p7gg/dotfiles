@@ -625,6 +625,14 @@ allowed to log in, so a freshly provisioned host accepts them without a manual
 ./arch/auth.sh --generate-key
 ```
 
+Tailscale device names double as SSH aliases: `ssh gabriel@laptop` resolves the
+name from `tailscaled`'s peer list (`tailscale ip`) and proxies the session with
+`tailscale nc`. Because it does not rely on the OS resolver, it also works when
+local MagicDNS resolution is unavailable, such as on a WSL or
+userspace-networking node whose resolver does not know the tailnet. Other
+hostnames keep using the normal resolver. This is client-side only; the target
+still needs `sshd` and an account for you.
+
 The helper handles the SSH key, GitHub authentication/signing keys, gcloud and
 application default credentials, Tailscale, the Bitwarden Secrets Manager token,
 and the Linear/Jira MCP servers. See [docs/auth.md](docs/auth.md) for flags,

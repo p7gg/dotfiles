@@ -98,6 +98,11 @@ Notes:
   sudo tailscale up
   ```
   With WSL systemd enabled, bootstrap can enable `tailscaled.service` directly.
+- `~/.ssh/config` resolves Tailscale peer names from `tailscaled`'s peer list
+  and proxies them with `tailscale nc`, so `ssh user@laptop` works without
+  local MagicDNS resolution. This is a client-side alias only; the destination
+  still needs a normal `sshd` and user account, and it does not enable the
+  Tailscale SSH server.
 - `gcloud compute config-ssh` is for Compute Engine VMs, not Cloud Source
   Repositories.
 - Commits and tags are signed by default. Personal GitHub commits can show as

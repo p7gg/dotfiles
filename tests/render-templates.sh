@@ -81,6 +81,8 @@ expect_not_contains "$TMP_ROOT/blank/gitconfig" 'includeIf .*Projects/work' \
     "blank work email omits the work include"
 expect_not_contains "$TMP_ROOT/blank/ssh-config" 'source\.developers\.google\.com' \
     "blank work email omits the Cloud Source host"
+expect_contains "$TMP_ROOT/blank/ssh-config" 'ProxyCommand tailscale nc' \
+    "Tailscale device names proxy through tailscaled"
 if [[ -s "$TMP_ROOT/blank/work.inc" ]]; then
     fail "blank work email leaves work.inc empty"
 else

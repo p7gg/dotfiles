@@ -28,3 +28,11 @@ Host source.developers.google.com
     IdentityFile ~/.ssh/id_ed25519
     IdentitiesOnly yes
 {{ end -}}
+
+# Tailscale devices: any tailnet machine name works as a host alias, so
+# `ssh gabriel@laptop` reaches the device named laptop. `tailscale ip` resolves
+# the name from tailscaled's peer list and `tailscale nc` carries the session
+# through the daemon, so this does not depend on the OS resolving MagicDNS
+# names. Hosts that are not tailnet devices are left to the normal resolver.
+Match exec "tailscale ip -4 '%h' >/dev/null 2>&1"
+    ProxyCommand tailscale nc "$(tailscale ip -4 '%h')" %p
