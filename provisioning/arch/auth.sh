@@ -60,7 +60,7 @@ Options:
 
 What this does:
   - ensures a per-machine SSH key exists
-  - activates the systemd ssh-agent socket and loads the key
+  - uses the Windows agent bridge (WSL) or the session agent, and loads the key
   - authenticates `gh` for personal GitHub and uploads the key
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
@@ -446,48 +446,52 @@ if ((have_key)) && [[ -n "$email" ]]; then
 fi
 
 if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
-    agent_socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ssh-agent.socket"
+    agent_socket=""
     agent_ready=0
     agent_exported=0
 
-    # On WSL, always prefer the systemd socket so new shells and later sessions
-    # can find it. On native systems, a live session agent (GNOME Keyring) wins.
-    use_session_agent=0
-    if [[ -n "${SSH_AUTH_SOCK:-}" ]] &&
-        { [[ "$SSH_AUTH_SOCK" == "$agent_socket" ]] || ! is_wsl; }; then
-        use_session_agent=1
-    fi
+    if is_wsl; then
+        # The Windows bridge is the only agent on WSL; it already reads the key
+        # loaded by the Windows OpenSSH Agent service.
+        bridge_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        agent_socket="$bridge_dir/wsl2-ssh-agent.sock"
 
-    if ((use_session_agent)); then
+        if [[ ! -S "$agent_socket" ]]; then
+            if ((DRY_RUN)); then
+                warn "Windows SSH agent bridge is not running; would run: systemctl --user enable --now wsl2-ssh-agent.service"
+                AUTH_INCOMPLETE=1
+            elif ! command -v systemctl >/dev/null 2>&1 ||
+                ! systemctl --user show-environment >/dev/null 2>&1; then
+                warn "Windows SSH agent bridge is not running; start wsl2-ssh-agent manually"
+                AUTH_INCOMPLETE=1
+            elif systemctl --user enable --now wsl2-ssh-agent.service >/dev/null 2>&1; then
+                log "Started wsl2-ssh-agent.service"
+            else
+                warn "could not start wsl2-ssh-agent.service; run provisioning/arch/bootstrap.sh"
+                AUTH_INCOMPLETE=1
+            fi
+        fi
+
+        if [[ -S "$agent_socket" ]]; then
+            previous_socket="${SSH_AUTH_SOCK:-}"
+            export SSH_AUTH_SOCK="$agent_socket"
+            unset SSH_AGENT_PID
+            agent_ready=1
+            if [[ "$previous_socket" != "$agent_socket" ]]; then
+                agent_exported=1
+            fi
+        fi
+    elif [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+        # Native systems use the session agent, normally GNOME Keyring.
+        agent_socket="$SSH_AUTH_SOCK"
         agent_status=0
         ssh-add -l >/dev/null 2>&1 || agent_status=$?
         if [[ "$agent_status" -eq 0 || "$agent_status" -eq 1 ]]; then
             agent_ready=1
         fi
-    fi
-
-    if ((agent_ready == 0)); then
-        if [[ -S "$agent_socket" ]]; then
-            export SSH_AUTH_SOCK="$agent_socket"
-            unset SSH_AGENT_PID
-            agent_ready=1
-            agent_exported=1
-        elif ! command -v systemctl >/dev/null 2>&1 ||
-            ! systemctl --user show-environment >/dev/null 2>&1; then
-            warn "no SSH agent and no systemd user manager; set SSH_AUTH_SOCK manually"
-            AUTH_INCOMPLETE=1
-        elif ((DRY_RUN)); then
-            warn "ssh-agent socket is not active; would run: systemctl --user enable --now ssh-agent.socket"
-            AUTH_INCOMPLETE=1
-        elif systemctl --user enable --now ssh-agent.socket >/dev/null 2>&1; then
-            export SSH_AUTH_SOCK="$agent_socket"
-            unset SSH_AGENT_PID
-            agent_ready=1
-            agent_exported=1
-        else
-            warn "could not enable ssh-agent.socket; check: systemctl --user status ssh-agent.socket"
-            AUTH_INCOMPLETE=1
-        fi
+    else
+        warn "no SSH agent in this session; start one (GNOME Keyring provides it)"
+        AUTH_INCOMPLETE=1
     fi
 
     key_fingerprint="$(ssh-keygen -lf "${KEY}.pub" | awk '{print $2}')"
@@ -507,7 +511,7 @@ if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
         fi
     fi
 
-    if is_wsl && ((agent_ready)); then
+    if is_wsl; then
         vscode_setup="$HOME/.vscode-server/server-env-setup"
         if cmp -s "$REPO_ROOT/provisioning/arch/system/vscode-server-env-setup.sh" "$vscode_setup"; then
             log "$vscode_setup is up to date"

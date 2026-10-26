@@ -131,6 +131,11 @@ filesystem, and run:
 ./provisioning/arch/bootstrap.sh --profile wsl
 ```
 
+Bootstrap also installs and starts the Windows SSH agent bridge
+(`wsl2-ssh-agent`). The Windows OpenSSH Authentication Agent must be running for
+it to authenticate; see
+[Windows SSH agent bridge](auth.md#windows-ssh-agent-bridge-wsl).
+
 Keep the repo inside WSL, not on `/mnt/c`, for sensible permissions, file modes,
 and Git performance.
 

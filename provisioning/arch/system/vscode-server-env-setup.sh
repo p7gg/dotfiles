@@ -8,7 +8,7 @@
 # When no terminal has loaded the key yet, ask for the passphrase through a
 # WSLg dialog instead of failing the first git operation.
 
-export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ssh-agent.socket"
+export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wsl2-ssh-agent.sock"
 
 vscode_setup_ssh_key() {
     vscode_key="$HOME/.ssh/id_ed25519"

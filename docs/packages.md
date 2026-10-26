@@ -168,10 +168,11 @@ These are not pacman packages and are not included in the package totals above.
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
 | `opencode` | `registry.npmjs.org` release tarball | Terminal AI coding agent. | Bootstrap reads OpenCode's release metadata, verifies the npm `sha512` integrity, and installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Pin with `OPENCODE_VERSION`; update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
+| `wsl2-ssh-agent` | GitHub release, pinned and SHA-256 verified | WSL-side bridge to the Windows OpenSSH agent. | WSL only. Bootstrap installs `~/.local/bin/wsl2-ssh-agent` and the `wsl2-ssh-agent.service` user unit; see [authentication](auth.md#windows-ssh-agent-bridge-wsl). |
 
-The bootstrap installs the CLI without executing a remote installer script and
-does not remove packages. If an older machine still has the pacman `opencode`
-package, remove it once with `sudo pacman -Rns opencode` after the
+The bootstrap installs both tools without executing a remote installer script
+and does not remove packages. If an older machine still has the pacman
+`opencode` package, remove it once with `sudo pacman -Rns opencode` after the
 bootstrap-managed binary is in place. `just doctor` warns when the pacman package
 is present or when `opencode` resolves somewhere other than
 `~/.opencode/bin/opencode`.

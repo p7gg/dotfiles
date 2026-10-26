@@ -24,6 +24,7 @@ ALLOW_PROFILE_MISMATCH=0
 DO_PACKAGES=1
 DO_FONTS=1
 DO_OPENCODE=1
+DO_WSL_SSH_AGENT=1
 DO_DOTFILES=1
 DO_MISE=1
 DO_SERVICES=1
@@ -36,6 +37,12 @@ CHEZMOI_NAME="${CHEZMOI_NAME:-}"
 CHEZMOI_EMAIL="${CHEZMOI_EMAIL:-}"
 CHEZMOI_WORK_EMAIL="${CHEZMOI_WORK_EMAIL:-}"
 OPENCODE_VERSION="${OPENCODE_VERSION:-}"
+# The Windows SSH agent bridge is a static upstream release. Pin the version and
+# both published digests so bootstrap never installs an unverified binary; bump
+# them together after reviewing a new release.
+WSL2_SSH_AGENT_VERSION="0.9.7"
+WSL2_SSH_AGENT_SHA256_X86_64="281c64f6079598de1a455292d533f3ae21837980a3d3012074bc14ad695325d8"
+WSL2_SSH_AGENT_SHA256_ARM64="e9cb0347a72ca68a511e48779080b80a22af1bf670e5a52c9f35f95951ce5221"
 # Pin the paru build to a reviewed AUR commit instead of executing whatever
 # happens to be on master at provisioning time. Bump it deliberately when
 # updating paru.
@@ -69,6 +76,7 @@ Options:
                         display names (implies the fonts step)
   --no-fonts            Skip the optional Nerd Fonts step
   --no-opencode         Skip installing/updating the OpenCode CLI
+  --no-wsl-ssh-agent    Skip installing the Windows SSH agent bridge (WSL only)
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
   --no-completions      Skip fish completion generation
@@ -317,6 +325,60 @@ setup_opencode() {
 
     installed_version="$("$opencode_bin" --version 2>/dev/null | tail -n 1 || true)"
     log "OpenCode installed at $opencode_bin${installed_version:+ ($installed_version)}"
+}
+
+setup_wsl_ssh_agent() {
+    local bin="$HOME/.local/bin/wsl2-ssh-agent"
+    local asset sha256 url tmp actual
+
+    if [[ "$PROFILE" != "wsl" ]]; then
+        log "Skipping the Windows SSH agent bridge for profile $PROFILE"
+        return 0
+    fi
+
+    case "$(uname -m)" in
+    x86_64)
+        asset="wsl2-ssh-agent"
+        sha256="$WSL2_SSH_AGENT_SHA256_X86_64"
+        ;;
+    aarch64 | arm64)
+        asset="wsl2-ssh-agent-arm64"
+        sha256="$WSL2_SSH_AGENT_SHA256_ARM64"
+        ;;
+    *)
+        warn "no wsl2-ssh-agent release for $(uname -m); skipping the Windows SSH agent bridge"
+        return 0
+        ;;
+    esac
+
+    if [[ -x "$bin" ]] &&
+        [[ "$(sha256sum "$bin" | awk '{print $1}')" == "$sha256" ]]; then
+        log "wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION is already installed at $bin"
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would install wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION into $bin and verify its sha256"
+        return 0
+    fi
+
+    require_cmd curl
+    require_cmd sha256sum
+
+    url="https://github.com/mame/wsl2-ssh-agent/releases/download/v${WSL2_SSH_AGENT_VERSION}/${asset}"
+    tmp="$(mktemp)"
+    register_tmp "$tmp"
+
+    log "Installing wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION into $HOME/.local/bin"
+    curl -fsSL -o "$tmp" "$url" ||
+        die "could not download $url"
+
+    actual="$(sha256sum "$tmp" | awk '{print $1}')"
+    [[ "$actual" == "$sha256" ]] ||
+        die "wsl2-ssh-agent checksum mismatch: expected $sha256, got $actual"
+
+    install -Dm755 "$tmp" "$bin"
+    log "wsl2-ssh-agent installed at $bin"
 }
 
 setup_fonts() {
@@ -604,6 +666,59 @@ setup_services() {
 
         ensure_systemd_unit "${svc}.service"
     done
+}
+
+enable_wsl_ssh_agent_service() {
+    local unit="wsl2-ssh-agent.service"
+    local unit_file="$HOME/.config/systemd/user/$unit"
+    local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wsl2-ssh-agent.sock"
+
+    [[ "$PROFILE" == "wsl" ]] || return 0
+
+    if [[ ! -x "$HOME/.local/bin/wsl2-ssh-agent" ]]; then
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would enable and start $unit"
+        return 0
+    fi
+
+    if [[ ! -f "$unit_file" ]]; then
+        warn "systemd user unit not found: $unit_file; apply dotfiles first"
+        return 0
+    fi
+
+    if [[ ! -d /run/systemd/system ]] ||
+        ! systemctl --user show-environment >/dev/null 2>&1; then
+        warn "no systemd user manager; the Windows SSH agent bridge will not start automatically"
+        return 0
+    fi
+
+    if command -v powershell.exe >/dev/null 2>&1; then
+        if ! powershell.exe -NoProfile -NonInteractive -Command \
+            "(Get-Service ssh-agent -ErrorAction SilentlyContinue).Status -eq 'Running'" \
+            2>/dev/null | grep -qi true; then
+            warn "Windows OpenSSH agent is not running; skipping $unit"
+            warn "  start it from an elevated PowerShell: Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+            return 0
+        fi
+    fi
+
+    if ! systemctl --user enable --now "$unit" >/dev/null 2>&1; then
+        warn "could not enable $unit; check: systemctl --user status $unit"
+        return 0
+    fi
+
+    # The bridge is now the only agent on WSL; stop the stock agent so a second
+    # empty agent cannot shadow it.
+    if systemctl --user is-enabled --quiet ssh-agent.socket 2>/dev/null; then
+        systemctl --user disable --now ssh-agent.socket >/dev/null 2>&1 ||
+            warn "could not disable the unused ssh-agent.socket"
+    fi
+    systemctl --user stop ssh-agent.service >/dev/null 2>&1 || true
+
+    log "Windows SSH agent bridge is active at $socket"
 }
 
 configure_pacman() {
@@ -1004,6 +1119,19 @@ check_environment() {
         done
     fi
 
+    if ((DO_WSL_SSH_AGENT)) && [[ "$PROFILE" == "wsl" ]]; then
+        if ! command -v curl >/dev/null 2>&1; then
+            if ((DO_PACKAGES)); then
+                warn "curl not found; the package step will install it"
+            else
+                warn "curl not found; required by the Windows SSH agent bridge download"
+                status=1
+            fi
+        fi
+        command -v sha256sum >/dev/null 2>&1 ||
+            warn "sha256sum not found; required by the Windows SSH agent bridge install (part of coreutils)"
+    fi
+
     if ((DO_HOOKS)) && ! command -v lefthook >/dev/null 2>&1; then
         warn "lefthook not found; Git hooks will be skipped"
     fi
@@ -1118,6 +1246,10 @@ while (($# > 0)); do
         ;;
     --no-opencode)
         DO_OPENCODE=0
+        shift
+        ;;
+    --no-wsl-ssh-agent)
+        DO_WSL_SSH_AGENT=0
         shift
         ;;
     --no-dotfiles)
@@ -1241,6 +1373,12 @@ else
     log "Skipping OpenCode CLI"
 fi
 
+if ((DO_WSL_SSH_AGENT)); then
+    setup_wsl_ssh_agent
+else
+    log "Skipping the Windows SSH agent bridge"
+fi
+
 if ((DO_SYSTEM)); then
     configure_reflector
     setup_timers "$PROFILE"
@@ -1255,6 +1393,10 @@ if ((DO_DOTFILES)); then
     apply_dotfiles
 else
     log "Skipping dotfiles"
+fi
+
+if ((DO_SYSTEM)); then
+    enable_wsl_ssh_agent_service
 fi
 
 # Run after dotfiles so a managed ~/.ssh/authorized_keys exists before password

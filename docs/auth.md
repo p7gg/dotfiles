@@ -47,15 +47,53 @@ needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
 uses the single `pass` entry `bitwarden/bws-token`, so the flag has no effect
 there). For non-interactive runs, pass `--email` and `--non-interactive`; steps
 that need a browser or TTY are reported instead of prompted for. Native GNOME
-already has an SSH agent through gnome-keyring. On WSL the helper enables the
-`ssh-agent.socket` user unit, so systemd starts an agent on first use at
-`$XDG_RUNTIME_DIR/ssh-agent.socket`.
-Fish exports that path in new shells and runs `ssh-add` when the agent has no
-keys, so a protected key prompts once per boot. There is no socket cache to go
-stale across restarts. The helper also installs
+already has an SSH agent through gnome-keyring. On WSL, bootstrap installs the
+Windows bridge described below and the helper loads the key there; the stock
+`ssh-agent.socket` unit is not used, so there is exactly one agent per Windows
+session. Fish exports the bridge socket in new shells and runs `ssh-add` when
+the agent is empty, so a protected key prompts once per Windows boot. There is
+no socket cache to go stale across restarts. The helper also installs
 `~/.vscode-server/server-env-setup`, which gives the Remote-WSL server the same
 socket and asks for the passphrase through a WSLg dialog when no terminal has
 loaded the key yet.
+
+Processes that do not start from fish (the T3 and OpenCode servers, systemd user
+scopes) do not inherit `SSH_AUTH_SOCK`. On WSL, `~/.ssh/config` therefore points
+`IdentityAgent` at the bridge socket, so `git` and `ssh` find the key without
+the variable.
+
+### Windows SSH agent bridge (WSL)
+
+Bootstrap installs `wsl2-ssh-agent` into `~/.local/bin` from a pinned upstream
+release after verifying its SHA-256, and enables the
+`wsl2-ssh-agent.service` user unit. The bridge forwards the agent protocol to
+the Windows OpenSSH Authentication Agent, so one key works in Windows and WSL,
+and it survives WSL restarts.
+
+Prerequisites, once per Windows machine: install the OpenSSH Client optional
+feature and start its agent service from an elevated PowerShell:
+
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+Set-Service -Name ssh-agent -StartupType Automatic
+Start-Service ssh-agent
+```
+
+The socket is `$XDG_RUNTIME_DIR/wsl2-ssh-agent.sock`. Fish exports it, and
+`~/.ssh/config` points `IdentityAgent` at it for processes that do not inherit
+the variable. Bootstrap enables the unit only when the Windows `ssh-agent`
+service is running. Load the key into the Windows agent once per Windows login;
+from WSL, so the private key stays in the WSL filesystem:
+
+```bash
+SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/wsl2-ssh-agent.sock" ssh-add ~/.ssh/id_ed25519
+```
+
+The bridge runs PowerShell in the background and adds a small delay to the
+first agent operation after it starts. While it is active, every WSL process
+can use every key held by the Windows agent: keep only the per-machine key
+there, and do not load work or security-key credentials you would not expose to
+WSL.
 
 Work Cloud Source Repositories setup is partly manual because Google does not
 provide a CLI command to register an SSH key for Cloud Source Repositories.
