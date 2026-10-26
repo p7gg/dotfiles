@@ -6,6 +6,7 @@ setup() {
     source "$REPO_ROOT/arch/lib/common.sh"
     DRY_RUN=0
     ERROR_REPORTED=0
+    ROOT_RUNNER=run_cmd
     TEST_TMP="$(mktemp -d)"
 }
 
@@ -112,4 +113,91 @@ EOF
     cleanup_tmp
 
     [ ! -e "$TEST_TMP/temp-file" ]
+}
+
+@test "cleanup_tmp removes registered directories" {
+    mkdir -p "$TEST_TMP/temp-dir/nested"
+    register_tmp_dir "$TEST_TMP/temp-dir"
+    cleanup_tmp
+
+    [ ! -e "$TEST_TMP/temp-dir" ]
+}
+
+@test "backup_file keeps only the newest timestamped backups" {
+    mkdir -p "$TEST_TMP/etc"
+    printf '%s\n' 'old' >"$TEST_TMP/etc/app.conf"
+    touch "$TEST_TMP/etc/app.conf.bak.20200101000001"
+    touch "$TEST_TMP/etc/app.conf.bak.20200101000002"
+    touch "$TEST_TMP/etc/app.conf.bak.20200101000003"
+    touch "$TEST_TMP/etc/app.conf.bak.20200101000004"
+
+    backup_file "$TEST_TMP/etc/app.conf"
+
+    [ -f "$BACKUP_PATH" ]
+    [ "$(find "$TEST_TMP/etc" -name 'app.conf.bak.[0-9]*' | wc -l)" -eq 3 ]
+    [ ! -e "$TEST_TMP/etc/app.conf.bak.20200101000001" ]
+    [ ! -e "$TEST_TMP/etc/app.conf.bak.20200101000002" ]
+    [ -e "$TEST_TMP/etc/app.conf.bak.20200101000004" ]
+}
+
+@test "verify_sha512_integrity accepts npm integrity and rejects mismatches" {
+    local integrity
+    integrity='sha512-58IrmUxZ2c8rSOVJseJGZmNgRZMNPafBrLKZ0cO3+TH5Sq5B7dosKyB6NuEPi8uNRSI+VIePWzFufOO2vAGWKQ=='
+    printf 'hello\n' >"$TEST_TMP/hello"
+
+    run verify_sha512_integrity "$TEST_TMP/hello" "$integrity"
+    [ "$status" -eq 0 ]
+
+    printf 'tampered\n' >"$TEST_TMP/hello"
+    run verify_sha512_integrity "$TEST_TMP/hello" "$integrity"
+    [ "$status" -eq 1 ]
+
+    run verify_sha512_integrity "$TEST_TMP/hello" "sha1-abc"
+    [ "$status" -eq 2 ]
+}
+
+@test "profile_mismatch reports the environment that does not match" {
+    export WSL_DISTRO_NAME=arch
+    run profile_mismatch native
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"native profile selected inside WSL"* ]]
+
+    run profile_mismatch wsl
+    [ "$status" -eq 1 ]
+
+    unset WSL_DISTRO_NAME
+    if ! is_wsl; then
+        run profile_mismatch wsl
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"wsl profile selected outside WSL"* ]]
+    fi
+}
+
+@test "account_needs_password handles missing, locked, and usable accounts" {
+    mkdir -p "$TEST_TMP/bin"
+    cat >"$TEST_TMP/bin/id" <<'EOF'
+#!/usr/bin/env bash
+[[ "${2:-}" == "known" ]]
+EOF
+    cat >"$TEST_TMP/bin/passwd" <<'EOF'
+#!/usr/bin/env bash
+case "${FAKE_PASSWORD_STATE:-P}" in
+P) printf '%s P 2026-10-25 -1 -1 -1 -1\n' "${2:-}" ;;
+L) printf '%s L 2026-10-25 -1 -1 -1 -1\n' "${2:-}" ;;
+*) exit 1 ;;
+esac
+EOF
+    chmod +x "$TEST_TMP/bin/id" "$TEST_TMP/bin/passwd"
+    PATH="$TEST_TMP/bin:$PATH"
+
+    run account_needs_password missing
+    [ "$status" -eq 0 ]
+
+    export FAKE_PASSWORD_STATE=L
+    run account_needs_password known
+    [ "$status" -eq 0 ]
+
+    export FAKE_PASSWORD_STATE=P
+    run account_needs_password known
+    [ "$status" -eq 1 ]
 }

@@ -13,6 +13,10 @@
 ERROR_REPORTED=${ERROR_REPORTED:-0}
 DRY_RUN=${DRY_RUN:-0}
 TMP_FILES=()
+TMP_DIRS=()
+# Keep timestamped backups of managed system files bounded. Override with
+# BACKUP_RETENTION=... when a longer local history is useful.
+BACKUP_RETENTION=${BACKUP_RETENTION:-3}
 
 log() {
     printf '%s\n' "$*"
@@ -85,11 +89,19 @@ register_tmp() {
     TMP_FILES+=("$1")
 }
 
+register_tmp_dir() {
+    TMP_DIRS+=("$1")
+}
+
 cleanup_tmp() {
-    local file
+    local file dir
 
     for file in "${TMP_FILES[@]}"; do
         [[ -n "$file" ]] && rm -f -- "$file"
+    done
+
+    for dir in "${TMP_DIRS[@]}"; do
+        [[ -n "$dir" ]] && rm -rf -- "$dir"
     done
 }
 
@@ -111,6 +123,52 @@ detect_profile() {
     else
         printf 'native\n'
     fi
+}
+
+# Print the reason when a profile does not match the current environment.
+# Auto-detection never mismatches; this guards an explicit --profile choice.
+profile_mismatch() {
+    local profile="$1"
+
+    case "$profile" in
+    native)
+        if is_wsl; then
+            printf 'native profile selected inside WSL\n'
+            return 0
+        fi
+        ;;
+    wsl)
+        if ! is_wsl; then
+            printf 'wsl profile selected outside WSL\n'
+            return 0
+        fi
+        ;;
+    esac
+
+    return 1
+}
+
+# Report the password status field from `passwd -S` (P means a usable
+# password). An unreadable entry returns an empty string.
+password_state() {
+    local user="$1"
+
+    LC_ALL=C passwd -S "$user" 2>/dev/null | awk 'NR == 1 { print $2 }'
+}
+
+# A missing account or one without a usable password will make the caller
+# prompt for one. Check this before a non-interactive run changes the system.
+account_needs_password() {
+    local user="$1"
+    local state
+
+    if ! id -u "$user" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    state="$(password_state "$user")"
+    [[ "$state" == "P" ]] && return 1
+    return 0
 }
 
 filter_packages() {
@@ -231,19 +289,63 @@ ensure_keyring() {
     log "pacman keyring already initialized"
 }
 
-# Copy a managed file to a timestamped backup and expose the path in BACKUP_PATH.
+# Copy a managed file to a timestamped backup and expose the path in
+# BACKUP_PATH. Older timestamped backups are pruned to BACKUP_RETENTION.
 backup_file() {
     local file="$1"
     BACKUP_PATH="${file}.bak.$(date +%Y%m%d%H%M%S)"
 
     if ((DRY_RUN)); then
-        log "Would back up $file to $BACKUP_PATH"
+        log "Would back up $file to $BACKUP_PATH (keeping ${BACKUP_RETENTION} backups)"
         return 0
     fi
 
     [[ -f "$file" ]] || return 0
     root_run cp -a "$file" "$BACKUP_PATH"
     log "Backed up $file to $BACKUP_PATH"
+    rotate_backups "$file"
+}
+
+# Remove all but the newest timestamped backups for one managed file.
+rotate_backups() {
+    local file="$1"
+    local keep="${2:-$BACKUP_RETENTION}"
+    local dir base
+    local -a backups=()
+    local index
+
+    if [[ ! "$keep" =~ ^[0-9]+$ ]] || ((keep < 1)); then
+        warn "invalid backup retention '$keep'; keeping 3 backups"
+        keep=3
+    fi
+
+    dir="$(dirname -- "$file")"
+    base="$(basename -- "$file")"
+    mapfile -t backups < <(
+        find "$dir" -maxdepth 1 -type f -name "${base}.bak.[0-9]*" -print 2>/dev/null |
+            LC_ALL=C sort -r
+    )
+
+    for ((index = keep; index < ${#backups[@]}; index++)); do
+        root_run rm -f -- "${backups[index]}"
+    done
+}
+
+# Verify an npm-style sha512 integrity value against a downloaded file.
+# Returns 0 on a match, 1 on a mismatch, and 2 when the value is unusable.
+verify_sha512_integrity() {
+    local file="$1"
+    local integrity="$2"
+    local expected actual
+
+    [[ "$integrity" == sha512-* ]] || return 2
+    expected="${integrity#sha512-}"
+    expected="$(printf '%s' "$expected" | base64 -d 2>/dev/null |
+        od -An -v -tx1 2>/dev/null | tr -d ' \n')" || true
+
+    [[ ${#expected} -eq 128 ]] || return 2
+    actual="$(sha512sum -- "$file" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]]
 }
 
 # Set or replace one key in an INI section. The file is written atomically after
