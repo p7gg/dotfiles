@@ -1,8 +1,8 @@
 # Managed by chezmoi. Add keys here, not in ~/.ssh/authorized_keys:
 # `chezmoi apply` replaces the deployed file, so manual additions are lost.
 
-# desktop (arch-wsl) — also the key uploaded to GitHub as "Desktop gh-cli"
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIArzjdoTP41tRNYAKdkPRf79812fA+hDrlkO8L+1lFSR gbos360@hotmail.com
+# desktop (arch-wsl) — GitHub titles: arch-wsl-auth, arch-wsl-signing
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIArzjdoTP41tRNYAKdkPRf79812fA+hDrlkO8L+1lFSR desktop
 
-# laptop (P7-LAPTOP) — also the key uploaded to GitHub as "Laptop gh-cli"
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMB/J3I03zsJWgkaucex/MHCy3ZC6q2RaO+sRQpLD18F gbos360@hotmail.com
+# laptop (P7-LAPTOP) — GitHub titles: P7-LAPTOP-auth, P7-LAPTOP-signing
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMB/J3I03zsJWgkaucex/MHCy3ZC6q2RaO+sRQpLD18F laptop
