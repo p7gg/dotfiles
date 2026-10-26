@@ -2,7 +2,7 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-    BOOTSTRAP="$REPO_ROOT/arch/bootstrap.sh"
+    BOOTSTRAP="$REPO_ROOT/provisioning/arch/bootstrap.sh"
 }
 
 @test "bootstrap never pipes a remote installer into a shell" {
@@ -22,5 +22,5 @@ setup() {
 
 @test "documentation no longer advertises the remote OpenCode installer" {
     ! grep -Rq 'opencode.ai/v2/install' \
-        "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/arch"
+        "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/provisioning/arch"
 }

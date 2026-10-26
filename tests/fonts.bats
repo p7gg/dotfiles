@@ -45,7 +45,7 @@ teardown() {
 }
 
 @test "--list shows the catalog and installed state" {
-    run "$REPO_ROOT/arch/fonts.sh" --list
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --list
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"JetBrains Mono"* ]]
@@ -54,7 +54,7 @@ teardown() {
 }
 
 @test "--font accepts a display name and dry-run does not install" {
-    run "$REPO_ROOT/arch/fonts.sh" --font "Zed Mono" --dry-run
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --font "Zed Mono" --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"ttf-zed-mono-nerd"* ]]
@@ -62,7 +62,7 @@ teardown() {
 }
 
 @test "--font accepts numbers and ranges" {
-    run "$REPO_ROOT/arch/fonts.sh" --font "1,3-4" --dry-run
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --font "1,3-4" --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"ttf-cascadia-code-nerd"* ]]
@@ -71,7 +71,7 @@ teardown() {
 }
 
 @test "--font installs the selected package and passes --yes to pacman" {
-    run "$REPO_ROOT/arch/fonts.sh" --font "Hack" --yes
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --font "Hack" --yes
 
     [ "$status" -eq 0 ]
     grep -qx -- '-S --needed --noconfirm ttf-hack-nerd' "$FAKE_PACMAN_LOG"
@@ -80,7 +80,7 @@ teardown() {
 @test "already installed fonts are not reinstalled" {
     printf '%s\n' 'ttf-hack-nerd' >"$FAKE_PACMAN_INSTALLED"
 
-    run "$REPO_ROOT/arch/fonts.sh" --font "Hack"
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --font "Hack"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Already installed"* ]]
@@ -88,7 +88,7 @@ teardown() {
 }
 
 @test "--all selects every catalog font" {
-    run "$REPO_ROOT/arch/fonts.sh" --all --dry-run
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --all --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"ttf-cascadia-code-nerd"* ]]
@@ -96,7 +96,7 @@ teardown() {
 }
 
 @test "unknown font names fail without installing" {
-    run "$REPO_ROOT/arch/fonts.sh" --font "Not A Font" --dry-run
+    run "$REPO_ROOT/provisioning/arch/tools/fonts.sh" --font "Not A Font" --dry-run
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"unknown font"* ]]
@@ -104,14 +104,14 @@ teardown() {
 }
 
 @test "interactive selection installs only the chosen fonts" {
-    run bash -c 'printf "1 3\n" | "$1" --dry-run' _ "$REPO_ROOT/arch/fonts.sh"
+    run bash -c 'printf "1 3\n" | "$1" --dry-run' _ "$REPO_ROOT/provisioning/arch/tools/fonts.sh"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing optional fonts: ttf-cascadia-code-nerd ttf-firacode-nerd"* ]]
 }
 
 @test "empty interactive selection installs nothing by default" {
-    run bash -c 'exec "$1" --dry-run </dev/null' _ "$REPO_ROOT/arch/fonts.sh"
+    run bash -c 'exec "$1" --dry-run </dev/null' _ "$REPO_ROOT/provisioning/arch/tools/fonts.sh"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"No selected fonts need installation."* ]]

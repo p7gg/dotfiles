@@ -1,8 +1,8 @@
-# Optional Nerd Fonts installed by arch/fonts.sh.
+# Optional Nerd Fonts installed by provisioning/arch/tools/fonts.sh.
 #
 # This file is not part of the required base/native/wsl package lists. Bootstrap
 # offers an interactive selection, and automation can pass --fonts. Installed
-# fonts are recognized by arch/audit.sh but are never required by it.
+# fonts are recognized by provisioning/arch/audit.sh but are never required by it.
 #
 # Format: package|Display Name
 ttf-cascadia-code-nerd|Cascadia Code

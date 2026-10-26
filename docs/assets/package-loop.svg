@@ -33,8 +33,8 @@
   <circle cx="356" cy="156" r="12" fill="#211a35" stroke="#bc8cff"/>
   <text x="356" y="160.5" fill="#eadcff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11" font-weight="700" text-anchor="middle">2</text>
   <text x="378" y="161" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="650">Record</text>
-  <text x="350" y="194" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">arch/packages/base.txt</text>
-  <text x="350" y="214" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11">arch/packages/aur*.txt</text>
+  <text x="350" y="194" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10">provisioning/arch/packages/base.txt</text>
+  <text x="350" y="214" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10">provisioning/arch/packages/aur*.txt</text>
   <text x="350" y="252" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11.5">One name per line.</text>
   <text x="350" y="269" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11.5">Comments are allowed.</text>
 

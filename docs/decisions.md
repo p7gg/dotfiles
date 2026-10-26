@@ -38,8 +38,8 @@ signatures:
   tarball's published `sha512` integrity is verified before extraction. Set
   `OPENCODE_VERSION` to pin a release; `--no-opencode` skips it.
 - `paru` is built from the AUR at the `PARU_COMMIT` value in
-  `arch/bootstrap.sh` instead of whatever is on AUR master at provisioning time.
-  Bump that pin deliberately, after reviewing the PKGBUILD.
+  `provisioning/arch/bootstrap.sh` instead of whatever is on AUR master at
+  provisioning time. Bump that pin deliberately, after reviewing the PKGBUILD.
 
 Upstream OpenCode uses npm's registry integrity metadata rather than a detached
 installer signature. This repo verifies the published `sha512` integrity over

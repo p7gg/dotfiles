@@ -8,10 +8,10 @@
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 COMPLETIONS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
 OPENCODE_BIN="${OPENCODE_BIN:-$HOME/.opencode/bin/opencode}"
@@ -25,7 +25,7 @@ trap cleanup_tmp EXIT
 
 usage() {
     cat <<'EOF'
-Usage: arch/completions.sh [options]
+Usage: provisioning/arch/tools/completions.sh [options]
 
 Options:
   --dry-run   Print what would be generated without writing files

@@ -10,10 +10,10 @@
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 PROFILE="auto"
 DRY_RUN=0
@@ -48,7 +48,7 @@ trap cleanup_tmp EXIT
 
 usage() {
     cat <<'EOF'
-Usage: arch/bootstrap.sh [options]
+Usage: provisioning/arch/bootstrap.sh [options]
 
 Options:
   --profile native|wsl  Target profile (default: auto-detect)
@@ -83,7 +83,7 @@ Environment:
   PARU_COMMIT           AUR paru commit to build (default: reviewed pin)
   BACKUP_RETENTION      Timestamped backups to keep per managed file (default: 3)
 
-Run this as your normal user. Use `sudo ./arch/wsl-init.sh` for the one-time
+Run this as your normal user. Use `sudo ./provisioning/arch/wsl-init.sh` for the one-time
 WSL root setup.
 EOF
 }
@@ -129,7 +129,7 @@ ensure_paru() {
 
     command -v paru >/dev/null 2>&1 && return 0
 
-    for file in "$REPO_ROOT/arch/packages/aur.txt" "$REPO_ROOT/arch/packages/aur-${profile}.txt"; do
+    for file in "$REPO_ROOT/provisioning/arch/packages/aur.txt" "$REPO_ROOT/provisioning/arch/packages/aur-${profile}.txt"; do
         if list_has_packages "$file"; then
             has_aur=1
             break
@@ -173,10 +173,10 @@ install_packages() {
     local profile="$1"
 
     validate_package_lists \
-        "$REPO_ROOT/arch/packages/base.txt" \
-        "$REPO_ROOT/arch/packages/${profile}.txt" \
-        "$REPO_ROOT/arch/packages/aur.txt" \
-        "$REPO_ROOT/arch/packages/aur-${profile}.txt" ||
+        "$REPO_ROOT/provisioning/arch/packages/base.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/${profile}.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/aur.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/aur-${profile}.txt" ||
         die "fix the invalid package lists before installing"
 
     ensure_keyring
@@ -188,12 +188,12 @@ install_packages() {
         run_sudo pacman -Syu
     fi
 
-    pacman_install_file "$REPO_ROOT/arch/packages/base.txt"
-    pacman_install_file "$REPO_ROOT/arch/packages/${profile}.txt"
+    pacman_install_file "$REPO_ROOT/provisioning/arch/packages/base.txt"
+    pacman_install_file "$REPO_ROOT/provisioning/arch/packages/${profile}.txt"
 
     ensure_paru "$profile"
-    paru_install_file "$REPO_ROOT/arch/packages/aur.txt"
-    paru_install_file "$REPO_ROOT/arch/packages/aur-${profile}.txt"
+    paru_install_file "$REPO_ROOT/provisioning/arch/packages/aur.txt"
+    paru_install_file "$REPO_ROOT/provisioning/arch/packages/aur-${profile}.txt"
 }
 
 opencode_target() {
@@ -320,7 +320,7 @@ setup_opencode() {
 }
 
 setup_fonts() {
-    local script="$REPO_ROOT/arch/fonts.sh"
+    local script="$REPO_ROOT/provisioning/arch/tools/fonts.sh"
     local -a args=()
 
     if [[ ! -x "$script" ]]; then
@@ -352,7 +352,7 @@ setup_fonts() {
         ((ASSUME_YES)) && args+=(--yes)
         log "Installing selected optional fonts"
         run_optional "$script" "${args[@]}" ||
-            warn "optional font installation failed; rerun ./arch/fonts.sh with the same selection"
+            warn "optional font installation failed; rerun ./provisioning/arch/tools/fonts.sh with the same selection"
         return 0
     fi
 
@@ -364,13 +364,13 @@ setup_fonts() {
     fi
 
     if ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
-        log "Skipping optional Nerd Fonts; pass --fonts all|LIST or run ./arch/fonts.sh"
+        log "Skipping optional Nerd Fonts; pass --fonts all|LIST or run ./provisioning/arch/tools/fonts.sh"
         return 0
     fi
 
     log "Selecting optional Nerd Fonts"
     run_optional "$script" ||
-        warn "optional font installation failed; rerun ./arch/fonts.sh"
+        warn "optional font installation failed; rerun ./provisioning/arch/tools/fonts.sh"
 }
 
 chezmoi_config_path() {
@@ -549,7 +549,7 @@ setup_mise() {
 }
 
 setup_completions() {
-    local script="$REPO_ROOT/arch/completions.sh"
+    local script="$REPO_ROOT/provisioning/arch/tools/completions.sh"
 
     if [[ ! -x "$script" ]]; then
         warn "completion script not found: $script"
@@ -558,7 +558,7 @@ setup_completions() {
 
     log "Generating fish completions"
     if ! run_optional "$script"; then
-        warn "completion generation failed; rerun ./arch/completions.sh after fixing the cause"
+        warn "completion generation failed; rerun ./provisioning/arch/tools/completions.sh after fixing the cause"
     fi
 }
 
@@ -680,7 +680,7 @@ configure_pacman() {
 }
 
 configure_reflector() {
-    local src="$REPO_ROOT/arch/system/reflector.conf"
+    local src="$REPO_ROOT/provisioning/arch/system/reflector.conf"
 
     if [[ ! -f "$src" ]]; then
         warn "reflector config not found: $src"
@@ -765,7 +765,7 @@ setup_sshd() {
     if [[ ! -d /run/systemd/system ]]; then
         warn "systemd is not running; cannot enable sshd"
         if [[ "$profile" == "wsl" ]] || is_wsl; then
-            warn "  rerun arch/wsl-init.sh --systemd to manage sshd.service"
+            warn "  rerun provisioning/arch/wsl-init.sh --systemd to manage sshd.service"
         fi
         return 0
     fi
@@ -789,7 +789,7 @@ sshd_hardening_effective() {
 }
 
 setup_sshd_hardening() {
-    local src="$REPO_ROOT/arch/system/sshd-hardening.conf"
+    local src="$REPO_ROOT/provisioning/arch/system/sshd-hardening.conf"
     local dest="/etc/ssh/sshd_config.d/10-hardening.conf"
     local backup=""
 
@@ -903,7 +903,7 @@ setup_tailscale() {
         warn "WSL has no systemd here; start Tailscale manually with:"
         warn "  sudo tailscaled >/tmp/tailscaled.log 2>&1 &"
         warn "  sudo tailscale up"
-        warn "Alternatively, rerun arch/wsl-init.sh --systemd and restart WSL."
+        warn "Alternatively, rerun provisioning/arch/wsl-init.sh --systemd and restart WSL."
     else
         warn "systemd is not running; cannot enable tailscaled"
     fi
@@ -1008,26 +1008,26 @@ check_environment() {
         warn "lefthook not found; Git hooks will be skipped"
     fi
 
-    if ((DO_COMPLETIONS)) && [[ ! -x "$REPO_ROOT/arch/completions.sh" ]]; then
-        warn "completion script is not executable: arch/completions.sh"
+    if ((DO_COMPLETIONS)) && [[ ! -x "$REPO_ROOT/provisioning/arch/tools/completions.sh" ]]; then
+        warn "completion script is not executable: provisioning/arch/tools/completions.sh"
         status=1
     fi
 
     if ((DO_PACKAGES)); then
         validate_package_lists \
-            "$REPO_ROOT/arch/packages/base.txt" \
-            "$REPO_ROOT/arch/packages/${PROFILE}.txt" \
-            "$REPO_ROOT/arch/packages/aur.txt" \
-            "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" ||
+            "$REPO_ROOT/provisioning/arch/packages/base.txt" \
+            "$REPO_ROOT/provisioning/arch/packages/${PROFILE}.txt" \
+            "$REPO_ROOT/provisioning/arch/packages/aur.txt" \
+            "$REPO_ROOT/provisioning/arch/packages/aur-${PROFILE}.txt" ||
             status=1
     fi
 
     if ((DO_FONTS)); then
-        if [[ ! -x "$REPO_ROOT/arch/fonts.sh" ]]; then
-            warn "font script is not executable: arch/fonts.sh"
+        if [[ ! -x "$REPO_ROOT/provisioning/arch/tools/fonts.sh" ]]; then
+            warn "font script is not executable: provisioning/arch/tools/fonts.sh"
             status=1
         fi
-        validate_font_catalog "$REPO_ROOT/arch/packages/fonts.txt" || status=1
+        validate_font_catalog "$REPO_ROOT/provisioning/arch/packages/fonts.txt" || status=1
     fi
 
     if ((status == 0)); then
@@ -1301,8 +1301,8 @@ else
     log "Bootstrap complete."
 fi
 if ((DRY_RUN == 0 && DO_DOTFILES)); then
-    log "Next: ./arch/auth.sh --check  (inspect SSH, GitHub, gcloud, Tailscale, BWS, and MCP state)"
-    log "      ./arch/auth.sh --generate-key  (apply missing authentication)"
+    log "Next: ./provisioning/arch/auth.sh --check  (inspect SSH, GitHub, gcloud, Tailscale, BWS, and MCP state)"
+    log "      ./provisioning/arch/auth.sh --generate-key  (apply missing authentication)"
 fi
 if ((DRY_RUN == 0 && DO_SHELL)); then
     log "Log out and back in (or start a new shell) to pick up fish and mise."

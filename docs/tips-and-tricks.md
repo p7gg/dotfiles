@@ -37,7 +37,7 @@ Useful moves:
 ```bash
 fd -e fish                         # find by extension, not by walking find(1)
 rg -n 'tailscale' arch home        # search contents, respecting .gitignore
-bat arch/bootstrap.sh              # read with syntax highlighting
+bat provisioning/arch/bootstrap.sh              # read with syntax highlighting
 eza --tree --level=2               # inspect a directory shape
 dust -r                            # see what is using disk space
 duf                                # see filesystems and free space
@@ -115,7 +115,7 @@ Work projects under `~/Projects/work/` use the work email from
 ## chezmoi: preview everything
 
 The source state is `home/`, not the repository root. `.chezmoiroot` makes that
-work; the provisioning scripts stay one level up in `arch/`.
+work; the provisioning scripts stay one level up in `provisioning/arch/`.
 
 ```bash
 chezmoi diff                              # what would change
@@ -148,7 +148,7 @@ packages and never removes anything.
 ```bash
 just audit native
 just audit-check native
-./arch/audit.sh --profile native --json
+./provisioning/arch/audit.sh --profile native --json
 ```
 
 Adding a package:
@@ -156,14 +156,14 @@ Adding a package:
 ```bash
 sudo pacman -S --needed <package>
 paru -S --needed <aur-package>
-$EDITOR arch/packages/base.txt        # or aur.txt / native.txt / wsl.txt
+$EDITOR provisioning/arch/packages/base.txt        # or aur.txt / native.txt / wsl.txt
 just audit native
 ```
 
 Removing a package:
 
 ```bash
-$EDITOR arch/packages/base.txt        # delete the line first
+$EDITOR provisioning/arch/packages/base.txt        # delete the line first
 sudo pacman -Rns <package>            # then remove it deliberately
 ```
 
@@ -223,7 +223,7 @@ GUI notes:
 - WSLg makes Linux GUI apps appear next to Windows. GitButler's GUI needs WSLg.
 - Windows VS Code can connect to WSL through the Remote WSL extension.
 - `wslview <url>` (from `wslu`) opens a URL in the Windows browser.
-- Rendering is GPU accelerated: `arch/packages/wsl.txt` installs `mesa` (the
+- Rendering is GPU accelerated: `provisioning/arch/packages/wsl.txt` installs `mesa` (the
   `d3d12` Gallium driver) plus `vulkan-dzn` and `vulkan-icd-loader`, and
   `conf.d/50-wsl-gpu.fish` exports `GALLIUM_DRIVER=d3d12` and
   `LIBVA_DRIVER_NAME=d3d12` when `WSL_DISTRO_NAME` is set. Verify with
@@ -236,7 +236,7 @@ systemd is optional. To enable it, rerun the root init script from Windows or
 inside WSL, then restart the distro:
 
 ```bash
-sudo ./arch/wsl-init.sh --user <your-linux-user> --systemd
+sudo ./provisioning/arch/wsl-init.sh --user <your-linux-user> --systemd
 ```
 
 ```powershell
@@ -265,7 +265,7 @@ add explicit Windows helpers.
 ## Secrets: not plaintext at rest
 
 The `bws` fish wrapper never exports the token globally. It loads the token only
-for the `bws` process and its children. `./arch/auth.sh` offers to store the
+for the `bws` process and its children. `./provisioning/arch/auth.sh` offers to store the
 token once, skips the prompt when an entry already exists, and accepts
 `--skip-bws` to leave it manual. Because the wrapper is a fish function, bash
 scripts and systemd units do not inherit the token; pass `BWS_ACCESS_TOKEN`
@@ -296,7 +296,7 @@ pass show bitwarden/bws-token        # prints the secret; avoid in shared termin
 starts with `0.`, at both prompts. Use `pass insert -f` to overwrite a wrong
 value, then verify through the wrapper with `bws -o none project list`.
 
-`arch/auth.sh` initializes an empty store automatically when exactly one GPG
+`provisioning/arch/auth.sh` initializes an empty store automatically when exactly one GPG
 secret key exists. If it cannot choose a key, create one and run
 `pass init <gpg-key-id>` first, then rerun the helper.
 
@@ -333,7 +333,8 @@ opencode mcp auth linear
 opencode mcp auth jira
 ```
 
-Inside a session, `/mcps` shows server status. `arch/auth.sh` connects the OAuth
+Inside a session, `/mcps` shows server status. `provisioning/arch/auth.sh` connects
+the OAuth
 servers and skips ones that are already connected; use `--skip-mcp`,
 `--skip-linear`, or `--skip-jira` for intentional skips.
 
@@ -365,7 +366,7 @@ bad dotfile changes with Git in the repo, then run `chezmoi apply`.
 For package problems:
 
 ```bash
-./arch/bootstrap.sh --profile auto --dry-run
+./provisioning/arch/bootstrap.sh --profile auto --dry-run
 sudo pacman-key --refresh-keys
 arch-audit
 sudo systemctl list-timers --all
@@ -398,7 +399,7 @@ locks you out, log in on the machine itself, remove the drop-in, and reload sshd
 | After package changes | `just dry-run`, `just audit-check` |
 | Weekly | `sudo pacman -Syu`, `paru -Sua`, `paccache -r`, `arch-audit` |
 | After changing `wsl.conf` | `wsl --shutdown` |
-| After upgrading tools | `./arch/completions.sh` |
+| After upgrading tools | `./provisioning/arch/tools/completions.sh` |
 
 ## Next
 

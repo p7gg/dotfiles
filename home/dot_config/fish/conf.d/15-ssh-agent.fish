@@ -35,6 +35,6 @@ if status is-interactive
             ssh-add $HOME/.ssh/id_ed25519
         end
     else if test $agent_status -eq 2; and set -q SSH_AUTH_SOCK
-        echo "ssh-agent: not reachable at $SSH_AUTH_SOCK; run arch/auth.sh" >&2
+        echo "ssh-agent: not reachable at $SSH_AUTH_SOCK; run provisioning/arch/auth.sh" >&2
     end
 end

@@ -7,12 +7,12 @@
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
-CATALOG="$REPO_ROOT/arch/packages/fonts.txt"
+CATALOG="$REPO_ROOT/provisioning/arch/packages/fonts.txt"
 
 DRY_RUN=0
 ASSUME_YES=0
@@ -31,7 +31,7 @@ trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
-Usage: arch/fonts.sh [options]
+Usage: provisioning/arch/tools/fonts.sh [options]
 
 Options:
   --list              List the font catalog and installed state
@@ -47,7 +47,7 @@ Run without --list, --all, or --font for an interactive selection menu.
 Selections accept numbers and ranges (for example: 1 3-5), package names such as
 ttf-firacode-nerd, display names such as "Fira Code", or all.
 
-The catalog lives in arch/packages/fonts.txt and contains optional packages only.
+The catalog lives in provisioning/arch/packages/fonts.txt and contains optional packages only.
 EOF
 }
 
@@ -299,7 +299,7 @@ done
 
 if ((${#SELECTED[@]} == 0)); then
     if ((NON_INTERACTIVE)); then
-        log "No fonts selected; run ./arch/fonts.sh interactively, or pass --font or --all."
+        log "No fonts selected; run ./provisioning/arch/tools/fonts.sh interactively, or pass --font or --all."
         exit 0
     fi
     interactive_select

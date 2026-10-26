@@ -1,7 +1,8 @@
 # Package catalog
 
-This is the complete inventory of `arch/packages/`: every required package the
-bootstrap tracks, the profile it lands on, and the reason it is there. The
+This is the complete inventory of `provisioning/arch/packages/`: every required
+package the bootstrap tracks, the profile it lands on, and the reason it is
+there. The
 catalog also covers the OpenCode CLI installed by the bootstrap outside pacman
 and the optional Nerd Fonts offered by the interactive font step.
 
@@ -20,20 +21,21 @@ There are **67 tracked required package names**:
 - **9** are native-only: 5 official packages plus 4 AUR packages
 - **7** are WSL-only: 6 official packages plus 1 AUR package
 
-There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
-not installed by default and are never required by the audit. The OpenCode CLI
-is bootstrap-managed from the verified npm release, is not counted here, and is not audited as a package.
+There are also **18 optional Nerd Fonts** in
+`provisioning/arch/packages/fonts.txt`. They are not installed by default and
+are never required by the audit. The OpenCode CLI is bootstrap-managed from the
+verified npm release, is not counted here, and is not audited as a package.
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 60 | `./arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./arch/bootstrap.sh --profile wsl` |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 60 | `./provisioning/arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./provisioning/arch/bootstrap.sh --profile wsl` |
 
 Counts are required package names only; the optional fonts are additional.
 `paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
 tracked as a package. `base-devel` is a meta
 package in current Arch, not a group. Counts are current for this revision; the
-files in `arch/packages/` remain the source of truth.
+files in `provisioning/arch/packages/` remain the source of truth.
 
 ## Badge legend
 
@@ -50,7 +52,7 @@ and mise toolchains are managed outside these lists.
 
 ## Both profiles — official repositories
 
-Source: `arch/packages/base.txt` — 46 packages.
+Source: `provisioning/arch/packages/base.txt` — 46 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -72,7 +74,7 @@ Source: `arch/packages/base.txt` — 46 packages.
 | `git` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Distributed version control. | Commits and tags are SSH-signed by default. |
 | `git-absorb` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Turns staged changes into `fixup!` commits automatically. | Useful before an autosquash rebase. |
 | `git-delta` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Syntax-highlighting pager for Git diffs. | Wired as `core.pager` when available. |
-| `github-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `gh` for GitHub auth, pull requests, issues, and SSH keys. | Authenticated by `arch/auth.sh`. |
+| `github-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `gh` for GitHub auth, pull requests, issues, and SSH keys. | Authenticated by `provisioning/arch/auth.sh`. |
 | `gitleaks` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Scans staged changes and Git history for secrets. | Runs in the pre-commit hook and CI. |
 | `gitui` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal UI for Git. | — |
 | `gnupg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | OpenPGP implementation used by `pass` and signing workflows. | — |
@@ -103,20 +105,20 @@ Source: `arch/packages/base.txt` — 46 packages.
 
 ## Both profiles — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `arch/packages/aur.txt` — 5 packages. `paru` is bootstrapped
+Source: `provisioning/arch/packages/aur.txt` — 5 packages. `paru` is bootstrapped
 automatically the first time an AUR list is non-empty.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
-| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL); `arch/auth.sh` stores it once. |
+| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL); `provisioning/arch/auth.sh` stores it once. |
 | `gitbutler-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GitButler GUI and the `but` CLI. | Do not add `gitbutler-cli-bin`; both packages own `/usr/bin/but`. WSL GUI needs WSLg. |
-| `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `arch/auth.sh` handles OAuth login and application default credentials. |
+| `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `provisioning/arch/auth.sh` handles OAuth login and application default credentials. |
 | `google-cloud-cli-component-gke-gcloud-auth-plugin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GKE authentication plugin for `kubectl`. | Used by `gcloud container clusters get-credentials`. |
 | `lefthook` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Git hook manager. | Bootstrap runs `lefthook install`; hooks call `scripts/lint.sh --staged`. |
 
 ## Native only — official repositories
 
-Source: `arch/packages/native.txt` — 5 packages.
+Source: `provisioning/arch/packages/native.txt` — 5 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -128,7 +130,7 @@ Source: `arch/packages/native.txt` — 5 packages.
 
 ## Native only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `arch/packages/aur-native.txt` — 4 packages.
+Source: `provisioning/arch/packages/aur-native.txt` — 4 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -139,12 +141,12 @@ Source: `arch/packages/aur-native.txt` — 4 packages.
 
 ## WSL only — official repositories
 
-Source: `arch/packages/wsl.txt` — 6 packages.
+Source: `provisioning/arch/packages/wsl.txt` — 6 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
 | `mesa` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | OpenGL and the `d3d12` Gallium driver. | Provides GPU rendering; without it WSLg falls back to `llvmpipe`. |
-| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `arch/auth.sh` stores it. |
+| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `provisioning/arch/auth.sh` stores it. |
 | `vulkan-dzn` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Experimental `dzn` (`microsoft-experimental`) Vulkan driver. | Upstream calls the driver experimental; expect rough edges. |
 | `vulkan-icd-loader` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Loader that lets Vulkan applications find `vulkan-dzn`. | `lib32-vulkan-icd-loader` is deliberately absent; multilib stays disabled. |
 | `x11-ssh-askpass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Lightweight X11 passphrase dialog. | Lets the VS Code Remote-WSL server unlock the SSH key through WSLg. |
@@ -152,7 +154,7 @@ Source: `arch/packages/wsl.txt` — 6 packages.
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `arch/packages/aur-wsl.txt` — 1 package.
+Source: `provisioning/arch/packages/aur-wsl.txt` — 1 package.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -161,7 +163,7 @@ Source: `arch/packages/aur-wsl.txt` — 1 package.
 ## Bootstrap-managed tools
 
 These are not pacman packages and are not included in the package totals above.
-`arch/bootstrap.sh` installs them into the user's home directory.
+`provisioning/arch/bootstrap.sh` installs them into the user's home directory.
 
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
@@ -176,21 +178,21 @@ is present or when `opencode` resolves somewhere other than
 
 ## Optional — Nerd Fonts
 
-Source: `arch/packages/fonts.txt` — 18 packages, all from the official `extra`
-repository.
+Source: `provisioning/arch/packages/fonts.txt` — 18 packages, all from the official
+`extra` repository.
 
 Bootstrap presents these in an interactive menu after package installation.
 Nothing is selected by default: enter numbers or ranges to install a subset, or
 press Enter to skip. Use `--no-fonts` to skip the step, or select explicitly:
 
 ```bash
-./arch/bootstrap.sh --profile native --fonts all
-./arch/bootstrap.sh --profile native --fonts "JetBrains Mono,Fira Code"
-./arch/fonts.sh --list
-./arch/fonts.sh --font "Zed Mono"
+./provisioning/arch/bootstrap.sh --profile native --fonts all
+./provisioning/arch/bootstrap.sh --profile native --fonts "JetBrains Mono,Fira Code"
+./provisioning/arch/tools/fonts.sh --list
+./provisioning/arch/tools/fonts.sh --font "Zed Mono"
 ```
 
-Installed fonts are recognized by `arch/audit.sh` but are never required. The
+Installed fonts are recognized by `provisioning/arch/audit.sh` but are never required. The
 font selection is not persisted; rerun the step or pass `--fonts` to add fonts
 on a later bootstrap.
 
@@ -225,7 +227,7 @@ config at `home/dot_config/mise/config.toml` (applied as
 | --- | --- | --- | --- |
 | Node.js | `latest` | JavaScript runtime. | Pin project versions in each project's `mise.toml`. |
 | Bun | `latest` | JavaScript runtime, bundler, and test runner. | — |
-| pnpm | `latest` | JavaScript package manager. | Completions are generated by `arch/completions.sh`. |
+| pnpm | `latest` | JavaScript package manager. | Completions are generated by `provisioning/arch/tools/completions.sh`. |
 | `npm:@antfu/ni` | `latest` | Package-manager-agnostic commands such as `ni`, `nr`, and `nx`. | Use whichever lockfile the project already has. |
 | `git-flow` (`github:gittower/git-flow-next`) | `2.1.0` | Git Flow next, renamed to `git-flow`. | Version is pinned in global config. |
 
@@ -254,8 +256,8 @@ sudo pacman -S --needed <package>
 paru -S --needed <aur-package>
 
 # 2. Record it in the right file
-$EDITOR arch/packages/base.txt
-$EDITOR arch/packages/aur.txt
+$EDITOR provisioning/arch/packages/base.txt
+$EDITOR provisioning/arch/packages/aur.txt
 
 # 3. Check that the lists and the machine agree
 just audit native
@@ -266,19 +268,19 @@ Choose the list by scope:
 
 | Scope | Official file | AUR file |
 | --- | --- | --- |
-| Both profiles | `arch/packages/base.txt` | `arch/packages/aur.txt` |
-| Native only | `arch/packages/native.txt` | `arch/packages/aur-native.txt` |
-| WSL only | `arch/packages/wsl.txt` | `arch/packages/aur-wsl.txt` |
+| Both profiles | `provisioning/arch/packages/base.txt` | `provisioning/arch/packages/aur.txt` |
+| Native only | `provisioning/arch/packages/native.txt` | `provisioning/arch/packages/aur-native.txt` |
+| WSL only | `provisioning/arch/packages/wsl.txt` | `provisioning/arch/packages/aur-wsl.txt` |
 
 Optional fonts do not use this loop. They are selected at install time from
-`arch/packages/fonts.txt`, and the audit accepts any installed subset.
+`provisioning/arch/packages/fonts.txt`, and the audit accepts any installed subset.
 
 Removing a package is also two steps: delete the line, then uninstall it
 manually. Bootstrap will not do it for you. The same applies when retiring the
 old pacman `opencode` package in favor of the bootstrap-managed CLI.
 
 Bootstrap-managed tools are outside this loop. Update OpenCode with
-`opencode upgrade` or by rerunning `arch/bootstrap.sh`.
+`opencode upgrade` or by rerunning `provisioning/arch/bootstrap.sh`.
 
 ### Inspecting a package
 
@@ -297,8 +299,8 @@ pacman -Qqem | sort                    # explicit AUR/foreign packages
 just audit native
 just audit wsl
 just audit-check native
-./arch/audit.sh --profile native --check --strict
-./arch/audit.sh --profile native --json
+./provisioning/arch/audit.sh --profile native --check --strict
+./provisioning/arch/audit.sh --profile native --json
 ```
 
 The audit expands package groups when a tracked list names one, so group members
@@ -306,8 +308,9 @@ do not show up as false drift. `--check` fails only when tracked packages are mi
 `--strict` also fails on untracked packages. `--json` is available for scripts
 and agents.
 
-`arch/packages/audit-ignore.txt` omits the OS `base` meta package and bootstrap
-artifacts such as `paru` and `paru-debug`. It is not a place to hide real drift.
+`provisioning/arch/packages/audit-ignore.txt` omits the OS `base` meta package
+and bootstrap artifacts such as `paru` and `paru-debug`. It is not a place to
+hide real drift.
 
 On a desktop installed with GNOME, many GNOME and system packages appear as
 untracked by design: they belong to the OS/desktop layer, not these lists. That
@@ -330,7 +333,7 @@ is why the default `--check` does not fail on untracked packages.
   and `wslu` are WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`. `paru` itself is built from the commit pinned in `PARU_COMMIT` in
-  `arch/bootstrap.sh`; bump it deliberately when updating paru.
+  `provisioning/arch/bootstrap.sh`; bump it deliberately when updating paru.
 
 ## Next
 

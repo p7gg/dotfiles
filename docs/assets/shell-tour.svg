@@ -34,12 +34,11 @@
   <text x="72" y="174" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
   <text x="94" y="174" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">eza --icons --git --group-directories-first</text>
   <text x="1128" y="174" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">READABLE FILES</text>
-  <text x="72" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">arch</text>
-  <text x="120" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">docs</text>
-  <text x="164" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">home</text>
-  <text x="212" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">windows</text>
-  <text x="282" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">README.md</text>
-  <text x="370" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">justfile</text>
+  <text x="72" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">provisioning</text>
+  <text x="178" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">docs</text>
+  <text x="222" y="203" fill="#58a6ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">home</text>
+  <text x="272" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">README.md</text>
+  <text x="360" y="203" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">justfile</text>
 
   <!-- Row 2: fd -->
   <text x="72" y="252" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
@@ -50,11 +49,11 @@
 
   <!-- Row 3: rg -->
   <text x="72" y="348" fill="#3fb950" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">&gt;</text>
-  <text x="94" y="348" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">rg -n 'systemd' arch/bootstrap.sh</text>
+  <text x="94" y="348" fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">rg -n 'systemd' provisioning/arch/bootstrap.sh</text>
   <text x="1128" y="348" fill="#6e7681" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9.5" letter-spacing="1" text-anchor="end">SEARCH</text>
-  <text x="72" y="375" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">333:</text>
+  <text x="72" y="375" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">594:</text>
   <text x="116" y="375" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">if [[ ! -d /run/systemd/system ]]; then</text>
-  <text x="72" y="395" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">438:</text>
+  <text x="72" y="395" fill="#bc8cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">697:</text>
   <text x="116" y="395" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">if [[ ! -d /run/systemd/system ]]; then</text>
 
   <!-- Row 4: zoxide -->

@@ -4,34 +4,34 @@ default:
     @just --list
 
 bootstrap profile="auto" *args:
-    ./arch/bootstrap.sh --profile {{ quote(profile) }} {{ args }}
+    ./provisioning/arch/bootstrap.sh --profile {{ quote(profile) }} {{ args }}
 
 dry-run profile="auto" *args:
-    ./arch/bootstrap.sh --profile {{ quote(profile) }} --dry-run {{ args }}
+    ./provisioning/arch/bootstrap.sh --profile {{ quote(profile) }} --dry-run {{ args }}
 
 check profile="auto" *args:
-    ./arch/bootstrap.sh --profile {{ quote(profile) }} --check {{ args }}
+    ./provisioning/arch/bootstrap.sh --profile {{ quote(profile) }} --check {{ args }}
 
 audit profile="auto" *args:
-    ./arch/audit.sh --profile {{ quote(profile) }} {{ args }}
+    ./provisioning/arch/audit.sh --profile {{ quote(profile) }} {{ args }}
 
 audit-check profile="auto" *args:
-    ./arch/audit.sh --profile {{ quote(profile) }} --check {{ args }}
+    ./provisioning/arch/audit.sh --profile {{ quote(profile) }} --check {{ args }}
 
 completions *args:
-    ./arch/completions.sh {{ args }}
+    ./provisioning/arch/tools/completions.sh {{ args }}
 
 fonts *args:
-    ./arch/fonts.sh {{ args }}
+    ./provisioning/arch/tools/fonts.sh {{ args }}
 
 auth *args:
-    ./arch/auth.sh --generate-key {{ args }}
+    ./provisioning/arch/auth.sh --generate-key {{ args }}
 
 auth-check *args:
-    ./arch/auth.sh --check {{ args }}
+    ./provisioning/arch/auth.sh --check {{ args }}
 
 wsl-init *args:
-    sudo ./arch/wsl-init.sh {{ args }}
+    sudo ./provisioning/arch/wsl-init.sh {{ args }}
 
 diff:
     chezmoi diff

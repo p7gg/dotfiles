@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Shared helpers for arch/*.sh. Source this after setting REPO_ROOT and the
-# script's own state (DRY_RUN, ROOT_RUNNER, etc.).
+# Shared helpers for provisioning/arch entry points. Source this after setting
+# REPO_ROOT and the script's own state (DRY_RUN, ROOT_RUNNER, etc.).
 #
 # Scripts should set:
 #   DRY_RUN=0|1       Print commands without executing them when 1.
@@ -193,7 +193,7 @@ list_has_packages() {
 }
 
 # Emit package names from an optional catalog whose entries use the format
-# "package|Display Name". The display name is only used by arch/fonts.sh.
+# "package|Display Name". The display name is only used by provisioning/arch/tools/fonts.sh.
 filter_optional_packages() {
     local file="$1"
 

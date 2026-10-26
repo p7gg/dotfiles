@@ -2,8 +2,8 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-    # shellcheck source=arch/lib/common.sh
-    source "$REPO_ROOT/arch/lib/common.sh"
+    # shellcheck source=provisioning/arch/lib/common.sh
+    source "$REPO_ROOT/provisioning/arch/lib/common.sh"
     DRY_RUN=0
     ERROR_REPORTED=0
     ROOT_RUNNER=run_cmd

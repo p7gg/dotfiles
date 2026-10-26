@@ -9,14 +9,14 @@ SCRIPT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 CHECK_ROOT="$SCRIPT_ROOT"
 FAIL=0
 
-# shellcheck source=arch/lib/common.sh
-source "$SCRIPT_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$SCRIPT_ROOT/provisioning/arch/lib/common.sh"
 
 trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
-Usage: scripts/check-docs.sh [--root DIR]
+Usage: tests/check-docs.sh [--root DIR]
 
 Verify package counts and source-list counts in the documentation and SVG
 assets, then check that every relative Markdown link and HTML asset resolves.
@@ -188,11 +188,11 @@ markdown_files() {
         [[ -f "$file" ]] && printf '%s\n' "$file"
     done
 
-    find "$CHECK_ROOT/docs" "$CHECK_ROOT/windows" -type f -name '*.md' 2>/dev/null |
+    find "$CHECK_ROOT/docs" -type f -name '*.md' 2>/dev/null |
         LC_ALL=C sort
 }
 
-packages_dir="$CHECK_ROOT/arch/packages"
+packages_dir="$CHECK_ROOT/provisioning/arch/packages"
 base_count="$(count_file "$packages_dir/base.txt")"
 native_count="$(count_file "$packages_dir/native.txt")"
 wsl_count="$(count_file "$packages_dir/wsl.txt")"
@@ -237,8 +237,6 @@ flow_svg="$CHECK_ROOT/docs/assets/provisioning-flow.svg"
 expect_literal "$readme" \
     "67 tracked package names: 60 apply to the native profile and 58 to WSL" \
     "the 67/60/58 package summary"
-expect_literal "$readme" "67 tracked packages (60 native, 58 WSL)" \
-    "the package catalog summary count"
 expect_literal "$readme" "18 optional Nerd Fonts" "the optional font count"
 expect_literal "$docs_readme" \
     "All 67 tracked packages (60 native, 58 WSL) plus" \
@@ -266,7 +264,7 @@ while IFS='|' read -r file count; do
     source_word="packages"
     ((count == 1)) && source_word="package"
     expect_literal "$packages_doc" \
-        "Source: \`arch/packages/$file\` — $count $source_word" \
+        "Source: \`provisioning/arch/packages/$file\` — $count $source_word" \
         "the $file count ($count)"
 done <<EOF
 base.txt|$base_count

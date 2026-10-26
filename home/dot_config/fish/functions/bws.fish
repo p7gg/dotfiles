@@ -10,7 +10,7 @@
 # always reads the single pass entry at bitwarden/bws-token.
 #
 # The token is exported only for the bws process and its children. Run
-# `./arch/auth.sh` to store it interactively, or see the README for the manual
+# `./provisioning/arch/auth.sh` to store it interactively, or see the README for the manual
 # commands.
 function bws --wraps bws --description 'bws with access token from keyring'
     set -l account personal
@@ -23,13 +23,13 @@ function bws --wraps bws --description 'bws with access token from keyring'
     if set -q WSL_DISTRO_NAME
         set token_store wsl
         if not type -q pass
-            echo "bws: pass is not installed; run arch/bootstrap.sh --profile wsl" >&2
+            echo "bws: pass is not installed; run provisioning/arch/bootstrap.sh --profile wsl" >&2
             return 1
         end
         set token (pass show bitwarden/bws-token 2>/dev/null | string collect)
     else
         if not type -q secret-tool
-            echo "bws: secret-tool is not installed; install libsecret via arch/bootstrap.sh" >&2
+            echo "bws: secret-tool is not installed; install libsecret via provisioning/arch/bootstrap.sh" >&2
             return 1
         end
         set token (secret-tool lookup service bws account $account 2>/dev/null | string collect)
@@ -37,9 +37,9 @@ function bws --wraps bws --description 'bws with access token from keyring'
 
     if test -z "$token"
         if test "$token_store" = wsl
-            echo "bws: no access token in pass at bitwarden/bws-token; run ./arch/auth.sh or: pass insert bitwarden/bws-token" >&2
+            echo "bws: no access token in pass at bitwarden/bws-token; run ./provisioning/arch/auth.sh or: pass insert bitwarden/bws-token" >&2
         else
-            echo "bws: no access token stored in GNOME Keyring for account '$account'; run ./arch/auth.sh --bws-account $account" >&2
+            echo "bws: no access token stored in GNOME Keyring for account '$account'; run ./provisioning/arch/auth.sh --bws-account $account" >&2
         end
         return 1
     end

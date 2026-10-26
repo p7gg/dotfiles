@@ -8,10 +8,10 @@
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 KEY="${HOME}/.ssh/id_ed25519"
 GENERATE_KEY=0
@@ -39,7 +39,7 @@ trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
-Usage: arch/auth.sh [options]
+Usage: provisioning/arch/auth.sh [options]
 
 Options:
   --check             Report missing authentication without changing anything
@@ -174,7 +174,7 @@ ensure_pass_store() {
     fi
 
     if ! command -v gpg >/dev/null 2>&1; then
-        warn "gpg is not installed; run arch/bootstrap.sh"
+        warn "gpg is not installed; run provisioning/arch/bootstrap.sh"
         return 1
     fi
 
@@ -189,7 +189,7 @@ ensure_pass_store() {
     if ((key_count > 1)); then
         warn "pass is not initialized and multiple GPG secret keys exist"
         warn "initialize it with one of these key IDs: $(tr '\n' ' ' <<<"$key_ids")"
-        warn "run 'pass init <gpg-key-id>', then rerun arch/auth.sh"
+        warn "run 'pass init <gpg-key-id>', then rerun provisioning/arch/auth.sh"
         return 1
     fi
 
@@ -205,7 +205,7 @@ store_bws_token() {
 
     if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
         if ! command -v pass >/dev/null 2>&1; then
-            warn "pass is not installed; run arch/bootstrap.sh"
+            warn "pass is not installed; run provisioning/arch/bootstrap.sh"
             return 1
         fi
         ensure_pass_store || return 1
@@ -225,7 +225,7 @@ store_bws_token() {
     fi
 
     if ! command -v secret-tool >/dev/null 2>&1; then
-        warn "secret-tool is not installed; run arch/bootstrap.sh"
+        warn "secret-tool is not installed; run provisioning/arch/bootstrap.sh"
         return 1
     fi
     log "Storing the BWS access token in GNOME Keyring"
@@ -509,12 +509,12 @@ if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
 
     if is_wsl && ((agent_ready)); then
         vscode_setup="$HOME/.vscode-server/server-env-setup"
-        if cmp -s "$REPO_ROOT/arch/vscode-server-env-setup.sh" "$vscode_setup"; then
+        if cmp -s "$REPO_ROOT/provisioning/arch/system/vscode-server-env-setup.sh" "$vscode_setup"; then
             log "$vscode_setup is up to date"
         elif ((DRY_RUN)); then
             log "Would install $vscode_setup for the VS Code Remote-WSL server"
         else
-            install -Dm644 "$REPO_ROOT/arch/vscode-server-env-setup.sh" "$vscode_setup"
+            install -Dm644 "$REPO_ROOT/provisioning/arch/system/vscode-server-env-setup.sh" "$vscode_setup"
             log "Installed $vscode_setup for the VS Code Remote-WSL server"
         fi
     fi
@@ -528,7 +528,7 @@ fi
 
 if ((SKIP_GH == 0)); then
     if ! command -v gh >/dev/null 2>&1; then
-        warn "gh is not installed; run arch/bootstrap.sh and rerun this script"
+        warn "gh is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     elif ! gh auth status --hostname github.com >/dev/null 2>&1; then
         if ((DRY_RUN || NON_INTERACTIVE)); then
@@ -573,7 +573,7 @@ fi
 
 if ((SKIP_GCLOUD == 0)); then
     if ! command -v gcloud >/dev/null 2>&1; then
-        warn "gcloud is not installed; run arch/bootstrap.sh and rerun this script"
+        warn "gcloud is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     else
         active_account="$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 || true)"
@@ -621,7 +621,7 @@ fi
 
 if ((SKIP_TAILSCALE == 0)); then
     if ! command -v tailscale >/dev/null 2>&1; then
-        warn "tailscale is not installed; run arch/bootstrap.sh and rerun this script"
+        warn "tailscale is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     elif ! command -v jq >/dev/null 2>&1; then
         warn "jq is not installed; cannot inspect Tailscale state"
@@ -631,7 +631,7 @@ if ((SKIP_TAILSCALE == 0)); then
         if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
             log "Tailscale daemon is not running in WSL. Start it with:"
             log "  sudo tailscaled >/tmp/tailscaled.log 2>&1 &"
-            log "Then rerun: ./arch/auth.sh --skip-gh --skip-gcloud"
+            log "Then rerun: ./provisioning/arch/auth.sh --skip-gh --skip-gcloud"
             log "Or enable systemd in WSL and rerun bootstrap."
         else
             warn "tailscaled is not running; start it with: sudo systemctl start tailscaled"
@@ -664,13 +664,13 @@ fi
 
 if ((SKIP_BWS == 0)); then
     if ! command -v bws >/dev/null 2>&1; then
-        warn "bws is not installed; run arch/bootstrap.sh and rerun this script"
+        warn "bws is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     elif [[ -n "${WSL_DISTRO_NAME:-}" ]] && ! command -v pass >/dev/null 2>&1; then
-        warn "pass is not installed; run arch/bootstrap.sh --profile wsl"
+        warn "pass is not installed; run provisioning/arch/bootstrap.sh --profile wsl"
         AUTH_INCOMPLETE=1
     elif [[ -z "${WSL_DISTRO_NAME:-}" ]] && ! command -v secret-tool >/dev/null 2>&1; then
-        warn "secret-tool is not installed; run arch/bootstrap.sh"
+        warn "secret-tool is not installed; run provisioning/arch/bootstrap.sh"
         AUTH_INCOMPLETE=1
     elif bws_token_present; then
         if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
@@ -698,7 +698,7 @@ fi
 
 if ((SKIP_LINEAR == 0 || SKIP_JIRA == 0)); then
     if [[ -z "$OPENCODE_BIN" ]]; then
-        warn "opencode is not installed; run arch/bootstrap.sh and rerun this script"
+        warn "opencode is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     else
         if ((SKIP_LINEAR == 0)); then

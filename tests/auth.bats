@@ -30,17 +30,17 @@ EOF
     chmod +x "$test_bin/bws" "$test_bin/secret-tool"
 
     run env -u WSL_DISTRO_NAME HOME="$test_home" PATH="$test_bin:$PATH" \
-        "$REPO_ROOT/arch/auth.sh" --check --email test@example.com \
+        "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
         --skip-gh --skip-gcloud --skip-tailscale --skip-mcp
 }
 
 @test "auth --help and unknown options are handled" {
-    run "$REPO_ROOT/arch/auth.sh" --help
+    run "$REPO_ROOT/provisioning/arch/auth.sh" --help
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: arch/auth.sh"* ]]
+    [[ "$output" == *"Usage: provisioning/arch/auth.sh"* ]]
     [[ "$output" == *"--bws-account NAME"* ]]
 
-    run "$REPO_ROOT/arch/auth.sh" --not-a-real-option
+    run "$REPO_ROOT/provisioning/arch/auth.sh" --not-a-real-option
     [ "$status" -eq 1 ]
     [[ "$output" == *"unknown option: --not-a-real-option"* ]]
 }
@@ -78,7 +78,7 @@ EOF
     chmod +x "$test_bin/bws" "$test_bin/pass"
 
     run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
-        "$REPO_ROOT/arch/auth.sh" --check --email test@example.com \
+        "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
         --skip-gh --skip-gcloud --skip-tailscale --skip-mcp
 
     [[ "$output" == *"Bitwarden Secrets Manager token is already stored"* ]]

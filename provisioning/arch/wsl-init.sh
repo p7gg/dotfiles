@@ -4,14 +4,14 @@
 #
 # Follow https://wiki.archlinux.org/title/Install_Arch_Linux_on_WSL for the
 # initial import. This script only handles the post-import system setup that
-# must run as root. Run arch/bootstrap.sh as the normal user afterwards.
+# must run as root. Run provisioning/arch/bootstrap.sh as the normal user afterwards.
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 TARGET_USER="${SUDO_USER:-}"
 TARGET_HOSTNAME="arch-wsl"
@@ -29,7 +29,7 @@ trap cleanup_tmp EXIT
 
 usage() {
     cat <<'EOF'
-Usage: sudo arch/wsl-init.sh [options]
+Usage: sudo provisioning/arch/wsl-init.sh [options]
 
 Options:
   --user NAME        Linux user to create/configure (default: SUDO_USER)
@@ -333,7 +333,7 @@ if [[ -z "$TARGET_USER" ]] && { ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; }; then
     die "no user specified; pass --user NAME"
 fi
 
-[[ $EUID -eq 0 ]] || die "run this script as root (sudo arch/wsl-init.sh)"
+[[ $EUID -eq 0 ]] || die "run this script as root (sudo provisioning/arch/wsl-init.sh)"
 
 # shellcheck source=/dev/null
 [[ -r /etc/os-release ]] && source /etc/os-release
@@ -416,7 +416,7 @@ setup_wsl_conf
 
 log "WSL initialization complete."
 log "From Windows, run: wsl --shutdown"
-log "Then reopen this distro as $TARGET_USER and run: ./arch/bootstrap.sh --profile wsl"
+log "Then reopen this distro as $TARGET_USER and run: ./provisioning/arch/bootstrap.sh --profile wsl"
 if ((ENABLE_SYSTEMD)); then
     log "systemd was requested; ensure WSL is up to date ('wsl --update' from Windows)."
 fi

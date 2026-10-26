@@ -5,10 +5,10 @@
 
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 PROFILE="auto"
 CHECK=0
@@ -19,7 +19,7 @@ trap 'on_error' ERR
 
 usage() {
     cat <<'EOF'
-Usage: arch/audit.sh [options]
+Usage: provisioning/arch/audit.sh [options]
 
 Options:
   --profile native|wsl  Package profile to compare (default: auto-detect)
@@ -34,7 +34,7 @@ The audit reports:
   - installed AUR/foreign packages not present in aur*.txt
   - tracked AUR packages that are not installed
 
-Packages listed in arch/packages/audit-ignore.txt are omitted from the
+Packages listed in provisioning/arch/packages/audit-ignore.txt are omitted from the
 untracked sections. That file is for bootstrap artifacts and OS-layer packages,
 not for hiding real drift.
 
@@ -43,7 +43,7 @@ read-only and inspecting the other profile is sometimes useful. The bootstrap
 is stricter and refuses a mismatched --profile unless
 --allow-profile-mismatch is passed.
 
-Optional Nerd Fonts from arch/packages/fonts.txt are recognized when installed
+Optional Nerd Fonts from provisioning/arch/packages/fonts.txt are recognized when installed
 but are never required.
 EOF
 }
@@ -173,13 +173,13 @@ main() {
     fi
 
     validate_package_lists \
-        "$REPO_ROOT/arch/packages/base.txt" \
-        "$REPO_ROOT/arch/packages/${PROFILE}.txt" \
-        "$REPO_ROOT/arch/packages/aur.txt" \
-        "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" ||
+        "$REPO_ROOT/provisioning/arch/packages/base.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/${PROFILE}.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/aur.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/aur-${PROFILE}.txt" ||
         die "fix the invalid package lists before auditing"
 
-    fonts_file="$REPO_ROOT/arch/packages/fonts.txt"
+    fonts_file="$REPO_ROOT/provisioning/arch/packages/fonts.txt"
     if [[ -f "$fonts_file" ]]; then
         validate_font_catalog "$fonts_file" ||
             die "fix the invalid font catalog before auditing"
@@ -189,11 +189,11 @@ main() {
     AUDIT_TMPDIR="$tmpdir"
     trap 'rm -rf "${AUDIT_TMPDIR:-}"' EXIT
 
-    filter_packages "$REPO_ROOT/arch/packages/base.txt" >"$tmpdir/desired-raw.txt"
-    filter_packages "$REPO_ROOT/arch/packages/${PROFILE}.txt" >>"$tmpdir/desired-raw.txt"
+    filter_packages "$REPO_ROOT/provisioning/arch/packages/base.txt" >"$tmpdir/desired-raw.txt"
+    filter_packages "$REPO_ROOT/provisioning/arch/packages/${PROFILE}.txt" >>"$tmpdir/desired-raw.txt"
     expand_groups <"$tmpdir/desired-raw.txt" | LC_ALL=C sort -u >"$tmpdir/desired-native.txt"
-    filter_packages "$REPO_ROOT/arch/packages/aur.txt" >"$tmpdir/desired-aur-raw.txt"
-    filter_packages "$REPO_ROOT/arch/packages/aur-${PROFILE}.txt" >>"$tmpdir/desired-aur-raw.txt"
+    filter_packages "$REPO_ROOT/provisioning/arch/packages/aur.txt" >"$tmpdir/desired-aur-raw.txt"
+    filter_packages "$REPO_ROOT/provisioning/arch/packages/aur-${PROFILE}.txt" >>"$tmpdir/desired-aur-raw.txt"
     LC_ALL=C sort -u "$tmpdir/desired-aur-raw.txt" >"$tmpdir/desired-aur.txt"
 
     if [[ -f "$fonts_file" ]]; then
@@ -231,7 +231,7 @@ main() {
     LC_ALL=C comm -13 "$tmpdir/current-aur-all.txt" "$tmpdir/desired-aur.txt" \
         >"$tmpdir/aur-missing.txt"
 
-    ignore_file="$REPO_ROOT/arch/packages/audit-ignore.txt"
+    ignore_file="$REPO_ROOT/provisioning/arch/packages/audit-ignore.txt"
     if [[ -f "$ignore_file" ]]; then
         filter_packages "$ignore_file" >"$tmpdir/ignore.txt"
         filter_ignored "$tmpdir/native-untracked.txt" "$tmpdir/ignore.txt" "$tmpdir/native-untracked.filtered"

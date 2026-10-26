@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Installed to ~/.vscode-server/server-env-setup by arch/auth.sh on WSL.
+# Installed to ~/.vscode-server/server-env-setup by provisioning/arch/auth.sh on WSL.
 # VS Code's Remote-WSL launcher sources this file before starting the server,
 # so the extension host and its git commands inherit the SSH agent socket.
 #

@@ -1,8 +1,9 @@
 # Repository notes for agents
 
 This is a personal Arch Linux dotfiles repository. `home/` is the chezmoi source
-state; `arch/` contains Bash provisioning scripts; `scripts/` and `tests/` are
-repository tooling. Do not treat `arch/` as dotfiles to install.
+state; `provisioning/arch/` contains Bash provisioning scripts; `scripts/` and
+`tests/` are repository tooling. Do not treat `provisioning/arch/` as dotfiles to
+install.
 
 ## Safe workflow
 
@@ -10,12 +11,12 @@ repository tooling. Do not treat `arch/` as dotfiles to install.
   provisioning behavior.
 - `just check native`, `just dry-run native`, `just audit-check native`,
   `just lint`, `just test`, and `just render` are the preferred entry points.
-- Do not run `arch/bootstrap.sh`, `arch/wsl-init.sh`, or `arch/auth.sh` on the
-  agent host unless the user explicitly asks. They install packages, change
-  system files, start agents, or write credentials. Use `--check`/`--dry-run`
-  when validating.
-- Package changes go in `arch/packages/*.txt`. Do not regenerate or reorder the
-  lists blindly; run the audit and explain intentional drift.
+- Do not run `provisioning/arch/bootstrap.sh`, `provisioning/arch/wsl-init.sh`,
+  or `provisioning/arch/auth.sh` on the agent host unless the user explicitly
+  asks. They install packages, change system files, start agents, or write
+  credentials. Use `--check`/`--dry-run` when validating.
+- Package changes go in `provisioning/arch/packages/*.txt`. Do not regenerate or
+  reorder the lists blindly; run the audit and explain intentional drift.
 - Dotfile changes go through `chezmoi diff` / `chezmoi apply --dry-run` first.
   Templates are tested by `tests/render-templates.sh`.
 - Keep secrets out of the repository. Runtime auth files are listed in

@@ -29,7 +29,7 @@
 
   <rect x="64" y="206" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="78" y="222" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">1 · BOOTSTRAP</text>
-  <text x="78" y="240" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">arch/bootstrap.sh --profile native</text>
+  <text x="78" y="240" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">provisioning/arch/bootstrap.sh --profile native</text>
 
   <rect x="64" y="260" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="78" y="276" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">2 · PACKAGE LISTS</text>
@@ -75,7 +75,7 @@
 
   <rect x="654" y="260" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="668" y="276" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">2 · BOOTSTRAP</text>
-  <text x="668" y="294" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">arch/bootstrap.sh --profile wsl</text>
+  <text x="668" y="294" fill="#c9d1d9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">provisioning/arch/bootstrap.sh --profile wsl</text>
 
   <rect x="654" y="314" width="482" height="44" rx="10" fill="#0d1117" stroke="#21262d"/>
   <text x="668" y="330" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="9" letter-spacing="0.8">3 · PACKAGE LISTS</text>

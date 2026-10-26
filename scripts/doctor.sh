@@ -7,8 +7,8 @@ set -Eeuo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# shellcheck source=arch/lib/common.sh
-source "$REPO_ROOT/arch/lib/common.sh"
+# shellcheck source=provisioning/arch/lib/common.sh
+source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 
 trap 'on_error' ERR
 
@@ -54,7 +54,7 @@ if [[ -x "$opencode_bin" ]]; then
         warn "opencode resolves to $opencode_path; expected $opencode_bin"
     fi
 else
-    warn "opencode is not installed at $opencode_bin; run ./arch/bootstrap.sh"
+    warn "opencode is not installed at $opencode_bin; run ./provisioning/arch/bootstrap.sh"
 fi
 
 log "==> repository"
