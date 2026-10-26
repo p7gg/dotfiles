@@ -655,6 +655,77 @@ setup_sshd() {
         log "WSL: sshd listens inside the distro; external SSH needs mirrored"
         log "networking or a Windows port proxy for port 22."
     fi
+
+    setup_sshd_hardening
+}
+
+setup_sshd_hardening() {
+    local src="$REPO_ROOT/arch/system/sshd-hardening.conf"
+    local dest="/etc/ssh/sshd_config.d/10-hardening.conf"
+    local backup=""
+
+    if [[ ! -f "$src" ]]; then
+        warn "sshd hardening config not found: $src"
+        return 0
+    fi
+
+    # Key-only auth would lock out a host without a usable public key, so leave
+    # password auth alone until an authorized key is in place.
+    if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]]; then
+        warn "no key in ${HOME:-~}/.ssh/authorized_keys; skipping key-only hardening"
+        warn "  install one with: ssh-copy-id -i ~/.ssh/id_ed25519.pub <user>@<host>"
+        return 0
+    fi
+
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        log "sshd key-only hardening is up to date"
+        return 0
+    fi
+
+    log "Installing sshd key-only hardening"
+
+    if ((DRY_RUN)); then
+        run_sudo install -Dm644 "$src" "$dest"
+        log "Would validate the config with sshd -t and reload sshd.service"
+        return 0
+    fi
+
+    if [[ -f "$dest" ]]; then
+        backup="$(mktemp)"
+        if ! sudo install -m 600 -o "$(id -u)" -g "$(id -g)" "$dest" "$backup"; then
+            warn "could not back up $dest; leaving sshd config unchanged"
+            rm -f "$backup"
+            return 0
+        fi
+    fi
+
+    if ! sudo install -Dm644 "$src" "$dest"; then
+        warn "could not install $dest; leaving sshd config unchanged"
+        rm -f "$backup"
+        return 0
+    fi
+
+    if ! sudo sshd -t; then
+        warn "sshd rejected the hardening config; restoring the previous one"
+        if [[ -n "$backup" ]]; then
+            run_optional sudo install -Dm644 "$backup" "$dest" ||
+                warn "could not restore $dest"
+        else
+            run_optional sudo rm -f "$dest" ||
+                warn "could not remove $dest"
+        fi
+        rm -f "$backup"
+        return 0
+    fi
+
+    rm -f "$backup"
+
+    if systemctl is-active --quiet sshd.service 2>/dev/null; then
+        run_optional sudo systemctl reload sshd.service ||
+            warn "could not reload sshd.service"
+    else
+        log "sshd.service is not running; hardening applies on next start"
+    fi
 }
 
 setup_tailscale() {
@@ -734,6 +805,12 @@ check_environment() {
         if ! command -v sudo >/dev/null 2>&1; then
             warn "sudo not found; required by the enabled package/system/shell steps"
             status=1
+        fi
+    fi
+
+    if ((DO_SYSTEM)) && command -v sshd >/dev/null 2>&1; then
+        if [[ ! -s "${HOME:-}/.ssh/authorized_keys" ]]; then
+            warn "no key in ${HOME:-~}/.ssh/authorized_keys; sshd key-only hardening will be skipped"
         fi
     fi
 

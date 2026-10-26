@@ -369,6 +369,10 @@ but nothing is listening on port 22. Check `systemctl status sshd` and enable it
 with `sudo systemctl enable --now sshd.service`; bootstrap does this when systemd
 is available.
 
+Bootstrap also installs key-only auth once `~/.ssh/authorized_keys` exists
+(`/etc/ssh/sshd_config.d/10-hardening.conf`). If that locks you out, log in on
+the machine itself, remove that file, and reload sshd.
+
 ## A small maintenance rhythm
 
 | When | Run |

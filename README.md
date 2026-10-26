@@ -337,6 +337,10 @@ The bootstrap applies:
 - `sshd` on both profiles: `sshd.service` is enabled and started when systemd is
   available, so SSH over the LAN or Tailscale works after provisioning. WSL
   still needs mirrored networking or a Windows port proxy for outside access.
+- `sshd` key-only hardening: `arch/system/sshd-hardening.conf` is installed as
+  `/etc/ssh/sshd_config.d/10-hardening.conf` once `~/.ssh/authorized_keys`
+  exists, validated with `sshd -t`, then reloaded. Without an authorized key the
+  step is skipped so password access is never lost.
 - `arch-audit` for package vulnerability checks
 
 Tailscale is installed on both profiles. Native enables `tailscaled.service`.

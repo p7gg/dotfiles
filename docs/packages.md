@@ -84,7 +84,7 @@ Source: `arch/packages/base.txt` — 46 packages.
 | `man-db` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Manual pages and the `man` command. | — |
 | `mise` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Toolchain manager for Node, Bun, pnpm, and friends. | Global config: `~/.config/mise/config.toml`. |
 | `nano` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Small terminal editor. | Fallback `EDITOR` when Neovim/Vim are absent. |
-| `openssh` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `ssh`, `ssh-keygen`, and `ssh-agent`. | Enables `sshd.service` when systemd is available; also powers Git commit signing. |
+| `openssh` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `ssh`, `ssh-keygen`, and `ssh-agent`. | Enables `sshd.service`; key-only auth once `authorized_keys` exists; also powers Git commit signing. |
 | `pacman-contrib` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `paccache` and other pacman helpers. | `paccache.timer` is enabled when systemd is active. |
 | `reflector` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mirrorlist updater. | Brazil-first config; `reflector.timer` refreshes it. |
 | `ripgrep` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast recursive search that respects ignore files. | `rg`. |
