@@ -142,8 +142,11 @@ bws_token_present() {
         return
     fi
 
+    # `secret-tool search` exits 0 even when nothing matches, so inspect the
+    # output for an item path. Search reports locked items without unlocking.
     command -v secret-tool >/dev/null 2>&1 &&
-        secret-tool search --all service bws account "$BWS_ACCOUNT" >/dev/null 2>&1
+        secret-tool search --all service bws account "$BWS_ACCOUNT" 2>/dev/null |
+        grep -q '^\['
 }
 
 pass_store_initialized() {
