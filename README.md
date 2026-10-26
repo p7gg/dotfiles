@@ -191,6 +191,27 @@ name, or accept the `arch-wsl` default. `wsl-init.sh` installs `git`, so after i
 finishes and WSL restarts you can clone the repo inside the WSL filesystem for
 normal use.
 
+Validate the root setup first, then apply it:
+
+```bash
+sudo ./arch/wsl-init.sh --user <your-linux-user> --hostname <machine-name> --check
+sudo ./arch/wsl-init.sh --user <your-linux-user> --hostname <machine-name>
+```
+
+`--check` performs the same root, WSL, argument, command, and password-prompt
+checks without changing packages or files. `--non-interactive` implies `--yes`,
+never prompts for a username or hostname, and refuses to continue when a
+`passwd` prompt would be required. Set the passwords first for unattended runs:
+
+```bash
+sudo passwd root
+sudo passwd <your-linux-user>
+sudo ./arch/wsl-init.sh --user <your-linux-user> --hostname <machine-name> --non-interactive
+```
+
+A real run also refuses to reach an interactive password prompt when stdin is
+not a terminal, before pacman or account changes begin.
+
 Use `--systemd` for a normal service-managed WSL installation; this is also the
 recommended path for Tailscale. The script backs up any existing `/etc/wsl.conf`
 and merges the required settings instead of skipping the file.
@@ -353,6 +374,9 @@ The bootstrap applies:
   validated with `sshd -t`, then reloaded. `~/.ssh/authorized_keys` is managed
   from `home/private_dot_ssh/private_authorized_keys`; without a key the step is
   skipped so password access is never lost.
+- timestamped backups of managed system files: `pacman.conf`, `wsl.conf`, and
+  `locale.conf` keep the newest 3 backups per file instead of accumulating
+  forever. Override with `BACKUP_RETENTION=<count>` for a longer history.
 - `arch-audit` for package vulnerability checks
 
 Tailscale is installed on both profiles. Native enables `tailscaled.service`.

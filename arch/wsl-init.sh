@@ -19,6 +19,8 @@ HOSTNAME_SET=0
 ENABLE_SYSTEMD=0
 DRY_RUN=0
 ASSUME_YES=0
+CHECK_ONLY=0
+NON_INTERACTIVE=0
 ROOT_RUNNER=run_cmd
 export ROOT_RUNNER
 
@@ -33,8 +35,11 @@ Options:
   --user NAME        Linux user to create/configure (default: SUDO_USER)
   --hostname NAME    Machine name for WSL (default: arch-wsl; prompted when omitted)
   --systemd          Enable systemd in /etc/wsl.conf
+  --check            Validate prerequisites and exit without changing anything
   --dry-run          Print actions without changing anything
   --yes              Pass --noconfirm to pacman
+  --non-interactive  Never prompt (implies --yes); fail before changes when a
+                     password must be set
   -h, --help         Show this help
 
 Run this inside WSL, as root, once after importing the Arch image. Then run
@@ -44,13 +49,29 @@ root; create or name a normal Linux user instead.
 The machine name (hostname) is prompted when --hostname is omitted and a
 terminal is attached. The root password is set right before the target user is
 created, if the root account is locked or has none. An existing root password is
-left unchanged.
+left unchanged. For unattended runs, set the root and target-user passwords
+first; the script refuses to reach an interactive passwd prompt without a TTY.
+
+Environment:
+  BACKUP_RETENTION  Timestamped backups to keep per managed file (default: 3)
 EOF
+}
+
+validate_target_user() {
+    [[ -n "$TARGET_USER" ]] || die "username must not be empty"
+    [[ "$TARGET_USER" != "root" ]] ||
+        die "refusing to use root as the WSL default user; pass --user NAME"
+    [[ "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid username: $TARGET_USER"
+}
+
+validate_target_hostname() {
+    [[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] ||
+        die "invalid hostname: $TARGET_HOSTNAME"
 }
 
 ensure_password() {
     local user="$1"
-    local status
+    local state
 
     if ! id -u "$user" >/dev/null 2>&1; then
         if ((DRY_RUN)); then
@@ -60,8 +81,8 @@ ensure_password() {
         die "cannot set a password: user does not exist: $user"
     fi
 
-    status="$(LC_ALL=C passwd -S "$user" | awk '{print $2}')"
-    if [[ "$status" == "P" ]]; then
+    state="$(password_state "$user")"
+    if [[ "$state" == "P" ]]; then
         log "$user already has a password; leaving it unchanged"
         return 0
     fi
@@ -73,6 +94,51 @@ ensure_password() {
 
     log "Set a password for $user"
     passwd "$user"
+}
+
+password_prompt_targets() {
+    if account_needs_password root; then
+        printf 'root\n'
+    fi
+    if account_needs_password "$TARGET_USER"; then
+        printf '%s\n' "$TARGET_USER"
+    fi
+}
+
+# Fail before pacman or account changes when the remaining password steps need
+# a terminal that is not available. --check reports the same condition.
+preflight_passwords() {
+    local targets target_list
+
+    targets="$(password_prompt_targets)"
+    if [[ -z "$targets" ]]; then
+        log "Passwords are already set for root and $TARGET_USER"
+        return 0
+    fi
+
+    target_list="$(tr '\n' ' ' <<<"$targets" | sed 's/ $//')"
+
+    if ((CHECK_ONLY)); then
+        if ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+            warn "password setup is required for: $target_list"
+            warn "run interactively or set those passwords before an unattended run"
+            return 1
+        fi
+        log "Password prompts are required for: $target_list"
+        return 0
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would set passwords for: $target_list"
+        return 0
+    fi
+
+    if ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+        die "password setup is required for: $target_list; set the passwords first or rerun in a terminal (unattended runs cannot answer passwd prompts)"
+    fi
+
+    log "Passwords will be requested for: $target_list"
+    return 0
 }
 
 write_sudoers() {
@@ -103,7 +169,6 @@ write_sudoers() {
 
 setup_locale() {
     local config="/etc/locale.conf"
-    local backup
 
     if ((DRY_RUN)); then
         log "Would enable en_US.UTF-8, run locale-gen, and update /etc/locale.conf"
@@ -121,9 +186,7 @@ setup_locale() {
     locale-gen
 
     if [[ -f "$config" ]]; then
-        backup="${config}.bak.$(date +%Y%m%d%H%M%S)"
-        cp -a "$config" "$backup"
-        log "Backed up $config to $backup"
+        backup_file "$config"
         if grep -qE '^[[:space:]]*LANG=' "$config"; then
             sed -i -E 's/^[[:space:]]*LANG=.*/LANG=en_US.UTF-8/' "$config"
         else
@@ -162,7 +225,7 @@ EOF
 
 setup_wsl_conf() {
     local file="/etc/wsl.conf"
-    local backup work
+    local work
 
     if [[ -f "$file" ]]; then
         warn "$file already exists; merging required settings"
@@ -172,9 +235,7 @@ setup_wsl_conf() {
             return 0
         fi
 
-        backup="${file}.bak.$(date +%Y%m%d%H%M%S)"
-        cp -a "$file" "$backup"
-        log "Backed up $file to $backup"
+        backup_file "$file"
 
         work="$(mktemp)"
         register_tmp "$work"
@@ -233,8 +294,16 @@ while (($# > 0)); do
         DRY_RUN=1
         shift
         ;;
+    --check)
+        CHECK_ONLY=1
+        shift
+        ;;
     --yes)
         ASSUME_YES=1
+        shift
+        ;;
+    --non-interactive)
+        NON_INTERACTIVE=1
         shift
         ;;
     -h | --help)
@@ -247,6 +316,23 @@ while (($# > 0)); do
     esac
 done
 
+if ((NON_INTERACTIVE)); then
+    ASSUME_YES=1
+fi
+
+# Validate values supplied on the command line before the privilege and OS
+# checks so a typo never reaches a prompt or a package transaction.
+if [[ -n "$TARGET_USER" ]]; then
+    validate_target_user
+fi
+if ((HOSTNAME_SET)); then
+    validate_target_hostname
+fi
+
+if [[ -z "$TARGET_USER" ]] && { ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; }; then
+    die "no user specified; pass --user NAME"
+fi
+
 [[ $EUID -eq 0 ]] || die "run this script as root (sudo arch/wsl-init.sh)"
 
 # shellcheck source=/dev/null
@@ -258,25 +344,15 @@ if ! is_wsl; then
 fi
 
 if [[ -z "$TARGET_USER" ]]; then
-    if [[ -t 0 ]]; then
-        read -r -p "Linux username: " TARGET_USER
-    else
-        die "no user specified; pass --user NAME"
-    fi
+    read -r -p "Linux username: " TARGET_USER
 fi
+validate_target_user
 
-[[ -n "$TARGET_USER" ]] || die "username must not be empty"
-[[ "$TARGET_USER" != "root" ]] ||
-    die "refusing to use root as the WSL default user; pass --user NAME"
-[[ "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid username: $TARGET_USER"
-
-if ((HOSTNAME_SET == 0)) && [[ -t 0 ]]; then
+if ((HOSTNAME_SET == 0)) && ! ((NON_INTERACTIVE)) && [[ -t 0 ]]; then
     read -r -p "Machine name (hostname) [$TARGET_HOSTNAME]: " hostname_input
     [[ -z "$hostname_input" ]] || TARGET_HOSTNAME="$hostname_input"
 fi
-
-[[ "$TARGET_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]] ||
-    die "invalid hostname: $TARGET_HOSTNAME"
+validate_target_hostname
 
 require_cmd passwd
 
@@ -289,6 +365,17 @@ require_cmd locale-gen
 if ! grep -q '^Server' /etc/pacman.d/mirrorlist 2>/dev/null; then
     warn "/etc/pacman.d/mirrorlist has no enabled mirrors; fix it if pacman fails"
 fi
+
+if ((CHECK_ONLY)); then
+    if ! preflight_passwords; then
+        exit 1
+    fi
+    log "Check complete: no blocking issues found."
+    log "WSL initialization was not run; omit --check to apply it."
+    exit 0
+fi
+
+preflight_passwords
 
 ensure_keyring
 
