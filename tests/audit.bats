@@ -102,3 +102,34 @@ teardown() {
     echo "$output" | jq -e '.native_untracked == []'
     echo "$output" | jq -e '.native_missing == []'
 }
+
+@test "--help and option validation do not touch packages" {
+    run "$REPO_ROOT/arch/audit.sh" --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage: arch/audit.sh"* ]]
+
+    run "$REPO_ROOT/arch/audit.sh" --not-a-real-option
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"unknown option: --not-a-real-option"* ]]
+
+    run "$REPO_ROOT/arch/audit.sh" --profile solaris
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"invalid profile: solaris"* ]]
+
+    run "$REPO_ROOT/arch/audit.sh" --strict
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"--strict requires --check"* ]]
+}
+
+@test "a profile mismatch warns instead of failing the read-only audit" {
+    local opposite
+    if is_wsl; then
+        opposite="native"
+    else
+        opposite="wsl"
+    fi
+
+    run --separate-stderr "$REPO_ROOT/arch/audit.sh" --profile "$opposite" --check
+
+    [[ "$stderr" == *"continuing because the audit is read-only"* ]]
+}

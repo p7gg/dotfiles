@@ -22,7 +22,7 @@ There are **67 tracked required package names**:
 
 There are also **18 optional Nerd Fonts** in `arch/packages/fonts.txt`. They are
 not installed by default and are never required by the audit. The OpenCode CLI
-is installer-managed, is not counted here, and is not audited as a package.
+is bootstrap-managed from the verified npm release, is not counted here, and is not audited as a package.
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
@@ -46,7 +46,7 @@ files in `arch/packages/` remain the source of truth.
 
 Everything in an `aur*.txt` list is built from the Arch User Repository; the
 other package lists come from the official Arch repositories. The OpenCode CLI
-and mise toolchains are installer-managed and live outside these lists.
+and mise toolchains are managed outside these lists.
 
 ## Both profiles — official repositories
 
@@ -158,20 +158,21 @@ Source: `arch/packages/aur-wsl.txt` — 1 package.
 | --- | :---: | --- | --- |
 | `wslu` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | WSL convenience utilities, including `wslview`. | WSL only. |
 
-## Installer-managed tools
+## Bootstrap-managed tools
 
 These are not pacman packages and are not included in the package totals above.
 `arch/bootstrap.sh` installs them into the user's home directory.
 
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
-| `opencode` | `curl -fsSL https://opencode.ai/v2/install` | Terminal AI coding agent. | Installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
+| `opencode` | `registry.npmjs.org` release tarball | Terminal AI coding agent. | Bootstrap reads OpenCode's release metadata, verifies the npm `sha512` integrity, and installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Pin with `OPENCODE_VERSION`; update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
 
-The bootstrap installs the CLI with `--no-modify-path` and does not remove
-packages. If an older machine still has the pacman `opencode` package, remove it
-once with `sudo pacman -Rns opencode` after the installer-managed binary is in
-place. `just doctor` warns when the pacman package is present or when `opencode`
-resolves somewhere other than `~/.opencode/bin/opencode`.
+The bootstrap installs the CLI without executing a remote installer script and
+does not remove packages. If an older machine still has the pacman `opencode`
+package, remove it once with `sudo pacman -Rns opencode` after the
+bootstrap-managed binary is in place. `just doctor` warns when the pacman package
+is present or when `opencode` resolves somewhere other than
+`~/.opencode/bin/opencode`.
 
 ## Optional — Nerd Fonts
 
@@ -274,9 +275,9 @@ Optional fonts do not use this loop. They are selected at install time from
 
 Removing a package is also two steps: delete the line, then uninstall it
 manually. Bootstrap will not do it for you. The same applies when retiring the
-old pacman `opencode` package in favor of the installer-managed CLI.
+old pacman `opencode` package in favor of the bootstrap-managed CLI.
 
-Installer-managed tools are outside this loop. Update OpenCode with
+Bootstrap-managed tools are outside this loop. Update OpenCode with
 `opencode upgrade` or by rerunning `arch/bootstrap.sh`.
 
 ### Inspecting a package
@@ -328,7 +329,8 @@ is why the default `--check` does not fail on untracked packages.
   `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `x11-ssh-askpass`, `xdg-utils`,
   and `wslu` are WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
-  `--yes`.
+  `--yes`. `paru` itself is built from the commit pinned in `PARU_COMMIT` in
+  `arch/bootstrap.sh`; bump it deliberately when updating paru.
 
 ## Next
 

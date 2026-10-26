@@ -20,6 +20,34 @@ A few notes on the requested tools:
   for the current fish integration.
 - `fish` is C++; `nushell` is Rust but not fish-compatible.
 
+## Explicit profile mismatches
+
+Bootstrap treats an explicit `--profile` that contradicts the environment as a
+blocking error: installing desktop packages in WSL, or WSL drivers on a desktop,
+is almost always a mistake. Auto-detection remains the default, and
+`--allow-profile-mismatch` is the narrow escape hatch for deliberate
+cross-profile work. The audit only warns about the same mismatch because it is
+read-only; inspecting another profile's drift is a legitimate use.
+
+## Supply-chain pins
+
+Two bootstrap steps execute code that is not covered by pacman's package
+signatures:
+
+- The OpenCode CLI is downloaded from OpenCode's npm release metadata and the
+  tarball's published `sha512` integrity is verified before extraction. Set
+  `OPENCODE_VERSION` to pin a release; `--no-opencode` skips it.
+- `paru` is built from the AUR at the `PARU_COMMIT` value in
+  `arch/bootstrap.sh` instead of whatever is on AUR master at provisioning time.
+  Bump that pin deliberately, after reviewing the PKGBUILD.
+
+Upstream OpenCode uses npm's registry integrity metadata rather than a detached
+installer signature. This repo verifies the published `sha512` integrity over
+HTTPS but does not verify npm's registry signing keys; an optional
+`OPENCODE_VERSION` pin adds reproducibility. Failing closed is intentional: a
+missing or mismatched checksum stops bootstrap rather than installing an
+unverified binary.
+
 ## Optional Git defaults
 
 Worth considering later: `feature.manyFiles = true` for large repositories,

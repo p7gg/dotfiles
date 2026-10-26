@@ -38,6 +38,11 @@ Packages listed in arch/packages/audit-ignore.txt are omitted from the
 untracked sections. That file is for bootstrap artifacts and OS-layer packages,
 not for hiding real drift.
 
+A profile that does not match the current environment only warns: the audit is
+read-only and inspecting the other profile is sometimes useful. The bootstrap
+is stricter and refuses a mismatched --profile unless
+--allow-profile-mismatch is passed.
+
 Optional Nerd Fonts from arch/packages/fonts.txt are recognized when installed
 but are never required.
 EOF
@@ -146,14 +151,6 @@ main() {
         die "--strict requires --check"
     fi
 
-    # shellcheck source=/dev/null
-    [[ -r /etc/os-release ]] && source /etc/os-release
-    [[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
-    command -v pacman >/dev/null 2>&1 || die "pacman not found"
-    if ((JSON)); then
-        require_cmd jq
-    fi
-
     if [[ "$PROFILE" == "auto" ]]; then
         PROFILE="$(detect_profile)"
     fi
@@ -163,10 +160,16 @@ main() {
     *) die "invalid profile: $PROFILE (expected native or wsl)" ;;
     esac
 
-    if [[ "$PROFILE" == "native" ]] && is_wsl; then
-        warn "native profile selected inside WSL; desktop packages may not be appropriate"
-    elif [[ "$PROFILE" == "wsl" ]] && ! is_wsl; then
-        warn "wsl profile selected outside WSL"
+    if mismatch_reason="$(profile_mismatch "$PROFILE")"; then
+        warn "$mismatch_reason; continuing because the audit is read-only"
+    fi
+
+    # shellcheck source=/dev/null
+    [[ -r /etc/os-release ]] && source /etc/os-release
+    [[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
+    command -v pacman >/dev/null 2>&1 || die "pacman not found"
+    if ((JSON)); then
+        require_cmd jq
     fi
 
     validate_package_lists \

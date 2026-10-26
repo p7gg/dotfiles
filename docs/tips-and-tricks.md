@@ -301,8 +301,10 @@ path.
 
 ## OpenCode and MCP
 
-The OpenCode CLI comes from the official installer, not pacman. Bootstrap keeps
-it current at `~/.opencode/bin/opencode`, and fish adds that directory to `PATH`.
+The OpenCode CLI comes from OpenCode's npm release, not pacman. Bootstrap
+verifies the published `sha512` integrity before installing
+`~/.opencode/bin/opencode`, and fish adds that directory to `PATH`. Pin a
+reviewed release with `OPENCODE_VERSION`; skip the step with `--no-opencode`.
 If an older machine still has the pacman package, remove it once with
 `sudo pacman -Rns opencode`; `just doctor` warns when the pacman package is
 present or when `opencode` resolves somewhere else. Update with

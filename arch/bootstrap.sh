@@ -20,6 +20,7 @@ DRY_RUN=0
 ASSUME_YES=0
 NON_INTERACTIVE=0
 CHECK_ONLY=0
+ALLOW_PROFILE_MISMATCH=0
 DO_PACKAGES=1
 DO_FONTS=1
 DO_OPENCODE=1
@@ -34,6 +35,11 @@ FONT_SELECTION="${FONT_SELECTION:-}"
 CHEZMOI_NAME="${CHEZMOI_NAME:-}"
 CHEZMOI_EMAIL="${CHEZMOI_EMAIL:-}"
 CHEZMOI_WORK_EMAIL="${CHEZMOI_WORK_EMAIL:-}"
+OPENCODE_VERSION="${OPENCODE_VERSION:-}"
+# Pin the paru build to a reviewed AUR commit instead of executing whatever
+# happens to be on master at provisioning time. Bump it deliberately when
+# updating paru.
+PARU_COMMIT="${PARU_COMMIT:-329be2113c590046cb29858c23d9b96a8d7bd586}"
 ROOT_RUNNER=run_sudo
 export ROOT_RUNNER
 
@@ -46,6 +52,10 @@ Usage: arch/bootstrap.sh [options]
 
 Options:
   --profile native|wsl  Target profile (default: auto-detect)
+  --allow-profile-mismatch
+                        Permit an explicit profile that does not match the
+                        current environment (native inside WSL or wsl outside
+                        WSL); bootstrap otherwise refuses to continue
   --dry-run             Print actions without changing anything
   --check               Validate prerequisites without changing anything
   --yes                 Pass --noconfirm to pacman/paru/makepkg where supported
@@ -67,6 +77,11 @@ Options:
   --no-services         Skip enabling desktop systemd services
   --no-shell            Do not change the login shell to fish
   -h, --help            Show this help
+
+Environment:
+  OPENCODE_VERSION      Pin the OpenCode CLI version (default: latest)
+  PARU_COMMIT           AUR paru commit to build (default: reviewed pin)
+  BACKUP_RETENTION      Timestamped backups to keep per managed file (default: 3)
 
 Run this as your normal user. Use `sudo ./arch/wsl-init.sh` for the one-time
 WSL root setup.
@@ -127,9 +142,12 @@ ensure_paru() {
     require_cmd git
     require_cmd makepkg
 
-    log "Bootstrapping paru from the AUR"
+    [[ "$PARU_COMMIT" =~ ^[0-9a-f]{40}$ ]] ||
+        die "PARU_COMMIT must be a 40-character lowercase Git commit"
+
+    log "Bootstrapping paru from the AUR at pinned commit $PARU_COMMIT"
     if ((DRY_RUN)); then
-        log "Would clone https://aur.archlinux.org/paru.git and run makepkg -si"
+        log "Would clone https://aur.archlinux.org/paru.git, check out $PARU_COMMIT, and run makepkg -si"
         return 0
     fi
 
@@ -140,7 +158,8 @@ ensure_paru() {
         trap 'rm -rf "$tmp"' EXIT
 
         ((ASSUME_YES)) && makepkg_args+=(--noconfirm)
-        run_cmd git clone --depth=1 https://aur.archlinux.org/paru.git "$tmp/paru"
+        run_cmd git clone https://aur.archlinux.org/paru.git "$tmp/paru"
+        run_cmd git -C "$tmp/paru" checkout --detach "$PARU_COMMIT"
         (cd -- "$tmp/paru" && run_cmd "${makepkg_args[@]}")
     )
 
@@ -175,32 +194,127 @@ install_packages() {
     paru_install_file "$REPO_ROOT/arch/packages/aur-${profile}.txt"
 }
 
+opencode_target() {
+    local os="$1"
+    local arch="$2"
+    local target
+
+    [[ "$os" == "Linux" ]] || return 1
+
+    case "$arch" in
+    x86_64 | amd64)
+        target="linux-x64"
+        if ! grep -qwi avx2 /proc/cpuinfo 2>/dev/null; then
+            target="${target}-baseline"
+        fi
+        ;;
+    aarch64 | arm64)
+        target="linux-arm64"
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+
+    if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
+        target="${target}-musl"
+    fi
+
+    printf '%s\n' "$target"
+}
+
+json_string_field() {
+    local json="$1"
+    local field="$2"
+
+    sed -n "s/.*\"${field}\":\"\([^\"]*\)\".*/\1/p" <<<"$json" | head -n 1
+}
+
+fetch_opencode_package() {
+    local scope="$1"
+    local target="$2"
+    local version="$3"
+    local package url
+
+    package="${scope}/cli-${target}"
+    url="https://registry.npmjs.org/${package//\//%2f}/${version}"
+    if curl -fsSL "$url" 2>/dev/null; then
+        return 0
+    fi
+
+    # Older releases used the @opencode-ai scope. Keep the same fallback the
+    # official installer uses for a pinned pre-rename version.
+    package="@opencode-ai/cli-${target}"
+    url="https://registry.npmjs.org/${package//\//%2f}/${version}"
+    curl -fsSL "$url"
+}
+
 setup_opencode() {
-    local install_url="https://opencode.ai/v2/install"
     local opencode_bin="$HOME/.opencode/bin/opencode"
-    local version
+    local latest_metadata package_name package_scope metadata version target
+    local tarball integrity download_tmp installed_version
 
     if pacman -Q opencode >/dev/null 2>&1; then
         warn "pacman package 'opencode' is still installed; remove it once with: sudo pacman -Rns opencode"
     fi
 
+    target="$(opencode_target "$(uname -s)" "$(uname -m)")" ||
+        die "OpenCode does not publish a Linux package for $(uname -s)/$(uname -m)"
+
     if ((DRY_RUN)); then
-        log "Would install/update OpenCode from $install_url into $HOME/.opencode/bin"
-        log "Would run: curl -fsSL $install_url | bash -s -- --no-modify-path"
+        version="${OPENCODE_VERSION:-latest}"
+        log "Would install/update OpenCode ${version} from the npm tarball into $HOME/.opencode/bin"
+        log "Would verify the tarball's sha512 integrity before installing"
         return 0
     fi
 
     require_cmd curl
+    require_cmd tar
+    require_cmd sha512sum
+    require_cmd base64
+    require_cmd od
 
-    log "Installing/updating OpenCode with the official installer"
-    curl -fsSL "$install_url" | bash -s -- --no-modify-path ||
-        die "OpenCode installation failed; retry: curl -fsSL $install_url | bash"
+    latest_metadata="$(curl -fsSL https://opencode.ai/update/api/latest/cli/npm)" ||
+        die "could not read the OpenCode release metadata; skip with --no-opencode"
+    package_name="$(json_string_field "$latest_metadata" package)"
+    package_scope="${package_name%/cli}"
+    version="${OPENCODE_VERSION:-$(json_string_field "$latest_metadata" version)}"
+    version="${version#v}"
+
+    [[ "$package_name" =~ ^@[A-Za-z0-9._-]+/cli$ ]] ||
+        die "unexpected OpenCode package metadata: ${package_name:-<missing>}"
+    [[ "$version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]] ||
+        die "unexpected OpenCode version: ${version:-<missing>}"
+
+    log "Installing/updating OpenCode ${version} from the verified npm tarball"
+    metadata="$(fetch_opencode_package "$package_scope" "$target" "$version")" ||
+        die "OpenCode ${version} is not available for ${target}; skip with --no-opencode"
+    tarball="$(json_string_field "$metadata" tarball)"
+    integrity="$(json_string_field "$metadata" integrity)"
+
+    [[ "$tarball" == https://registry.npmjs.org/* ]] ||
+        die "unexpected OpenCode tarball URL: ${tarball:-<missing>}"
+    [[ -n "$integrity" ]] ||
+        die "OpenCode registry metadata has no sha512 checksum; skip with --no-opencode"
+
+    download_tmp="$(mktemp -d)"
+    register_tmp_dir "$download_tmp"
+
+    curl -fsSL -o "$download_tmp/opencode.tgz" "$tarball" ||
+        die "could not download the OpenCode tarball"
+    verify_sha512_integrity "$download_tmp/opencode.tgz" "$integrity" ||
+        die "OpenCode tarball checksum verification failed"
+    tar -xzf "$download_tmp/opencode.tgz" -C "$download_tmp"
+    [[ -f "$download_tmp/package/bin/opencode" ]] ||
+        die "OpenCode tarball did not contain package/bin/opencode"
+
+    install -Dm755 "$download_tmp/package/bin/opencode" "$opencode_bin"
 
     [[ -x "$opencode_bin" ]] ||
-        die "OpenCode installer did not create $opencode_bin"
+        die "OpenCode installation did not create $opencode_bin"
 
-    version="$("$opencode_bin" --version 2>/dev/null | tail -n 1 || true)"
-    log "OpenCode installed at $opencode_bin${version:+ ($version)}"
+    installed_version="$("$opencode_bin" --version 2>/dev/null | tail -n 1 || true)"
+    log "OpenCode installed at $opencode_bin${installed_version:+ ($installed_version)}"
 }
 
 setup_fonts() {
@@ -876,14 +990,16 @@ check_environment() {
             if ((DO_PACKAGES)); then
                 warn "curl not found; the package step will install it"
             else
-                warn "curl not found; required by the OpenCode installer"
+                warn "curl not found; required by the OpenCode download"
                 status=1
             fi
         fi
-        if ! command -v tar >/dev/null 2>&1; then
-            warn "tar not found; required by the OpenCode installer (part of the base system)"
-            status=1
-        fi
+        for cmd in tar sha512sum base64 od; do
+            if ! command -v "$cmd" >/dev/null 2>&1; then
+                warn "$cmd not found; required by the verified OpenCode install (part of the base system)"
+                status=1
+            fi
+        done
     fi
 
     if ((DO_HOOKS)) && ! command -v lefthook >/dev/null 2>&1; then
@@ -912,12 +1028,6 @@ check_environment() {
         validate_font_catalog "$REPO_ROOT/arch/packages/fonts.txt" || status=1
     fi
 
-    if [[ "$PROFILE" == "native" ]] && is_wsl; then
-        warn "native profile selected inside WSL; desktop packages may not be appropriate"
-    elif [[ "$PROFILE" == "wsl" ]] && ! is_wsl; then
-        warn "wsl profile selected outside WSL"
-    fi
-
     if ((status == 0)); then
         log "Check complete: no blocking issues found."
     else
@@ -936,6 +1046,10 @@ while (($# > 0)); do
         ;;
     --profile=*)
         PROFILE="${1#*=}"
+        shift
+        ;;
+    --allow-profile-mismatch)
+        ALLOW_PROFILE_MISMATCH=1
         shift
         ;;
     --dry-run)
@@ -1047,12 +1161,6 @@ if ((NON_INTERACTIVE)); then
     ASSUME_YES=1
 fi
 
-[[ $EUID -ne 0 ]] || die "do not run this script as root; run it as your user"
-
-# shellcheck source=/dev/null
-[[ -r /etc/os-release ]] && source /etc/os-release
-[[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
-
 if [[ "$PROFILE" == "auto" ]]; then
     PROFILE="$(detect_profile)"
 fi
@@ -1061,6 +1169,20 @@ case "$PROFILE" in
 native | wsl) ;;
 *) die "invalid profile: $PROFILE (expected native or wsl)" ;;
 esac
+
+if mismatch_reason="$(profile_mismatch "$PROFILE")"; then
+    if ((ALLOW_PROFILE_MISMATCH)); then
+        warn "$mismatch_reason; continuing because --allow-profile-mismatch was passed"
+    else
+        die "$mismatch_reason; refusing to install packages for the wrong profile (pass --allow-profile-mismatch only for intentional cross-profile work)"
+    fi
+fi
+
+[[ $EUID -ne 0 ]] || die "do not run this script as root; run it as your user"
+
+# shellcheck source=/dev/null
+[[ -r /etc/os-release ]] && source /etc/os-release
+[[ "${ID:-}" == "arch" ]] || die "this script targets Arch Linux (found: ${ID:-unknown})"
 
 if ((CHECK_ONLY)); then
     if check_environment; then
@@ -1085,12 +1207,6 @@ if ((DRY_RUN == 0 && needs_sudo)); then
     else
         sudo -v || die "sudo access is required for package/service/shell changes"
     fi
-fi
-
-if [[ "$PROFILE" == "native" ]] && is_wsl; then
-    warn "native profile selected inside WSL; desktop packages may not be appropriate"
-elif [[ "$PROFILE" == "wsl" ]] && ! is_wsl; then
-    warn "wsl profile selected outside WSL"
 fi
 
 log "Repository: $REPO_ROOT"

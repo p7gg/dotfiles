@@ -1,7 +1,7 @@
 # Dotfiles and machine provisioning
 
 Personal Arch Linux configuration: chezmoi for user dotfiles, pacman/AUR for
-system packages, the official installer for the OpenCode CLI, mise for
+system packages, OpenCode's verified npm release for the CLI, mise for
 development toolchains, and fish as the interactive shell.
 
 Supported targets:
@@ -35,13 +35,20 @@ concerns.
 - Run `arch/bootstrap.sh` as your normal user, never as root.
 - Run `arch/wsl-init.sh` as root, only inside WSL, once for the initial import.
   Rerun it with `--systemd` if you later enable systemd.
+- An explicit `--profile` must match the current environment. Bootstrap refuses
+  `native` inside WSL and `wsl` outside it before installing anything; use
+  `--allow-profile-mismatch` only for deliberate cross-profile work.
 - Start with `--check`, then `--dry-run`; dry-run previews `chezmoi diff`.
 - Use `--non-interactive --name ... --email ...` for unattended provisioning.
+- Use `arch/wsl-init.sh --check` to validate the one-time WSL root setup, and
+  `arch/wsl-init.sh --non-interactive` only after setting root and user
+  passwords; it fails before changes when a `passwd` prompt would be needed.
 - Use `arch/auth.sh --check` to inspect authentication without changing it.
 - Package reconciliation is install-only. The bootstrap never removes packages.
-- The OpenCode CLI is installer-managed; remove an older pacman `opencode`
-  package once by hand after the user binary is in place.
-- AUR packages execute code at build time. Review them before using `--yes`.
+- The OpenCode CLI is installed from a verified npm tarball; remove an older
+  pacman `opencode` package once by hand after the user binary is in place.
+- AUR packages execute code at build time. The bootstrap builds `paru` from a
+  pinned AUR commit; review other AUR packages before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
   inspect `chezmoi diff` first.
 - Do not commit private keys, tokens, or password-store data.
@@ -170,6 +177,14 @@ After bootstrap, log out and back in so fish and mise are active. If
 `pacman -Syu` installed a new kernel, reboot before relying on the updated
 system.
 
+`--profile` is validated against the environment: `native` is rejected inside
+WSL and `wsl` is rejected outside it, before package or system changes. The
+default is auto-detection, so normal runs never need the flag. Use
+`--allow-profile-mismatch` only when deliberately inspecting or installing the
+other profile; `--check` honors the same rule. The read-only audit is looser: it
+warns about a mismatch instead of failing, so `./arch/audit.sh --profile wsl` can
+still inspect a WSL list from another machine.
+
 ### Arch Linux in WSL
 
 Use the Arch Wiki guide for the initial import:
@@ -274,7 +289,8 @@ Tracked lists live in `arch/packages/`:
   in the interactive font step
 
 The OpenCode CLI is not in a package list. `arch/bootstrap.sh` installs it from
-the official installer into `~/.opencode/bin`; see [OpenCode](#opencode).
+the verified OpenCode npm tarball into `~/.opencode/bin`; see
+[OpenCode](#opencode).
 
 See the [package catalog](docs/packages.md) for every package with its
 environment badge, purpose, and configuration notes.
@@ -286,8 +302,10 @@ installation step and are machine-specific.
 The AUR lists contain `bws-bin`, `gitbutler-bin`, `google-cloud-cli`, the GKE
 auth plugin, `lefthook`, `brave-bin`, `opencode-desktop-bin`,
 `t3code-nightly-bin`, `visual-studio-code-bin`, and `wslu`. The bootstrap
-bootstraps `paru` when any AUR list is non-empty. On WSL, the GitButler GUI
-requires WSLg.
+bootstraps `paru` when any AUR list is non-empty; its clone is checked out at the
+reviewed commit in `PARU_COMMIT` in `arch/bootstrap.sh`, not at whatever is on
+AUR master that day. Bump that pin deliberately when updating paru. On WSL, the
+GitButler GUI requires WSLg.
 `gitbutler-bin` includes both the GUI and the `but` CLI; do not add
 `gitbutler-cli-bin`, because both packages own `/usr/bin/but`.
 `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`, and
@@ -506,15 +524,27 @@ The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 
 ## OpenCode
 
-The OpenCode CLI is installed from the official script, not from pacman:
+The OpenCode CLI is installed from OpenCode's npm release, not from pacman. The
+bootstrap no longer pipes a remote installer into a shell: it reads the official
+release metadata from `https://opencode.ai/update/api/latest/cli/npm`, downloads
+the platform tarball from `registry.npmjs.org`, verifies the published `sha512`
+integrity value, and only then installs `~/.opencode/bin/opencode`.
 
 ```bash
-curl -fsSL https://opencode.ai/v2/install | bash
+# What bootstrap does, without the remote-script pipe:
+# metadata -> registry.npmjs.org tarball -> sha512 check -> extract package/bin
 ```
 
-`arch/bootstrap.sh` runs the installer with `--no-modify-path` on every
-provisioning run, so the binary lands in `~/.opencode/bin/opencode` and stays
-current. Fish adds `~/.opencode/bin` to `PATH` through
+By default the CLI tracks the latest release on every provisioning run. Pin a
+reviewed version when reproducibility matters:
+
+```bash
+OPENCODE_VERSION=2.1.4 ./arch/bootstrap.sh --profile wsl
+```
+
+Use `--no-opencode` to skip the step. If the release metadata or checksum is
+missing or does not match, bootstrap fails instead of installing an unverified
+binary. Fish adds `~/.opencode/bin` to `PATH` through
 `home/dot_config/fish/conf.d/10-path.fish`; `just doctor` verifies that
 `opencode` resolves there. Update manually with `opencode upgrade`, or rerun
 bootstrap.
