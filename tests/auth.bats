@@ -59,3 +59,29 @@ EOF
     [[ "$output" == *"Bitwarden Secrets Manager token is already stored"* ]]
     [[ "$output" != *"BWS token is not stored"* ]]
 }
+
+@test "auth --check points WSL at pass when a token is already stored" {
+    local test_bin="$BATS_TEST_TMPDIR/bin"
+    local test_home="$BATS_TEST_TMPDIR/home"
+
+    mkdir -p "$test_bin" "$test_home/.ssh" "$test_home/.password-store/bitwarden"
+    : >"$test_home/.password-store/bitwarden/bws-token.gpg"
+
+    cat >"$test_bin/bws" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    cat >"$test_bin/pass" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$test_bin/bws" "$test_bin/pass"
+
+    run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
+        "$REPO_ROOT/arch/auth.sh" --check --email test@example.com \
+        --skip-gh --skip-gcloud --skip-tailscale --skip-mcp
+
+    [[ "$output" == *"Bitwarden Secrets Manager token is already stored"* ]]
+    [[ "$output" == *"replace: pass insert -f bitwarden/bws-token"* ]]
+    [[ "$output" != *"BWS token is not stored"* ]]
+}

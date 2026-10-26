@@ -61,6 +61,13 @@ On WSL the BWS token is stored in `pass`; create a GPG key with
 empty password store when exactly one secret key exists, and otherwise prints
 the `pass init <gpg-key-id>` command to run.
 
+`pass insert` prompts twice and hides input. Paste the machine-account access
+token (it starts with `0.`) at both prompts. `--check` only verifies that the
+entry exists, so a wrong value is not detected; replace it with
+`pass insert -f bitwarden/bws-token` and verify with
+`bws -o none project list`. If you prefer the helper to prompt again, remove the
+entry first with `pass rm bitwarden/bws-token`.
+
 Work Cloud Source Repositories setup is partly manual because Google does not
 provide a CLI command to register an SSH key for Cloud Source Repositories.
 The helper prints the steps:

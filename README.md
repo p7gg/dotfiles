@@ -672,7 +672,21 @@ pass init <gpg-key-id>
 
 `arch/auth.sh` initializes an empty store automatically when exactly one GPG
 secret key exists; otherwise it prints the `pass init <gpg-key-id>` command to
-run.
+run. When the helper asks whether to store the token, answer `y`; `pass` then
+prompts twice, and you paste the machine-account access token (a long string
+starting with `0.`) at both prompts. Input is hidden.
+
+`--check` only verifies that the `pass` entry exists; it does not decrypt or
+validate it. If a wrong value is stored, replace it directly:
+
+```bash
+pass insert -f bitwarden/bws-token
+bws -o none project list
+```
+
+`bws -o none project list` exercises the token through the fish wrapper without
+printing secrets. Use `pass rm bitwarden/bws-token` first if you want
+`arch/auth.sh` to prompt for the token again.
 
 ## WSL defaults
 

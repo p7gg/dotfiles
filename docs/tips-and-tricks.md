@@ -288,8 +288,13 @@ secret-tool lookup service bws account personal
 gpg --full-generate-key
 pass init <gpg-key-id>
 pass insert bitwarden/bws-token
-pass show bitwarden/bws-token
+pass insert -f bitwarden/bws-token   # replace an existing or wrong token
+pass show bitwarden/bws-token        # prints the secret; avoid in shared terminals
 ```
+
+`pass insert` prompts twice and hides input. Paste the access token, which
+starts with `0.`, at both prompts. Use `pass insert -f` to overwrite a wrong
+value, then verify through the wrapper with `bws -o none project list`.
 
 `arch/auth.sh` initializes an empty store automatically when exactly one GPG
 secret key exists. If it cannot choose a key, create one and run

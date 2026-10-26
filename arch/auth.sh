@@ -131,6 +131,13 @@ authenticate_mcp() {
     fi
 }
 
+bws_token_shape_ok() {
+    local token="$1"
+
+    # Machine-account access tokens are long and start with "0.".
+    [[ "$token" == 0.* && ${#token} -ge 40 ]]
+}
+
 bws_token_present() {
     local store_dir
 
@@ -194,6 +201,8 @@ ensure_pass_store() {
 }
 
 store_bws_token() {
+    local stored
+
     if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
         if ! command -v pass >/dev/null 2>&1; then
             warn "pass is not installed; run arch/bootstrap.sh"
@@ -201,8 +210,15 @@ store_bws_token() {
         fi
         ensure_pass_store || return 1
         log "Storing the BWS access token in pass"
+        log "Paste the token at both prompts (input is hidden)"
         if ! pass insert bitwarden/bws-token; then
             warn "could not insert the BWS token into pass"
+            return 1
+        fi
+        if ! stored="$(pass show bitwarden/bws-token 2>/dev/null)" ||
+            ! bws_token_shape_ok "$stored"; then
+            warn "the value in pass does not look like a BWS access token"
+            warn "replace it with: pass insert -f bitwarden/bws-token"
             return 1
         fi
         return
@@ -213,7 +229,16 @@ store_bws_token() {
         return 1
     fi
     log "Storing the BWS access token in GNOME Keyring"
-    secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"
+    if ! secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"; then
+        warn "could not store the BWS token in GNOME Keyring"
+        return 1
+    fi
+    if ! stored="$(secret-tool lookup service bws account "$BWS_ACCOUNT" 2>/dev/null)" ||
+        ! bws_token_shape_ok "$stored"; then
+        warn "the value in GNOME Keyring does not look like a BWS access token"
+        warn "replace it with: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT"
+        return 1
+    fi
 }
 
 gh_key_exists() {
@@ -648,7 +673,11 @@ if ((SKIP_BWS == 0)); then
         warn "secret-tool is not installed; run arch/bootstrap.sh"
         AUTH_INCOMPLETE=1
     elif bws_token_present; then
-        log "Bitwarden Secrets Manager token is already stored"
+        if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+            log "Bitwarden Secrets Manager token is already stored (replace: pass insert -f bitwarden/bws-token)"
+        else
+            log "Bitwarden Secrets Manager token is already stored (replace: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT)"
+        fi
     elif ((DRY_RUN || NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
         warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
         AUTH_INCOMPLETE=1
