@@ -63,6 +63,7 @@ concerns.
 │   ├── .chezmoi.toml.tmpl        # sourceDir, editor, and init prompts
 │   ├── .chezmoiignore
 │   ├── .chezmoiversion
+│   ├── run_once_after_migrate-go-data.sh  # move legacy ~/go to ~/.go once
 │   ├── dot_gitconfig.tmpl
 │   ├── private_dot_ssh/
 │   │   ├── private_authorized_keys
@@ -122,6 +123,7 @@ concerns.
 │   ├── docs.bats
 │   ├── fish.bats
 │   ├── fonts.bats
+│   ├── go.bats
 │   ├── ssh.bats
 │   ├── supply-chain.bats
 │   └── wsl-init.bats
@@ -509,6 +511,15 @@ Go keeps its module cache and installed binaries in `~/.go` instead of the
 default `~/go`. The location is set in `~/.config/go/env` via
 `home/dot_config/go/env.tmpl`, so it applies in every shell and to tools that
 invoke the `go` command. `~/.go/bin` is added to `PATH` by fish.
+
+On machines that still have the old default `~/go`, the
+`home/run_once_after_migrate-go-data.sh` script moves it to `~/.go` on the next
+`chezmoi apply`, preserving the module cache. If `~/.go` already exists, it
+leaves both directories in place and prints a warning.
+
+AUR packages are built before dotfiles are applied, so the bootstrap passes the
+same `GOPATH` to `paru`. Source builds such as `lefthook` write to `~/.go`
+instead of creating `~/go`.
 
 ## Completions
 

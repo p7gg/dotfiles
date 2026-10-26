@@ -64,3 +64,12 @@ setup() {
 
     [[ "$output" == *"continuing because --allow-profile-mismatch was passed"* ]]
 }
+
+@test "bootstrap builds AUR packages with the managed GOPATH" {
+    run "$REPO_ROOT/arch/bootstrap.sh" --dry-run --no-dotfiles \
+        --no-opencode --no-fonts --no-services --no-system --no-shell \
+        --no-mise --no-completions --no-hooks
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"env GOPATH=$HOME/.go paru -S"* ]]
+}

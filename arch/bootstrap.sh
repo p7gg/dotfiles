@@ -117,7 +117,9 @@ paru_install_file() {
     fi
 
     log "Installing AUR packages from ${file#"$REPO_ROOT/"}"
-    run_cmd "${args[@]}" "${pkgs[@]}"
+    # AUR packages such as lefthook build with Go before dotfiles are applied.
+    # Point those builds at the same GOPATH the managed go/env file will set.
+    run_cmd env GOPATH="$HOME/.go" "${args[@]}" "${pkgs[@]}"
 }
 
 ensure_paru() {
