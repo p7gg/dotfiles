@@ -37,12 +37,6 @@ CHEZMOI_NAME="${CHEZMOI_NAME:-}"
 CHEZMOI_EMAIL="${CHEZMOI_EMAIL:-}"
 CHEZMOI_WORK_EMAIL="${CHEZMOI_WORK_EMAIL:-}"
 OPENCODE_VERSION="${OPENCODE_VERSION:-}"
-# The Windows SSH agent bridge is a static upstream release. Pin the version and
-# both published digests so bootstrap never installs an unverified binary; bump
-# them together after reviewing a new release.
-WSL2_SSH_AGENT_VERSION="0.9.7"
-WSL2_SSH_AGENT_SHA256_X86_64="281c64f6079598de1a455292d533f3ae21837980a3d3012074bc14ad695325d8"
-WSL2_SSH_AGENT_SHA256_ARM64="e9cb0347a72ca68a511e48779080b80a22af1bf670e5a52c9f35f95951ce5221"
 # Pin the paru build to a reviewed AUR commit instead of executing whatever
 # happens to be on master at provisioning time. Bump it deliberately when
 # updating paru.
@@ -76,7 +70,7 @@ Options:
                         display names (implies the fonts step)
   --no-fonts            Skip the optional Nerd Fonts step
   --no-opencode         Skip installing/updating the OpenCode CLI
-  --no-wsl-ssh-agent    Skip installing the Windows SSH agent bridge (WSL only)
+  --no-wsl-ssh-agent    Skip the Windows SSH agent relay (WSL only)
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
   --no-completions      Skip fish completion generation
@@ -327,58 +321,62 @@ setup_opencode() {
     log "OpenCode installed at $opencode_bin${installed_version:+ ($installed_version)}"
 }
 
-setup_wsl_ssh_agent() {
-    local bin="$HOME/.local/bin/wsl2-ssh-agent"
-    local asset sha256 url tmp actual
+find_wsl_npiperelay() {
+    local candidate winprofile
+
+    if [[ -n "${NPIPERELAY:-}" && -x "${NPIPERELAY:-}" ]]; then
+        printf '%s\n' "$NPIPERELAY"
+        return 0
+    fi
+
+    if command -v npiperelay.exe >/dev/null 2>&1; then
+        command -v npiperelay.exe
+        return 0
+    fi
+
+    if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+        winprofile="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r\n')"
+        if [[ -n "$winprofile" ]]; then
+            winprofile="$(wslpath -u "$winprofile" 2>/dev/null || true)"
+            candidate="${winprofile}/bin/npiperelay.exe"
+            if [[ -x "$candidate" ]]; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        fi
+    fi
+
+    for candidate in /mnt/c/Users/*/AppData/Local/Microsoft/WinGet/Packages/albertony.npiperelay_*/npiperelay.exe; do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+check_wsl_ssh_agent_prereqs() {
+    local npiperelay
 
     if [[ "$PROFILE" != "wsl" ]]; then
-        log "Skipping the Windows SSH agent bridge for profile $PROFILE"
+        log "Skipping the Windows SSH agent relay for profile $PROFILE"
         return 0
     fi
 
-    case "$(uname -m)" in
-    x86_64)
-        asset="wsl2-ssh-agent"
-        sha256="$WSL2_SSH_AGENT_SHA256_X86_64"
-        ;;
-    aarch64 | arm64)
-        asset="wsl2-ssh-agent-arm64"
-        sha256="$WSL2_SSH_AGENT_SHA256_ARM64"
-        ;;
-    *)
-        warn "no wsl2-ssh-agent release for $(uname -m); skipping the Windows SSH agent bridge"
-        return 0
-        ;;
-    esac
-
-    if [[ -x "$bin" ]] &&
-        [[ "$(sha256sum "$bin" | awk '{print $1}')" == "$sha256" ]]; then
-        log "wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION is already installed at $bin"
+    if ! command -v socat >/dev/null 2>&1; then
+        warn "socat is not installed; the SSH agent relay will not start"
         return 0
     fi
 
-    if ((DRY_RUN)); then
-        log "Would install wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION into $bin and verify its sha256"
+    if ! npiperelay="$(find_wsl_npiperelay)"; then
+        warn "npiperelay.exe was not found on the Windows side"
+        warn "  install it from PowerShell: winget install --id albertony.npiperelay -e"
         return 0
     fi
 
-    require_cmd curl
-    require_cmd sha256sum
-
-    url="https://github.com/mame/wsl2-ssh-agent/releases/download/v${WSL2_SSH_AGENT_VERSION}/${asset}"
-    tmp="$(mktemp)"
-    register_tmp "$tmp"
-
-    log "Installing wsl2-ssh-agent $WSL2_SSH_AGENT_VERSION into $HOME/.local/bin"
-    curl -fsSL -o "$tmp" "$url" ||
-        die "could not download $url"
-
-    actual="$(sha256sum "$tmp" | awk '{print $1}')"
-    [[ "$actual" == "$sha256" ]] ||
-        die "wsl2-ssh-agent checksum mismatch: expected $sha256, got $actual"
-
-    install -Dm755 "$tmp" "$bin"
-    log "wsl2-ssh-agent installed at $bin"
+    log "Windows SSH agent relay prerequisites are present: socat, $npiperelay"
+    log "The Windows Bitwarden SSH agent must be enabled and own the openssh-ssh-agent pipe"
 }
 
 setup_fonts() {
@@ -669,13 +667,21 @@ setup_services() {
 }
 
 enable_wsl_ssh_agent_service() {
-    local unit="wsl2-ssh-agent.service"
+    local unit="ssh-agent-bridge.service"
     local unit_file="$HOME/.config/systemd/user/$unit"
-    local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wsl2-ssh-agent.sock"
+    local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ssh-agent.sock"
 
     [[ "$PROFILE" == "wsl" ]] || return 0
+    ((DO_WSL_SSH_AGENT)) || return 0
 
-    if [[ ! -x "$HOME/.local/bin/wsl2-ssh-agent" ]]; then
+    if ! command -v socat >/dev/null 2>&1; then
+        warn "socat is not installed; skipping $unit"
+        return 0
+    fi
+
+    if ! find_wsl_npiperelay >/dev/null 2>&1; then
+        warn "npiperelay.exe is not installed; skipping $unit"
+        warn "  install it from PowerShell: winget install --id albertony.npiperelay -e"
         return 0
     fi
 
@@ -691,16 +697,17 @@ enable_wsl_ssh_agent_service() {
 
     if [[ ! -d /run/systemd/system ]] ||
         ! systemctl --user show-environment >/dev/null 2>&1; then
-        warn "no systemd user manager; the Windows SSH agent bridge will not start automatically"
+        warn "no systemd user manager; the Windows SSH agent relay will not start automatically"
         return 0
     fi
 
     if command -v powershell.exe >/dev/null 2>&1; then
-        if ! powershell.exe -NoProfile -NonInteractive -Command \
-            "(Get-Service ssh-agent -ErrorAction SilentlyContinue).Status -eq 'Running'" \
-            2>/dev/null | grep -qi true; then
-            warn "Windows OpenSSH agent is not running; skipping $unit"
-            warn "  start it from an elevated PowerShell: Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+        if powershell.exe -NoProfile -NonInteractive -Command \
+            "(Get-Service ssh-agent -ErrorAction SilentlyContinue).Status" \
+            2>/dev/null | grep -qi running; then
+            warn "Windows OpenSSH agent is running; skipping $unit"
+            warn "  disable it so Bitwarden can own the pipe:"
+            warn "  Set-Service ssh-agent -StartupType Disabled; Stop-Service ssh-agent"
             return 0
         fi
     fi
@@ -710,7 +717,7 @@ enable_wsl_ssh_agent_service() {
         return 0
     fi
 
-    # The bridge is now the only agent on WSL; stop the stock agent so a second
+    # The relay is now the only agent on WSL; stop the stock agent so a second
     # empty agent cannot shadow it.
     if systemctl --user is-enabled --quiet ssh-agent.socket 2>/dev/null; then
         systemctl --user disable --now ssh-agent.socket >/dev/null 2>&1 ||
@@ -718,7 +725,7 @@ enable_wsl_ssh_agent_service() {
     fi
     systemctl --user stop ssh-agent.service >/dev/null 2>&1 || true
 
-    log "Windows SSH agent bridge is active at $socket"
+    log "Windows SSH agent relay is active at $socket"
 }
 
 configure_pacman() {
@@ -1120,16 +1127,18 @@ check_environment() {
     fi
 
     if ((DO_WSL_SSH_AGENT)) && [[ "$PROFILE" == "wsl" ]]; then
-        if ! command -v curl >/dev/null 2>&1; then
+        if ! command -v socat >/dev/null 2>&1; then
             if ((DO_PACKAGES)); then
-                warn "curl not found; the package step will install it"
+                warn "socat not found; the package step will install it"
             else
-                warn "curl not found; required by the Windows SSH agent bridge download"
+                warn "socat not found; required by the SSH agent relay"
                 status=1
             fi
         fi
-        command -v sha256sum >/dev/null 2>&1 ||
-            warn "sha256sum not found; required by the Windows SSH agent bridge install (part of coreutils)"
+        if ! find_wsl_npiperelay >/dev/null 2>&1; then
+            warn "npiperelay.exe not found; install it from PowerShell: winget install --id albertony.npiperelay -e"
+            status=1
+        fi
     fi
 
     if ((DO_HOOKS)) && ! command -v lefthook >/dev/null 2>&1; then
@@ -1374,9 +1383,9 @@ else
 fi
 
 if ((DO_WSL_SSH_AGENT)); then
-    setup_wsl_ssh_agent
+    check_wsl_ssh_agent_prereqs
 else
-    log "Skipping the Windows SSH agent bridge"
+    log "Skipping the Windows SSH agent relay"
 fi
 
 if ((DO_SYSTEM)); then

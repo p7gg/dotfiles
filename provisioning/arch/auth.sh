@@ -44,7 +44,9 @@ Usage: provisioning/arch/auth.sh [options]
 Options:
   --check             Report missing authentication without changing anything
   --dry-run           Print actions without changing anything
-  --generate-key      Generate ~/.ssh/id_ed25519 if it does not exist
+  --generate-key      Generate ~/.ssh/id_ed25519 if it does not exist (on WSL,
+                      import it into the Bitwarden vault, then remove the private
+                      half from WSL)
   --email EMAIL       Email address for the SSH key comment
   --non-interactive   Skip steps that need a browser or TTY; report them instead
   --skip-gh           Do not configure or authenticate the GitHub CLI
@@ -59,8 +61,8 @@ Options:
   -h, --help          Show this help
 
 What this does:
-  - ensures a per-machine SSH key exists
-  - uses the Windows agent bridge (WSL) or the session agent, and loads the key
+  - ensures the per-machine SSH public key is available
+  - uses the Windows Bitwarden agent relay (WSL) or the session agent
   - authenticates `gh` for personal GitHub and uploads the key
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
@@ -384,9 +386,15 @@ if [[ -n "$email" && "$email" =~ [[:space:]] ]]; then
 fi
 
 have_key=0
+have_pub=0
 if [[ -f "$KEY" ]]; then
     have_key=1
-else
+fi
+if [[ -f "${KEY}.pub" ]]; then
+    have_pub=1
+fi
+
+if ((have_key == 0 && have_pub == 0)); then
     if ((GENERATE_KEY)); then
         if ((DRY_RUN || NON_INTERACTIVE)); then
             warn "SSH key is missing; rerun interactively with --generate-key"
@@ -397,7 +405,7 @@ else
             have_key=1
         fi
     else
-        warn "SSH key not found: $KEY (rerun with --generate-key or restore your key)"
+        warn "SSH key not found: ${KEY}.pub (rerun with --generate-key or restore your key)"
         AUTH_INCOMPLETE=1
     fi
 fi
@@ -411,7 +419,6 @@ if ((have_key)); then
         if ((DRY_RUN || NON_INTERACTIVE)); then
             warn "public key is missing: ${KEY}.pub; rerun interactively to derive it"
             AUTH_INCOMPLETE=1
-            have_key=0
         else
             log "Deriving public key from $KEY"
             ssh-keygen -y -f "$KEY" >"${KEY}.pub"
@@ -420,19 +427,21 @@ if ((have_key)); then
     fi
 fi
 
+[[ -f "${KEY}.pub" ]] && have_pub=1
+
 public_key=""
-if ((have_key)); then
+if ((have_pub)); then
     public_key="$(awk '{print $1, $2}' "${KEY}.pub")"
 fi
 
-if ((have_key)) && ! command -v ssh-add >/dev/null 2>&1; then
-    warn "ssh-add is not installed; cannot manage the ssh-agent"
+if ((have_pub)) && ! command -v ssh-add >/dev/null 2>&1; then
+    warn "ssh-add is not installed; cannot inspect the ssh-agent"
     AUTH_INCOMPLETE=1
 fi
 
 # Make local `git log --show-signature` verification work for both identities.
 work_email="$(git config --file "$HOME/.config/git/work.inc" --get user.email 2>/dev/null || true)"
-if ((have_key)) && [[ -n "$email" ]]; then
+if ((have_pub)) && [[ -n "$email" ]]; then
     if ((DRY_RUN)); then
         log "Would update $HOME/.config/git/allowed_signers"
     else
@@ -445,29 +454,29 @@ if ((have_key)) && [[ -n "$email" ]]; then
     fi
 fi
 
-if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
+if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
     agent_socket=""
     agent_ready=0
     agent_exported=0
 
     if is_wsl; then
-        # The Windows bridge is the only agent on WSL; it already reads the key
-        # loaded by the Windows OpenSSH Agent service.
-        bridge_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-        agent_socket="$bridge_dir/wsl2-ssh-agent.sock"
+        # The Windows Bitwarden agent owns the key; the relay only exposes its
+        # pipe as a Unix socket.
+        relay_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        agent_socket="$relay_dir/ssh-agent.sock"
 
         if [[ ! -S "$agent_socket" ]]; then
             if ((DRY_RUN)); then
-                warn "Windows SSH agent bridge is not running; would run: systemctl --user enable --now wsl2-ssh-agent.service"
+                warn "Windows SSH agent relay is not running; would run: systemctl --user enable --now ssh-agent-bridge.service"
                 AUTH_INCOMPLETE=1
             elif ! command -v systemctl >/dev/null 2>&1 ||
                 ! systemctl --user show-environment >/dev/null 2>&1; then
-                warn "Windows SSH agent bridge is not running; start wsl2-ssh-agent manually"
+                warn "Windows SSH agent relay is not running; start ssh-agent-bridge manually"
                 AUTH_INCOMPLETE=1
-            elif systemctl --user enable --now wsl2-ssh-agent.service >/dev/null 2>&1; then
-                log "Started wsl2-ssh-agent.service"
+            elif systemctl --user enable --now ssh-agent-bridge.service >/dev/null 2>&1; then
+                log "Started ssh-agent-bridge.service"
             else
-                warn "could not start wsl2-ssh-agent.service; run provisioning/arch/bootstrap.sh"
+                warn "could not start ssh-agent-bridge.service; run provisioning/arch/bootstrap.sh"
                 AUTH_INCOMPLETE=1
             fi
         fi
@@ -498,7 +507,14 @@ if ((have_key)) && command -v ssh-add >/dev/null 2>&1; then
     if ((agent_ready)); then
         agent_keys="$(ssh-add -l 2>/dev/null || true)"
         if grep -qF "$key_fingerprint" <<<"$agent_keys"; then
-            log "SSH key is already loaded in the agent"
+            log "SSH key is available from the agent"
+        elif is_wsl; then
+            warn "SSH key is not available from the Bitwarden agent"
+            warn "  import the matching private key into Bitwarden, unlock the vault, and approve the request"
+            AUTH_INCOMPLETE=1
+        elif ((have_key == 0)); then
+            warn "SSH private key is missing; the native agent cannot load it"
+            AUTH_INCOMPLETE=1
         elif ((DRY_RUN)); then
             warn "SSH key is not loaded; would run: ssh-add $KEY"
             AUTH_INCOMPLETE=1

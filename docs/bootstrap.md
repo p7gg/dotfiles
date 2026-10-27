@@ -131,10 +131,11 @@ filesystem, and run:
 ./provisioning/arch/bootstrap.sh --profile wsl
 ```
 
-Bootstrap also installs and starts the Windows SSH agent bridge
-(`wsl2-ssh-agent`). The Windows OpenSSH Authentication Agent must be running for
-it to authenticate; see
-[Windows SSH agent bridge](auth.md#windows-ssh-agent-bridge-wsl).
+Bootstrap also installs `socat` and starts `ssh-agent-bridge.service`, which
+relays the Windows Bitwarden SSH agent into WSL via `npiperelay.exe`. The
+Windows OpenSSH Authentication Agent service must be disabled so Bitwarden can
+own the pipe. Install Bitwarden Desktop and `npiperelay` on Windows first; see
+[Windows SSH agent relay](auth.md#windows-ssh-agent-relay-wsl).
 
 Keep the repo inside WSL, not on `/mnt/c`, for sensible permissions, file modes,
 and Git performance.

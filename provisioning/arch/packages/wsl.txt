@@ -9,8 +9,8 @@ pass
 vulkan-dzn
 vulkan-icd-loader
 
-# Passphrase dialog for the VS Code Remote-WSL SSH agent setup.
-x11-ssh-askpass
+# Relay the Windows Bitwarden SSH agent into WSL.
+socat
 
 # Desktop integration helpers for CLI tools that call xdg-open/xdg-mime.
 xdg-utils

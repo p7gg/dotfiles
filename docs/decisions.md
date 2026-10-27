@@ -54,22 +54,27 @@ Worth considering later: `feature.manyFiles = true` for large repositories,
 `diff.renames = copies`, and `push.followTags = true`. Avoid `merge.ff = only`
 unless every repository enforces linear history.
 
-## Private SSH key in Bitwarden Secrets Manager?
+## Private SSH key in Bitwarden
 
-Technically BWS can store any secret, including a private key. In practice, do
-not do it:
+Bitwarden has two different products:
 
-- BWS is a secret store, not an SSH agent. To use the key you have to materialize
-  it somewhere, so it ends up in a file or process memory anyway.
-- The BWS machine token becomes a second credential that can retrieve the key.
-  Losing it is now equivalent to losing the key.
-- Every signing operation would depend on BWS availability and token access.
+- **Secrets Manager** (`bws`) is a secret store, not an SSH agent. Do not put the
+  private key there: using it requires materializing the key somewhere, and the
+  machine token becomes a second credential that can retrieve it.
+- **Password Manager** has an SSH agent. It keeps the key in the vault, exposes
+  the OpenSSH agent protocol on Windows, and prompts for authorization. That is
+  the supported way to avoid a private key file on disk.
 
-Use a per-machine SSH key instead, add its public half to GitHub and Cloud
-Source Repositories, and keep an encrypted backup in your password manager or on
-a hardware token. If you absolutely must store it in BWS, fetch it into
-`$XDG_RUNTIME_DIR` with mode `0600`, add it to the agent, and delete it
-immediately; do not keep a permanent copy in the repo or home directory.
+This repo uses the Password Manager agent **on WSL**; native Arch keeps the key
+file and GNOME Keyring. On Windows, Bitwarden owns
+`\\.\pipe\openssh-ssh-agent`; on WSL, `socat` + `npiperelay` expose that pipe as
+`$XDG_RUNTIME_DIR/ssh-agent.sock`. Keep only the public key in WSL for
+`user.signingkey` and `allowed_signers`, and keep an encrypted backup of the
+private key outside the laptop.
+
+If you absolutely must store the key in BWS, fetch it into `$XDG_RUNTIME_DIR`
+with mode `0600`, add it to an agent, and delete it immediately; do not keep a
+permanent copy in the repo or home directory.
 
 ## Back to
 

@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+# Bridge the Windows SSH agent into WSL.
+#
+# The Windows agent (Bitwarden Password Manager) owns
+# \\.\pipe\openssh-ssh-agent. npiperelay exposes that pipe over stdio, and
+# socat turns it into a Unix socket that OpenSSH clients can use.
+#
+# The relay is per-connection: when the Windows agent is unavailable, the
+# client fails fast instead of waiting on a PowerShell child.
+
+set -eu
+
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+socket="${SSH_AGENT_SOCKET:-$runtime/ssh-agent.sock}"
+
+find_npiperelay() {
+    if [ -n "${NPIPERELAY:-}" ] && [ -x "$NPIPERELAY" ]; then
+        printf '%s\n' "$NPIPERELAY"
+        return 0
+    fi
+
+    if command -v npiperelay.exe >/dev/null 2>&1; then
+        command -v npiperelay.exe
+        return 0
+    fi
+
+    if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+        winprofile="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r\n')"
+        if [ -n "$winprofile" ]; then
+            winprofile="$(wslpath -u "$winprofile" 2>/dev/null || true)"
+            if [ -n "$winprofile" ] && [ -x "$winprofile/bin/npiperelay.exe" ]; then
+                printf '%s\n' "$winprofile/bin/npiperelay.exe"
+                return 0
+            fi
+        fi
+    fi
+
+    for candidate in /mnt/c/Users/*/AppData/Local/Microsoft/WinGet/Packages/albertony.npiperelay_*/npiperelay.exe; do
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+npiperelay="$(find_npiperelay)" || {
+    printf '%s\n' "ssh-agent-bridge: npiperelay.exe not found; install it with: winget install --id albertony.npiperelay -e" >&2
+    exit 1
+}
+
+command -v socat >/dev/null 2>&1 || {
+    printf '%s\n' "ssh-agent-bridge: socat not found; install it with: sudo pacman -S socat" >&2
+    exit 1
+}
+
+umask 077
+exec /usr/bin/socat \
+    "UNIX-LISTEN:$socket,fork,mode=0600,unlink-early,unlink-close" \
+    "EXEC:$npiperelay -ei -s //./pipe/openssh-ssh-agent"

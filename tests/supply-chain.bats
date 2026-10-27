@@ -25,11 +25,11 @@ setup() {
         "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/provisioning/arch"
 }
 
-@test "wsl2-ssh-agent is installed from a pinned, verified release" {
-    grep -Fq 'WSL2_SSH_AGENT_VERSION="0.9.7"' "$BOOTSTRAP"
-    grep -Eq '^WSL2_SSH_AGENT_SHA256_X86_64="[0-9a-f]{64}"' "$BOOTSTRAP"
-    grep -Eq '^WSL2_SSH_AGENT_SHA256_ARM64="[0-9a-f]{64}"' "$BOOTSTRAP"
-    grep -Fq 'github.com/mame/wsl2-ssh-agent/releases/download/v${WSL2_SSH_AGENT_VERSION}' "$BOOTSTRAP"
-    grep -Fq 'checksum mismatch' "$BOOTSTRAP"
-    [ -f "$REPO_ROOT/home/dot_config/systemd/user/wsl2-ssh-agent.service" ]
+@test "WSL SSH agent relay is a fail-fast socat bridge" {
+    grep -Fq 'UNIX-LISTEN' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
+    grep -Fq 'npiperelay' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
+    grep -Fq 'pipe/openssh-ssh-agent' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
+    grep -Fq 'Restart=always' "$REPO_ROOT/home/dot_config/systemd/user/ssh-agent-bridge.service"
+    grep -Fq 'socat' "$REPO_ROOT/provisioning/arch/packages/wsl.txt"
+    [ ! -e "$REPO_ROOT/home/dot_config/systemd/user/wsl2-ssh-agent.service" ]
 }

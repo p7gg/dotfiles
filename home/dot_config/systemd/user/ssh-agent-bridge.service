@@ -1,0 +1,14 @@
+[Unit]
+Description=SSH agent bridge to the Windows agent
+Documentation=https://github.com/albertony/npiperelay
+After=network.target
+
+[Service]
+Type=simple
+ConditionUser=!root
+ExecStart=%h/.local/bin/ssh-agent-bridge
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

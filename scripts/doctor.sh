@@ -59,6 +59,12 @@ fi
 
 log "==> repository"
 log "repository: $REPO_ROOT"
+if [[ "$(git config --local --get gitbutler.signCommits 2>/dev/null || true)" == "false" ]]; then
+    warn "gitbutler.signCommits=false; but commits in this repository will be unsigned"
+fi
+if [[ "$(git config --get commit.gpgsign 2>/dev/null || true)" == "false" ]]; then
+    warn "commit.gpgsign=false; commits in this repository will be unsigned"
+fi
 if command -v chezmoi >/dev/null 2>&1; then
     run_optional chezmoi source-path || true
 fi

@@ -16,7 +16,7 @@ runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
     for candidate in \
-        "$runtime/wsl2-ssh-agent.sock" \
+        "$runtime/ssh-agent.sock" \
         "$runtime/ssh-agent.socket" \
         "$runtime/keyring/ssh" \
         "$runtime/gcr/ssh"; do

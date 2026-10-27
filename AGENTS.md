@@ -26,11 +26,11 @@ install.
 ## Commit signing
 
 - Commit signing is enabled in `~/.gitconfig`. `gpg.ssh.program` points at
-  `~/.local/bin/git-ssh-sign.sh`, which finds the WSL Windows agent bridge when
-  a process does not inherit `SSH_AUTH_SOCK`.
+  `~/.local/bin/git-ssh-sign.sh`, which finds the WSL relay socket when a process
+  does not inherit `SSH_AUTH_SOCK`.
 - Never disable signing (`commit.gpgsign`, `gitbutler.signCommits`, or
-  `--no-gpg-sign`) to get past a prompt. Load the key into the agent instead;
-  see [docs/auth.md](docs/auth.md#commit-signing-troubleshooting).
+  `--no-gpg-sign`) to get past a prompt. Unlock the agent instead; on WSL the
+  agent is Bitwarden. See [docs/auth.md](docs/auth.md#commit-signing-troubleshooting).
 - `gitbutler.signCommits` overrides `commit.gpgsign` for `but` commits. Keep it
   unset or `true`.
 

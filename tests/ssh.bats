@@ -6,7 +6,7 @@ setup() {
     TEST_TMP="$(mktemp -d /tmp/git-ssh-sign.XXXXXX)"
     TEST_RUNTIME="$TEST_TMP/runtime"
     TEST_KEY="$TEST_TMP/id_ed25519"
-    TEST_AGENT_SOCKET="$TEST_RUNTIME/wsl2-ssh-agent.sock"
+    TEST_AGENT_SOCKET="$TEST_RUNTIME/ssh-agent.sock"
 
     mkdir -p "$TEST_RUNTIME"
     ssh-keygen -q -t ed25519 -N "" -C "test@example.com" -f "$TEST_KEY"
@@ -33,7 +33,7 @@ start_agent() {
     grep -Fq 'P7-LAPTOP-auth, P7-LAPTOP-signing' "$keys"
 }
 
-@test "git-ssh-sign finds the Windows bridge when SSH_AUTH_SOCK is unset" {
+@test "git-ssh-sign finds the WSL relay when SSH_AUTH_SOCK is unset" {
     start_agent
     printf 'payload\n' >"$TEST_TMP/msg"
 

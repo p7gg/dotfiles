@@ -31,9 +31,9 @@ Host source.developers.google.com
 
 {{ if contains "microsoft" .chezmoi.kernel.osrelease -}}
 # WSL tools started outside a login shell (T3, OpenCode, systemd scopes) do not
-# inherit SSH_AUTH_SOCK from fish. Use the Windows agent bridge socket directly.
-Match exec "test -S /run/user/{{ .chezmoi.uid }}/wsl2-ssh-agent.sock"
-    IdentityAgent /run/user/{{ .chezmoi.uid }}/wsl2-ssh-agent.sock
+# inherit SSH_AUTH_SOCK from fish. Use the Windows agent relay socket directly.
+Match exec "test -S /run/user/{{ .chezmoi.uid }}/ssh-agent.sock"
+    IdentityAgent /run/user/{{ .chezmoi.uid }}/ssh-agent.sock
 {{ end -}}
 
 # Tailscale devices: any tailnet machine name works as a host alias, so

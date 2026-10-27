@@ -6,15 +6,17 @@ Chezmoi configures SSH commit signing globally with
 `work_email` prompt during `chezmoi init`.
 
 Personal GitHub and work Google Cloud Source Repositories both use the same
-per-machine SSH key:
+per-machine SSH key. On native Arch the private key lives in `~/.ssh` and is
+loaded by GNOME Keyring; on WSL the same key is stored in the Bitwarden Password
+Manager vault and served by the Bitwarden agent:
 
 - `github.com` for personal repositories and `gh`
 - `source.developers.google.com:2022` for work Cloud Source Repositories,
   with `User` set to the work email
 
 If you prefer stronger isolation, use separate personal/work keys and adjust the
-two `Host` entries and `provisioning/arch/auth.sh`; this setup intentionally keeps it simple
-with one key.
+two `Host` entries; Bitwarden can hold both, but its agent has no per-request key
+selection, so use `IdentityFile`/`IdentitiesOnly` to choose the offered key.
 
 Inspect authentication without changing anything:
 
@@ -31,7 +33,7 @@ Run the interactive auth helper once per machine:
 It will:
 
 - generate a per-machine ed25519 key if one does not exist
-- load it into an ssh-agent
+- verify the key is available from the session agent or the Bitwarden agent
 - authenticate `gh` for personal GitHub with the SSH Git protocol
 - add the key to personal GitHub for both authentication and signing
 - authenticate `gcloud` and application default credentials
@@ -47,66 +49,80 @@ needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
 uses the single `pass` entry `bitwarden/bws-token`, so the flag has no effect
 there). For non-interactive runs, pass `--email` and `--non-interactive`; steps
 that need a browser or TTY are reported instead of prompted for. Native GNOME
-already has an SSH agent through gnome-keyring. On WSL, bootstrap installs the
-Windows bridge described below and the helper loads the key there; the stock
-`ssh-agent.socket` unit is not used, so there is exactly one agent per Windows
-session. Fish exports the bridge socket in new shells and runs `ssh-add` when
-the agent is empty, so a protected key prompts once per Windows boot. There is
-no socket cache to go stale across restarts. The helper also installs
-`~/.vscode-server/server-env-setup`, which gives the Remote-WSL server the same
-socket and asks for the passphrase through a WSLg dialog when no terminal has
-loaded the key yet.
+already has an SSH agent through gnome-keyring. On WSL, the Windows **Bitwarden
+Password Manager** desktop app is the agent; the `bws` Secrets Manager CLI is
+not. The private key lives in the Bitwarden vault, not in the WSL filesystem.
+Fish exports the relay socket in new shells, and the helper installs
+`~/.vscode-server/server-env-setup` so the Remote-WSL server inherits it.
 
 Processes that do not start from fish (the T3 and OpenCode servers, systemd user
 scopes) do not inherit `SSH_AUTH_SOCK`. On WSL, `~/.ssh/config` therefore points
-`IdentityAgent` at the bridge socket, so `ssh` and Git's transport find the key
+`IdentityAgent` at the relay socket, so `ssh` and Git's transport find the agent
 without the variable.
 
 `IdentityAgent` does not cover commit signing. Git and GitButler sign by running
 `ssh-keygen -Y sign`, and `ssh-keygen` does not read `~/.ssh/config`; it only
-consults `SSH_AUTH_SOCK`. Without that variable it falls back to the
-passphrase-protected private key and opens an askpass dialog that a T3 or
-OpenCode session cannot see, so the commit appears to hang. `gpg.ssh.program`
-therefore points at `~/.local/bin/git-ssh-sign.sh`, which exports the bridge
-socket when it is missing and, when no terminal is attached, fails instead of
-prompting.
+consults `SSH_AUTH_SOCK`. `gpg.ssh.program` therefore points at
+`~/.local/bin/git-ssh-sign.sh`, which exports the relay socket when it is
+missing and, when no terminal is attached, fails instead of prompting.
 
-### Windows SSH agent bridge (WSL)
+### Windows SSH agent relay (WSL)
 
-Bootstrap installs `wsl2-ssh-agent` into `~/.local/bin` from a pinned upstream
-release after verifying its SHA-256, and enables the
-`wsl2-ssh-agent.service` user unit. The bridge forwards the agent protocol to
-the Windows OpenSSH Authentication Agent, so one key works in Windows and WSL,
-and it survives WSL restarts.
+The agent is the **Bitwarden Password Manager desktop app** on Windows. Enable
+**Settings → App settings (all accounts) → Enable SSH agent**, then set **Ask
+for authorization when using SSH agent**:
 
-Prerequisites, once per Windows machine: install the OpenSSH Client optional
-feature and start its agent service from an elevated PowerShell:
+- `Always` asks on every request. It will block T3/OpenCode commits.
+- `Remember until vault is locked` asks once per session and is the recommended
+  balance.
+- `Never` signs silently while the vault is unlocked; use it only for unattended
+  agent commits or if you accept that any WSL process can sign.
+
+The Windows OpenSSH Authentication Agent service must be disabled so Bitwarden
+can own `\\.\pipe\openssh-ssh-agent`:
 
 ```powershell
-Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-Set-Service -Name ssh-agent -StartupType Automatic
-Start-Service ssh-agent
+Set-Service -Name ssh-agent -StartupType Disabled
+Stop-Service -Name ssh-agent
 ```
 
-The socket is `$XDG_RUNTIME_DIR/wsl2-ssh-agent.sock`. Fish exports it, and
-`~/.ssh/config` points `IdentityAgent` at it for processes that do not inherit
-the variable. Bootstrap enables the unit only when the Windows `ssh-agent`
-service is running. Load the key into the Windows agent once per Windows login;
-from WSL, so the private key stays in the WSL filesystem:
+Bootstrap installs `socat` and enables the `ssh-agent-bridge.service` user unit.
+The unit runs `~/.local/bin/ssh-agent-bridge`, which finds `npiperelay.exe` on
+the Windows side and exposes the pipe at `$XDG_RUNTIME_DIR/ssh-agent.sock`
+(mode `0600`). Install npiperelay once from Windows:
+
+```powershell
+winget install --id albertony.npiperelay -e
+```
+
+The relay is per-connection: when Bitwarden is closed or the Windows pipe is
+unavailable, the client fails fast instead of waiting on a PowerShell child.
+When the vault is locked, Bitwarden prompts locally to unlock it. Check the
+relay with:
 
 ```bash
-SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/wsl2-ssh-agent.sock" ssh-add ~/.ssh/id_ed25519
+systemctl --user status ssh-agent-bridge.service
+SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.sock" ssh-add -l
+ssh-add.exe -l
 ```
+
+Import the key into Bitwarden once (Vault → New → SSH key → **Import**), then
+remove the private key from WSL and keep `~/.ssh/id_ed25519.pub` for
+`user.signingkey` and `allowed_signers`. `ssh-add` cannot add or remove keys in
+Bitwarden; the vault is the source of truth.
+
+Windows Hello unlock is optional: **File → Settings → Security → Unlock with
+Windows Hello**. It only appears when Windows Hello is enabled at the OS level,
+and the Microsoft Store build does not support biometric unlock.
 
 The ArchWiki's PAM Windows Hello setup is separate: it authenticates `sudo` and
 other PAM services through Windows Hello. It does not expose an SSH agent, load
 a key, or affect commit signing.
 
-The bridge runs PowerShell in the background and adds a small delay to the
-first agent operation after it starts. While it is active, every WSL process
-can use every key held by the Windows agent: keep only the per-machine key
-there, and do not load work or security-key credentials you would not expose to
-WSL.
+While the relay is active, every WSL process that can reach the socket can ask
+Bitwarden to sign with every key the agent offers. Set the authorization policy
+deliberately, keep work and personal keys separate, and do not enable
+`ForwardAgent` for untrusted hosts.
 
 Work Cloud Source Repositories setup is partly manual because Google does not
 provide a CLI command to register an SSH key for Cloud Source Repositories.
@@ -173,29 +189,41 @@ component is missing or a requested authentication step is incomplete; use
 
 A commit that waits for a passphrase, or an agent that disables signing to avoid
 the prompt, usually means `ssh-keygen` could not reach an agent. Check the
-configuration and the bridge:
+configuration and the relay:
 
 ```bash
 git config --show-origin --get gpg.format
 git config --show-origin --get user.signingkey
 git config --show-origin --get gpg.ssh.program
-systemctl --user status wsl2-ssh-agent.service
-SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/wsl2-ssh-agent.sock" ssh-add -l
+systemctl --user status ssh-agent-bridge.service
+SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.sock" ssh-add -l
 ```
 
 `gpg.ssh.program` should point at `~/.local/bin/git-ssh-sign.sh`, and
-`ssh-add -l` should list the key. If the agent is empty, load the key from a
-terminal:
+`ssh-add -l` should list the key from Bitwarden. If it is empty, unlock
+Bitwarden, confirm the SSH key item is in the active account, and check the
+relay:
 
 ```bash
-SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/wsl2-ssh-agent.sock" ssh-add ~/.ssh/id_ed25519
+journalctl --user -u ssh-agent-bridge.service -n 50 --no-pager
+ssh-add.exe -l
 ```
 
-If the bridge unit is not running, start it:
+On Windows, the OpenSSH Authentication Agent service must be stopped and
+disabled so Bitwarden owns the pipe:
+
+```powershell
+Get-Service ssh-agent
+```
+
+If the relay unit is not running, start it:
 
 ```bash
-systemctl --user enable --now wsl2-ssh-agent.service
+systemctl --user enable --now ssh-agent-bridge.service
 ```
+
+Bitwarden has no `ssh-add` key management. Do not try to load a private key into
+it from WSL; import the key into the vault instead.
 
 GitButler has its own override, `gitbutler.signCommits`, which takes precedence
 over `commit.gpgsign`. If `git commit` signs but `but commit` does not, check the

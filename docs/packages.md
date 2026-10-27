@@ -149,7 +149,7 @@ Source: `provisioning/arch/packages/wsl.txt` — 6 packages.
 | `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `provisioning/arch/auth.sh` stores it. |
 | `vulkan-dzn` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Experimental `dzn` (`microsoft-experimental`) Vulkan driver. | Upstream calls the driver experimental; expect rough edges. |
 | `vulkan-icd-loader` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Loader that lets Vulkan applications find `vulkan-dzn`. | `lib32-vulkan-icd-loader` is deliberately absent; multilib stays disabled. |
-| `x11-ssh-askpass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Lightweight X11 passphrase dialog. | Lets the VS Code Remote-WSL server unlock the SSH key through WSLg. |
+| `socat` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Multipurpose relay. | Bridges `$XDG_RUNTIME_DIR/ssh-agent.sock` to `npiperelay.exe` and the Windows Bitwarden SSH agent. |
 | `xdg-utils` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | `xdg-open`, `xdg-mime`, and related desktop integration helpers. | Lets CLI tools that expect a desktop opener resolve URLs and MIME types via `wslu`/WSLg. |
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
@@ -168,9 +168,13 @@ These are not pacman packages and are not included in the package totals above.
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
 | `opencode` | `registry.npmjs.org` release tarball | Terminal AI coding agent. | Bootstrap reads OpenCode's release metadata, verifies the npm `sha512` integrity, and installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Pin with `OPENCODE_VERSION`; update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
-| `wsl2-ssh-agent` | GitHub release, pinned and SHA-256 verified | WSL-side bridge to the Windows OpenSSH agent. | WSL only. Bootstrap installs `~/.local/bin/wsl2-ssh-agent` and the `wsl2-ssh-agent.service` user unit; see [authentication](auth.md#windows-ssh-agent-bridge-wsl). |
 
-The bootstrap installs both tools without executing a remote installer script
+WSL also needs `npiperelay.exe` on the Windows side. Install it with
+`winget install --id albertony.npiperelay -e`; `~/.local/bin/ssh-agent-bridge`
+discovers it. It is a Windows executable, not a pacman package, and is not
+included in the package totals above.
+
+The bootstrap installs OpenCode without executing a remote installer script
 and does not remove packages. If an older machine still has the pacman
 `opencode` package, remove it once with `sudo pacman -Rns opencode` after the
 bootstrap-managed binary is in place. `just doctor` warns when the pacman package
@@ -330,7 +334,7 @@ is why the default `--check` does not fail on untracked packages.
   firmware, microcode, or GPU drivers. Those belong to the OS installation step.
 - `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`,
   `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `mesa`,
-  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `x11-ssh-askpass`, `xdg-utils`,
+  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `socat`, `xdg-utils`,
   and `wslu` are WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`. `paru` itself is built from the commit pinned in `PARU_COMMIT` in
