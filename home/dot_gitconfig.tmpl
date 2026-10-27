@@ -60,6 +60,7 @@
 {{ end -}}
 
 [alias]
+    co = checkout
     ch = !fish -c 'fzf-checkout $argv'
 {{- if lookPath "difft" }}
     dt = !difft
