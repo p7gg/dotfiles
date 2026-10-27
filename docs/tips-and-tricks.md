@@ -32,6 +32,12 @@ The interactive shell also receives:
 - **zoxide** — `z <fragment>` jumps by frecency; `zi` opens a picker
 - **Starship** — directory, Git branch and status, and a compact prompt
 
+**Find who owns a port.** `ports` opens an fzf browser over `ss(8)`. `Tab` marks
+several sockets, `Enter` prints their port numbers, `Ctrl-Y` copies them, and
+`Ctrl-K` sends `SIGTERM` to the selected processes after a confirmation. The
+preview shows the process and its matching socket; `ports --all` includes
+established connections and `ports 3000` starts with a query.
+
 Useful moves:
 
 ```bash

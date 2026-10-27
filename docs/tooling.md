@@ -27,6 +27,14 @@ branch with the same name that tracks it. With arguments, `ch` defers to
 `git checkout`, so `ch <branch>` and `ch -b <branch>` keep working. The Git alias
 `git ch` uses the same picker.
 
+`ports` opens the port browser. It reads `ss(8)` and lists TCP and UDP sockets
+with their protocol, port, address, state, user, and process. `Tab` marks
+multiple rows, `Enter` prints the selected port numbers, `Ctrl-Y` copies them to
+the clipboard, and `Ctrl-K` sends `SIGTERM` to the selected processes after a
+confirmation. The preview pane shows process details and the matching socket.
+`ports --all` includes established connections, and `ports 8080` starts with a
+pre-filled search.
+
 `~/.local/bin`, `~/.opencode/bin`, and `~/.go/bin` are prepended once, in that
 order of precedence. `mise`, starship, fzf, zoxide, and atuin are activated only
 in interactive shells. Atuin is local-only; no sync login is set up.
