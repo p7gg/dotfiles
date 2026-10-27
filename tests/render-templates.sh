@@ -83,6 +83,8 @@ expect_not_contains "$TMP_ROOT/blank/ssh-config" 'source\.developers\.google\.co
     "blank work email omits the Cloud Source host"
 expect_contains "$TMP_ROOT/blank/ssh-config" 'ProxyCommand tailscale nc' \
     "Tailscale device names proxy through tailscaled"
+expect_contains "$TMP_ROOT/blank/ssh-config" 'ControlPath .*XDG_RUNTIME_DIR.*ssh-control-%C' \
+    "SSH control sockets live in the runtime directory"
 if [[ -s "$TMP_ROOT/blank/work.inc" ]]; then
     fail "blank work email leaves work.inc empty"
 else

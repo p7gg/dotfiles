@@ -6,7 +6,9 @@ Host *
     ServerAliveCountMax 3
     HashKnownHosts yes
     ControlMaster auto
-    ControlPath ~/.ssh/control-%C
+    # Keep multiplexing sockets in the per-user runtime directory; a WSL
+    # restart or logout clears them, so stale masters do not survive.
+    ControlPath ${XDG_RUNTIME_DIR}/ssh-control-%C
     ControlPersist 10m
 
 Host github.com

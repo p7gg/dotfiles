@@ -179,6 +179,18 @@ ssh -T git@github.com
 ssh -p 2022 -T <work-email>@source.developers.google.com
 ```
 
+### SSH multiplexing
+
+`ControlMaster` keeps one connection per `%C` hash. The socket lives under
+`$XDG_RUNTIME_DIR`, so a WSL restart or logout clears it. If a master is killed
+and leaves a socket behind, SSH can report `PERMISSION_DENIED` or
+`ControlSocket ... already exists` for every remote. When no SSH session is
+active, remove the stale sockets:
+
+```bash
+rm -f "${XDG_RUNTIME_DIR}"/ssh-control-* ~/.ssh/control-*
+```
+
 If you prefer to manage authentication yourself, use the individual commands
 above; the helper only automates them. It exits nonzero when a required
 component is missing or a requested authentication step is incomplete; use
