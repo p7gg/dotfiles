@@ -83,6 +83,9 @@
 
 [gpg "ssh"]
     allowedSignersFile = ~/.config/git/allowed_signers
+    # ssh-keygen does not read ~/.ssh/config, so IdentityAgent cannot reach the
+    # WSL bridge from processes without SSH_AUTH_SOCK. The wrapper sets it.
+    program = {{ .chezmoi.homeDir }}/.local/bin/git-ssh-sign.sh
 
 # Work projects under ~/Projects/work/ use the work email, while still signing
 # with the same per-machine SSH key. Skip the include entirely when the work

@@ -90,6 +90,8 @@ else
 fi
 expect_contains "$TMP_ROOT/blank/go-env" "^GOPATH=$TMP_ROOT/blank/home/\.go$" \
     "go env uses the chezmoi home directory"
+expect_contains "$TMP_ROOT/blank/gitconfig" 'program = .*/\.local/bin/git-ssh-sign\.sh' \
+    "ssh signing uses the agent wrapper"
 
 if command -v delta >/dev/null 2>&1; then
     expect_contains "$TMP_ROOT/blank/gitconfig" 'pager = delta' \

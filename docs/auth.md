@@ -59,8 +59,17 @@ loaded the key yet.
 
 Processes that do not start from fish (the T3 and OpenCode servers, systemd user
 scopes) do not inherit `SSH_AUTH_SOCK`. On WSL, `~/.ssh/config` therefore points
-`IdentityAgent` at the bridge socket, so `git` and `ssh` find the key without
-the variable.
+`IdentityAgent` at the bridge socket, so `ssh` and Git's transport find the key
+without the variable.
+
+`IdentityAgent` does not cover commit signing. Git and GitButler sign by running
+`ssh-keygen -Y sign`, and `ssh-keygen` does not read `~/.ssh/config`; it only
+consults `SSH_AUTH_SOCK`. Without that variable it falls back to the
+passphrase-protected private key and opens an askpass dialog that a T3 or
+OpenCode session cannot see, so the commit appears to hang. `gpg.ssh.program`
+therefore points at `~/.local/bin/git-ssh-sign.sh`, which exports the bridge
+socket when it is missing and, when no terminal is attached, fails instead of
+prompting.
 
 ### Windows SSH agent bridge (WSL)
 
@@ -88,6 +97,10 @@ from WSL, so the private key stays in the WSL filesystem:
 ```bash
 SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/wsl2-ssh-agent.sock" ssh-add ~/.ssh/id_ed25519
 ```
+
+The ArchWiki's PAM Windows Hello setup is separate: it authenticates `sudo` and
+other PAM services through Windows Hello. It does not expose an SSH agent, load
+a key, or affect commit signing.
 
 The bridge runs PowerShell in the background and adds a small delay to the
 first agent operation after it starts. While it is active, every WSL process
@@ -155,6 +168,46 @@ above; the helper only automates them. It exits nonzero when a required
 component is missing or a requested authentication step is incomplete; use
 `--skip-gh`, `--skip-gcloud`, `--skip-tailscale`, `--skip-mcp`,
 `--skip-bws`, `--skip-linear`, or `--skip-jira` for intentional skips.
+
+## Commit signing troubleshooting
+
+A commit that waits for a passphrase, or an agent that disables signing to avoid
+the prompt, usually means `ssh-keygen` could not reach an agent. Check the
+configuration and the bridge:
+
+```bash
+git config --show-origin --get gpg.format
+git config --show-origin --get user.signingkey
+git config --show-origin --get gpg.ssh.program
+systemctl --user status wsl2-ssh-agent.service
+SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/wsl2-ssh-agent.sock" ssh-add -l
+```
+
+`gpg.ssh.program` should point at `~/.local/bin/git-ssh-sign.sh`, and
+`ssh-add -l` should list the key. If the agent is empty, load the key from a
+terminal:
+
+```bash
+SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/wsl2-ssh-agent.sock" ssh-add ~/.ssh/id_ed25519
+```
+
+If the bridge unit is not running, start it:
+
+```bash
+systemctl --user enable --now wsl2-ssh-agent.service
+```
+
+GitButler has its own override, `gitbutler.signCommits`, which takes precedence
+over `commit.gpgsign`. If `git commit` signs but `but commit` does not, check the
+local value and remove the override (or set it to `true`):
+
+```bash
+git config --show-origin --get gitbutler.signCommits
+```
+
+Do not work around signing failures with `commit.gpgsign=false`,
+`gitbutler.signCommits=false`, or by temporarily disabling signing; that leaves
+unsigned commits and hides the real problem.
 
 ## Bitwarden Secrets Manager
 

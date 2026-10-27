@@ -106,9 +106,13 @@ SSH signing is on by default. These checks should agree:
 ```bash
 git config --show-origin --get gpg.format
 git config --show-origin --get user.signingkey
+git config --show-origin --get gpg.ssh.program
 git log --show-signature -1
 ```
 
+`gpg.ssh.program` is a wrapper around `ssh-keygen` that finds the WSL agent
+bridge when `SSH_AUTH_SOCK` is missing; see
+[commit signing troubleshooting](auth.md#commit-signing-troubleshooting).
 Work projects under `~/Projects/work/` use the work email from
 `~/.config/git/work.inc` and the same per-machine SSH key.
 
