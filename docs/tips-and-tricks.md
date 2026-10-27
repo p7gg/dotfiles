@@ -226,6 +226,9 @@ Keep the repository inside the WSL filesystem:
 GUI notes:
 
 - WSLg makes Linux GUI apps appear next to Windows. GitButler's GUI needs WSLg.
+- GitButler's WebKit web view can freeze when it uses WSLg's D3D12 `/dev/dxg`
+  path. The managed `~/.local/bin/gitbutler-tauri` wrapper disables WebKit's
+  DMA-BUF renderer; launch through it, or use the managed desktop entry.
 - Windows VS Code can connect to WSL through the Remote WSL extension.
 - `wslview <url>` (from `wslu`) opens a URL in the Windows browser.
 - Rendering is GPU accelerated: `provisioning/arch/packages/wsl.txt` installs `mesa` (the

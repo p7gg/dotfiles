@@ -76,6 +76,10 @@ render private_dot_ssh/private_config.tmpl "$TMP_ROOT/blank/chezmoi.toml" "$TMP_
 HOME="$TMP_ROOT/blank/home" XDG_CONFIG_HOME="$TMP_ROOT/blank/home/.config" \
     chezmoi --config "$TMP_ROOT/blank/chezmoi.toml" execute-template \
     <"$REPO_ROOT/home/dot_config/go/env.tmpl" >"$TMP_ROOT/blank/go-env"
+HOME="$TMP_ROOT/blank/home" XDG_CONFIG_HOME="$TMP_ROOT/blank/home/.config" \
+    chezmoi --config "$TMP_ROOT/blank/chezmoi.toml" execute-template \
+    <"$REPO_ROOT/home/dot_local/share/applications/GitButler.desktop.tmpl" \
+    >"$TMP_ROOT/blank/gitbutler.desktop"
 
 expect_not_contains "$TMP_ROOT/blank/gitconfig" 'includeIf .*Projects/work' \
     "blank work email omits the work include"
@@ -94,6 +98,8 @@ expect_contains "$TMP_ROOT/blank/go-env" "^GOPATH=$TMP_ROOT/blank/home/\.go$" \
     "go env uses the chezmoi home directory"
 expect_contains "$TMP_ROOT/blank/gitconfig" 'program = .*/\.local/bin/git-ssh-sign\.sh' \
     "ssh signing uses the agent wrapper"
+expect_contains "$TMP_ROOT/blank/gitbutler.desktop" 'Exec=.*/\.local/bin/gitbutler-tauri' \
+    "GitButler desktop entry uses the managed wrapper"
 
 if command -v delta >/dev/null 2>&1; then
     expect_contains "$TMP_ROOT/blank/gitconfig" 'pager = delta' \

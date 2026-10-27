@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Launch the GitButler GUI with WebKitGTK's DMA-BUF renderer disabled.
+#
+# WebKitGTK 2.54.2 lets the web process use WSLg's D3D12 path through
+# /dev/dxg. On this machine that path can wedge the GitButler window while the
+# backend keeps running. The software renderer is stable under WSLg and fast
+# enough for the GitButler UI. See docs/tips-and-tricks.md.
+
+set -eu
+
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+exec /usr/bin/gitbutler-tauri "$@"
