@@ -5,9 +5,12 @@ setup() {
     TEST_TMP="$(mktemp -d)"
     FIXTURE="$TEST_TMP/repo"
 
-    mkdir -p "$FIXTURE/provisioning/arch/packages" "$FIXTURE/provisioning/windows/packages" "$FIXTURE/docs"
+    mkdir -p "$FIXTURE/provisioning/arch/packages" \
+        "$FIXTURE/provisioning/windows/packages/optional" "$FIXTURE/docs"
     cp "$REPO_ROOT"/provisioning/arch/packages/*.txt "$FIXTURE/provisioning/arch/packages/"
     cp "$REPO_ROOT"/provisioning/windows/packages/*.txt "$FIXTURE/provisioning/windows/packages/"
+    cp "$REPO_ROOT"/provisioning/windows/packages/optional/*.txt \
+        "$FIXTURE/provisioning/windows/packages/optional/"
     cp "$REPO_ROOT/README.md" "$REPO_ROOT/AGENTS.md" "$FIXTURE/"
     cp -a "$REPO_ROOT/docs/." "$FIXTURE/docs/"
 }
@@ -102,7 +105,7 @@ teardown() {
 
 @test "a duplicate Windows package fails the docs check" {
     printf '%s\n' 'Microsoft.WindowsTerminal' \
-        >>"$FIXTURE/provisioning/windows/packages/optional.txt"
+        >>"$FIXTURE/provisioning/windows/packages/optional/apps.txt"
 
     run "$REPO_ROOT/tests/check-docs.sh" --root "$FIXTURE"
 

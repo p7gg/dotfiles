@@ -1,0 +1,8 @@
+# Optional GPU and hardware utilities.
+#
+# These are machine-specific. Select the `hardware` category only on a host
+# with the matching hardware.
+
+Guru3D.Afterburner
+Guru3D.RTSS
+NZXT.CAM

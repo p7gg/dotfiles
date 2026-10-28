@@ -28,6 +28,18 @@ audit-check profile="auto" *args:
 windows-audit *args:
     ./provisioning/windows/run.sh audit {{ args }}
 
+# Validate Windows provisioning prerequisites without changing anything.
+windows-check *args:
+    ./provisioning/windows/run.sh bootstrap -Check {{ args }}
+
+# Preview the Windows package installs without changing anything.
+windows-dry-run *args:
+    ./provisioning/windows/run.sh bootstrap -DryRun {{ args }}
+
+# Install missing Windows packages (required-only by default).
+windows-bootstrap *args:
+    ./provisioning/windows/run.sh bootstrap {{ args }}
+
 # Generate fish completions for mise and user-installed tools.
 completions *args:
     ./provisioning/arch/tools/completions.sh {{ args }}

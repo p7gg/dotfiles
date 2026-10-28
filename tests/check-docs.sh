@@ -309,8 +309,14 @@ if [[ -d "$windows_packages_dir" ]]; then
         fail "missing documentation file: docs/windows.md"
     else
         windows_packages=()
-        for file in required.txt optional.txt; do
-            path="$windows_packages_dir/$file"
+        windows_files=("$windows_packages_dir/required.txt")
+        if [[ -d "$windows_packages_dir/optional" ]]; then
+            while IFS= read -r file; do
+                windows_files+=("$file")
+            done < <(find "$windows_packages_dir/optional" -maxdepth 1 -type f -name '*.txt' | LC_ALL=C sort)
+        fi
+
+        for path in "${windows_files[@]}"; do
             if [[ ! -f "$path" ]]; then
                 fail "missing package list: ${path#"$CHECK_ROOT/"}"
                 continue

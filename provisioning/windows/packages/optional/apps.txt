@@ -1,0 +1,29 @@
+# Optional Windows applications: browsers, editors, communication, and utilities.
+#
+# The audit warns when these are missing; the bootstrap installs them only when
+# the `apps` category is selected. Add packages only after
+# `winget show --id <id> -e --source winget` resolves them.
+
+# Browsers and editors
+Brave.Brave
+Microsoft.VisualStudioCode
+
+# Development and terminal tools
+SST.OpenCodeDesktop
+T3Tools.T3Code
+Docker.DockerDesktop
+Microsoft.PowerToys
+OctasoftLtd.WSLUI
+
+# Communication and media
+Discord.Discord
+LinearOrbit.Linear
+Mozilla.Thunderbird
+# Spotify is installed from the Store on the current host; this is the WinGet
+# ID a fresh machine would use.
+Spotify.Spotify
+Stremio.Stremio.Beta
+
+# Windows utilities
+Devolutions.UniGetUI
+memstechtips.Winhance

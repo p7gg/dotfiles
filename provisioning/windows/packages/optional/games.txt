@@ -1,0 +1,9 @@
+# Optional Windows game launchers.
+#
+# Games themselves are installed through these launchers and are not tracked as
+# WinGet packages. Select the `games` category to install the launchers.
+
+Blizzard.BattleNet
+ElectronicArts.EADesktop
+EpicGames.EpicGamesLauncher
+Valve.Steam

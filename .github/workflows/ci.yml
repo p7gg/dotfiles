@@ -101,3 +101,8 @@ jobs:
               }
           }
           if ($failed) { exit 1 }
+
+      # Dependency-free tests for package parsing, categories, and versions.
+      - name: Test shared PowerShell helpers
+        shell: pwsh
+        run: ./tests/windows-lib.ps1

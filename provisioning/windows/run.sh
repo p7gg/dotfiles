@@ -16,7 +16,8 @@ usage() {
 Usage: provisioning/windows/run.sh <command> [options]
 
 Commands:
-  audit [options]   Run the read-only Windows host audit
+  audit [options]       Run the read-only Windows host audit
+  bootstrap [options]   Install missing Windows packages
 
 Options:
   -h, --help        Show this help
@@ -45,6 +46,9 @@ shift
 case "$subcommand" in
 audit)
     script="audit.ps1"
+    ;;
+bootstrap)
+    script="bootstrap.ps1"
     ;;
 -h | --help)
     usage
@@ -92,6 +96,28 @@ powershell="$(find_powershell)" ||
     die "Windows PowerShell not found or not executable; enable WSL interop or set WINDOWS_POWERSHELL"
 
 command -v wslpath >/dev/null 2>&1 || die "wslpath not found; run this inside WSL"
+
+# PowerShell sees stdin as redirected when it runs through WSL interop, so its
+# Read-Host prompt cannot be used here. Ask in the WSL terminal instead, then
+# pass -Yes to the bootstrap. --help, -Check, -DryRun, and -Yes skip this.
+if [[ "$subcommand" == "bootstrap" && -t 0 ]]; then
+    has_yes=0
+    has_noninteractive=0
+    for arg in "$@"; do
+        case "${arg,,}" in
+        -yes | --yes) has_yes=1 ;;
+        -check | --check | -dryrun | --dryrun) has_noninteractive=1 ;;
+        esac
+    done
+    if ((has_yes == 0 && has_noninteractive == 0)); then
+        read -r -p "Install missing Windows packages? [y/N] " answer
+        [[ "$answer" =~ ^[Yy]$ ]] || {
+            printf '%s\n' "Aborted."
+            exit 1
+        }
+        set -- "$@" -Yes
+    fi
+fi
 
 win_script="$(wslpath -w "$SCRIPT_DIR/$script")" ||
     die "could not translate $SCRIPT_DIR/$script to a Windows path"

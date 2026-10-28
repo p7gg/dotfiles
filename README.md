@@ -10,7 +10,7 @@ Supported targets:
 | --- | --- | --- |
 | Arch Linux + GNOME (native) | Supported | `provisioning/arch/bootstrap.sh --profile native` |
 | Arch Linux in WSL | Supported | `provisioning/arch/wsl-init.sh` as root, then `provisioning/arch/bootstrap.sh --profile wsl` |
-| Windows host | Read-only audit | `provisioning/windows/audit.ps1`; see [Windows notes](docs/windows.md) |
+| Windows host | Install-only bootstrap | `provisioning/windows/bootstrap.ps1`; see [Windows notes](docs/windows.md) |
 
 The bootstrap does **not** partition disks, install a bootloader, configure
 encryption, install hardware drivers, or manage secrets. Those are separate
@@ -84,17 +84,21 @@ Run `provisioning/arch/wsl-init.sh` as root once, restart WSL, then run
 systemd, and validation flow is in
 [Bootstrapping — WSL](docs/bootstrap.md#arch-linux-in-wsl).
 
-### Windows host (audit only)
+### Windows host
 
-The Windows host has a read-only audit and a curated WinGet inventory. From WSL,
-run:
+The Windows host has a read-only audit and an install-only WinGet bootstrap.
+From WSL, run:
 
 ```bash
-just windows-audit
+just windows-check          # validate prerequisites
+just windows-dry-run        # preview package installs
+just windows-bootstrap      # install missing required packages
+just windows-audit          # report drift
 ```
 
-See [Windows notes](docs/windows.md) for the tracked packages, manual steps, and
-the boundary with the Linux bootstrap.
+Optional categories are opt-in with `just windows-bootstrap -Optional apps`
+(or `games`, `hardware`, `all`). See [Windows notes](docs/windows.md) for the
+tracked packages, manual steps, and the boundary with the Linux bootstrap.
 
 ## Layout
 
@@ -109,8 +113,10 @@ provisioning/arch/     Arch/WSL bootstrap, package lists, system files
   lib/common.sh        shared shell helpers
   system/              pacman, reflector, sshd, and WSL support files
   packages/            tracked package lists and the font catalog
-provisioning/windows/  Windows host inventory and read-only audit
+provisioning/windows/  Windows host inventory, audit, and bootstrap
   audit.ps1            read-only Windows host audit
+  bootstrap.ps1        install-only WinGet bootstrap
+  lib/common.ps1       shared PowerShell helpers
   run.sh               WSL wrapper around the PowerShell scripts
   packages/            required and optional WinGet package IDs
 docs/                  task-oriented documentation
@@ -174,8 +180,9 @@ asset.
 - Restic repository/password and backup schedule
 - Tailscale account authentication and ACLs
 - OpenCode provider credentials and MCP OAuth tokens
-- Windows app installation, WSL installation, Windows Terminal settings; the
-  Windows audit only reports drift for the tracked inventory
+- Windows driver installation, WSL installation, and Windows Terminal settings;
+  the Windows bootstrap only installs missing WinGet packages from the tracked
+  inventory
 - `/etc` broadly; the bootstrap only manages the pacman, reflector, firewall,
   and sshd files listed in [Bootstrapping](docs/bootstrap.md#system-maintenance),
   and `wsl-init.sh` handles the WSL-specific bootstrap files

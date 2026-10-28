@@ -104,16 +104,20 @@ Windows is provisioned as a host for WSL, not as a second dotfiles target:
   run natively on Windows, which matters before WSL exists.
 - WinGet is the only package manager. The tracked lists are hand-curated and
   install-only; the audit reports drift and never removes anything.
+- Optional packages are split into `apps`, `games`, and `hardware` categories.
+  The bootstrap installs required packages by default and only the categories
+  explicitly selected, so games and machine-specific hardware tools are not
+  pulled onto every host.
 - WSL itself is a prerequisite checked through `wsl --version`, not a WinGet
   package. The installed Store build is not always available from the WinGet
   source, and `wsl --update` is the supported update path.
 - Settings are limited to the ones that affect the WSL workflow: `.wslconfig`,
   Windows Terminal defaults, and the SSH agent service. The audit only reports
   them; a later apply step must back up and merge rather than replace.
-- Windows-side elevation uses normal UAC. A bootstrap may run from an elevated
-  terminal or relaunch itself and let the consent prompt appear on the desktop;
-  it must log to a file because an elevated child process does not share the WSL
-  shell's output. It reports reboot requirements but never reboots automatically.
+- Windows-side elevation uses normal UAC. The bootstrap runs as the normal user
+  and lets WinGet request elevation per installer; if the prompt cannot appear,
+  rerun from an elevated terminal. It does not self-elevate or hide output. It
+  reports reboot requirements but never reboots automatically.
 - WSL updates and driver installs stay manual. The audit checks that WSL is
   installed and compares it with the latest stable release through the GitHub
   API; `-NoUpdateCheck` keeps the audit offline.

@@ -19,4 +19,12 @@ cd "$REPO_ROOT"
 "$REPO_ROOT/tests/render-templates.sh"
 bats "$REPO_ROOT/tests"
 
+# Exercise the Windows helpers when running inside WSL. The Arch CI container
+# has no pwsh.exe, so this block is skipped there.
+if command -v pwsh.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    log "Running Windows PowerShell helper tests"
+    pwsh.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \
+        "$(wslpath -w "$REPO_ROOT/tests/windows-lib.ps1")"
+fi
+
 log "tests passed"

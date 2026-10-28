@@ -1,15 +1,15 @@
 # Windows
 
 The Windows host is the layer that runs WSL and the terminal. It is not a
-second dotfiles manager: only the small set of host tools and settings needed
-by the Arch/WSL workflow is tracked here.
+second dotfiles manager: only the host tools and chosen desktop apps needed by
+the Arch/WSL workflow are tracked here.
 
 ## Status
 
-A read-only audit and a curated WinGet inventory are available. Nothing on the
-Windows side is installed or changed by the repository yet. The audit checks
-that WSL is installed and compares the installed WSL build with the latest
-stable release.
+A read-only audit and an install-only WinGet bootstrap are available. The
+bootstrap installs missing packages only; it never uninstalls or upgrades
+anything. The audit checks that WSL is installed and compares the installed WSL
+build with the latest stable release.
 
 ## What is tracked
 
@@ -17,8 +17,9 @@ The audit compares the host against two lists:
 
 - `provisioning/windows/packages/required.txt` — host tools the WSL workflow
   depends on. Missing required packages fail the audit.
-- `provisioning/windows/packages/optional.txt` — desktop apps and utilities
-  worth reproducing on a fresh machine. Missing optional packages are warnings.
+- `provisioning/windows/packages/optional/` — desktop apps and utilities worth
+  reproducing on a fresh machine, split into `apps.txt`, `games.txt`, and
+  `hardware.txt`. Missing optional packages are warnings.
 
 ### Windows package inventory
 
@@ -101,6 +102,39 @@ The audit is read-only. It does not install packages, change services, edit
 Terminal settings, or write `.wslconfig`. WinGet may refresh its local source
 metadata while answering queries.
 
+## Run the bootstrap
+
+The bootstrap installs missing required packages by default. Validate first,
+then preview, then install:
+
+```bash
+just windows-check          # prerequisites and package lists only
+just windows-dry-run        # print the WinGet commands
+just windows-bootstrap      # install missing required packages
+```
+
+Optional categories are opt-in:
+
+```bash
+just windows-bootstrap -Optional apps
+just windows-bootstrap -Optional apps,games
+just windows-bootstrap -Optional all
+```
+
+Use `-Yes` for unattended runs. When run through the WSL wrapper, the
+confirmation prompt happens in the WSL terminal; `-Yes` skips it. The bootstrap
+skips packages that are already installed and never removes or upgrades
+anything. If an installer needs its UI, rerun with `-NoSilent`. If a reboot is
+pending, the bootstrap refuses to start unless `-Force` is passed.
+
+From Windows, run the PowerShell script directly:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1 -Check
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1 -DryRun
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1
+```
+
 ## What the audit checks
 
 - Windows build and architecture (Windows 11 is the documented target).
@@ -137,15 +171,15 @@ running GUI application, or a Windows-side choice:
 
 ## Elevation and reboots
 
-The audit never needs administrator rights. A future bootstrap will use normal
-Windows UAC: run it from an elevated terminal, or let it relaunch itself and
-approve the consent prompt on the desktop. WSL and the audit are already
-reachable from WSL, but an elevated Windows child process does not share the WSL
-shell's output; the bootstrap will log to a file so the result is visible.
+Neither the audit nor `-Check`/`-DryRun` needs administrator rights. Run a real
+bootstrap as your normal user: WinGet requests UAC for installers that need
+machine-scope elevation, and the consent prompt appears on the desktop. If a
+package fails because it needs elevation and the prompt cannot appear, rerun the
+bootstrap from an elevated terminal.
 
-The bootstrap will not reboot automatically. It will report when a reboot is
-required, and the audit already warns about a pending reboot. WSL updates and
-driver installs stay manual.
+The bootstrap will not reboot automatically. It refuses to start with a pending
+reboot unless `-Force` is passed, then re-checks and reports when a reboot is
+required after installing. WSL updates and driver installs stay manual.
 
 ## From a fresh machine
 
@@ -153,8 +187,10 @@ The Windows host is prepared before the Arch import:
 
 1. Install Windows and update it.
 2. Install or update WSL from Windows (`wsl --update`).
-3. Run the audit to see which required host tools are missing.
-4. Install the required tools with WinGet; the installer is not automated yet.
+3. Run `just windows-audit` to see which required host tools are missing.
+4. Run `just windows-check`, then `just windows-dry-run`, then
+   `just windows-bootstrap`. Add `-Optional apps` if you want the optional
+   application set.
 5. Import Arch and run `provisioning/arch/wsl-init.sh` as root, then run
    `provisioning/arch/bootstrap.sh --profile wsl` as your user.
 6. Run `just windows-audit` again from WSL.
@@ -164,10 +200,13 @@ The Linux bootstrap must not be run from Windows.
 ## What is not managed
 
 - Disk partitioning, drivers, firmware, Windows updates, and WSL updates.
-- Games, vendor utilities, and general application configuration.
+- Games themselves, vendor utilities, and general application configuration.
 - Windows Terminal settings, `.wslconfig`, and services; the audit only reports
   them.
 - A second dotfiles manager or a Windows-side copy of the chezmoi state.
+
+The bootstrap installs missing WinGet packages from the tracked lists; it does
+not remove or upgrade them.
 
 ## Troubleshooting
 
@@ -176,6 +215,9 @@ The Linux bootstrap must not be run from Windows.
 - **The script is blocked by the execution policy.** Run it with
   `-ExecutionPolicy Bypass`, as shown above.
 - **`winget` is missing.** Install App Installer from the Microsoft Store.
+- **A package installer needs its UI.** Rerun the bootstrap with `-NoSilent`.
+- **The bootstrap refuses to start.** A reboot is pending; reboot first, or
+  pass `-Force` if you deliberately want to continue.
 - **The audit reports the SSH pipe but Bitwarden still prompts.** Check the
   Bitwarden authorization policy; `Always` blocks unattended commits. See
   [Authentication and SSH](auth.md#windows-ssh-agent-relay-wsl).

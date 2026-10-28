@@ -31,175 +31,14 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$script:NoColor = $NoColor
-$script:Checks = 0
-$script:Warnings = 0
-$script:Failures = 0
+
+. (Join-Path $PSScriptRoot 'lib\common.ps1')
+Initialize-Output -NoColor:$NoColor
 
 try {
     [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 } catch {
     # Encoding is best-effort; the audit still works with the console default.
-}
-
-function Write-Info {
-    param([string]$Message)
-
-    Write-Host "       $Message"
-}
-
-function Write-Result {
-    param(
-        [ValidateSet('ok', 'warn', 'fail')]
-        [string]$Status,
-        [string]$Message
-    )
-
-    $script:Checks++
-
-    switch ($Status) {
-        'ok' { $color = 'Green' }
-        'warn' { $color = 'Yellow'; $script:Warnings++ }
-        'fail' { $color = 'Red'; $script:Failures++ }
-    }
-
-    $label = "[$Status]"
-    $line = '{0,-7} {1}' -f $label, $Message
-    if ($script:NoColor) {
-        Write-Host $line
-    } else {
-        Write-Host $line -ForegroundColor $color
-    }
-}
-
-function Write-Section {
-    param([string]$Title)
-
-    Write-Host ''
-    Write-Host $Title
-    Write-Host ('-' * $Title.Length)
-}
-
-function Read-PackageList {
-    param([string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        Write-Result -Status fail -Message "missing package list: $Path"
-        return @()
-    }
-
-    $packages = @()
-    foreach ($line in Get-Content -LiteralPath $Path) {
-        $value = ($line -replace '#.*$', '').Trim()
-        if (-not $value) {
-            continue
-        }
-        if ($value -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
-            Write-Result -Status fail -Message "invalid package ID in $(Split-Path -Leaf $Path): $value"
-            continue
-        }
-        $packages += $value
-    }
-
-    return $packages
-}
-
-function Read-IniFile {
-    param([string]$Path)
-
-    $result = @{}
-    $section = ''
-    foreach ($line in Get-Content -LiteralPath $Path) {
-        $value = $line.Trim()
-        if (-not $value -or $value.StartsWith(';') -or $value.StartsWith('#')) {
-            continue
-        }
-        if ($value -match '^\[(.+)\]$') {
-            $section = $Matches[1]
-            if (-not $result.ContainsKey($section)) {
-                $result[$section] = @{}
-            }
-            continue
-        }
-        if ($value -match '^([^=]+)=(.*)$') {
-            if (-not $result.ContainsKey($section)) {
-                $result[$section] = @{}
-            }
-            $result[$section][$Matches[1].Trim()] = $Matches[2].Trim()
-        }
-    }
-
-    return $result
-}
-
-function Format-WslValue {
-    param([string]$Value)
-
-    if ($Value -match '^\d+$') {
-        $bytes = [int64]$Value
-        $gib = [math]::Round($bytes / 1GB, 1)
-        return "$Value ($gib GiB)"
-    }
-
-    return $Value
-}
-
-function Format-Version4 {
-    param([string]$Value)
-
-    $parts = ($Value -replace '^v', '').Split('.')
-    $normalized = @()
-    for ($i = 0; $i -lt 4; $i++) {
-        if ($i -lt $parts.Count -and $parts[$i] -match '^\d+$') {
-            $normalized += $parts[$i]
-        } else {
-            $normalized += '0'
-        }
-    }
-
-    return ($normalized -join '.')
-}
-
-function Test-FontInstalled {
-    param([string]$Face)
-
-    $keys = @(
-        'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts',
-        'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-    )
-
-    foreach ($key in $keys) {
-        $properties = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue
-        if (-not $properties) {
-            continue
-        }
-        foreach ($name in $properties.PSObject.Properties.Name) {
-            if ($name -like "$Face*") {
-                return $true
-            }
-        }
-    }
-
-    return $false
-}
-
-function Get-WindowsInfo {
-    $currentVersion = Get-ItemProperty `
-        -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' `
-        -ErrorAction SilentlyContinue
-    $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
-
-    $caption = if ($os) { $os.Caption } else { 'Windows' }
-    $version = if ($currentVersion) { $currentVersion.DisplayVersion } else { '' }
-    $build = if ($currentVersion) { [int]($currentVersion.CurrentBuildNumber) } else { 0 }
-    $architecture = if ($os) { $os.OSArchitecture } else { $env:PROCESSOR_ARCHITECTURE }
-
-    return [pscustomobject]@{
-        Caption      = $caption
-        Version      = $version
-        Build        = $build
-        Architecture = $architecture
-    }
 }
 
 function Test-WingetPackage {
@@ -209,38 +48,18 @@ function Test-WingetPackage {
         [string]$Kind
     )
 
-    # WinGet returns 0x8A150014 when no installed package matches. PowerShell
-    # surfaces it as a signed Int32; older wrappers may only see the low byte.
-    $noPackageExitCode = [int32]0x8A150014
+    $result = Get-InstalledWingetPackage -WingetPath $WingetPath -Id $Id
 
-    # WinGet can fail transiently when another query holds its source lock.
-    # Retry once before treating the result as real drift.
-    for ($attempt = 1; $attempt -le 2; $attempt++) {
-        $output = & $WingetPath list --id $Id -e --accept-source-agreements --disable-interactivity 2>&1
-        $exitCode = $LASTEXITCODE
-        if ($exitCode -eq 0 -or $exitCode -eq 20 -or $exitCode -eq $noPackageExitCode) {
-            break
-        }
-        if ($attempt -lt 2) {
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    if ($exitCode -eq 0) {
-        $text = ($output | Out-String)
-        $version = ''
-        if ($text -match ([regex]::Escape($Id) + '\s+(\S+)')) {
-            $version = $Matches[1]
-        }
-        if ($version) {
-            Write-Result -Status ok -Message "$Kind package $Id ($version)"
+    if ($result.Installed) {
+        if ($result.Version) {
+            Write-Result -Status ok -Message "$Kind package $Id ($($result.Version))"
         } else {
             Write-Result -Status ok -Message "$Kind package $Id"
         }
         return
     }
 
-    if ($exitCode -eq 20 -or $exitCode -eq $noPackageExitCode) {
+    if ($result.Missing) {
         if ($Kind -eq 'required') {
             Write-Result -Status fail -Message "required package missing: $Id"
         } else {
@@ -249,8 +68,8 @@ function Test-WingetPackage {
         return
     }
 
-    $detail = (($output | Out-String).Trim() -replace '\s+', ' ')
-    Write-Result -Status warn -Message "could not query $Id (winget exit $exitCode): $detail"
+    $detail = ($result.Output -replace '\s+', ' ')
+    Write-Result -Status warn -Message "could not query $Id (winget exit $($result.ExitCode)): $detail"
 }
 
 # --- Windows -----------------------------------------------------------------
@@ -277,22 +96,7 @@ Write-Info "Running as $(if ($isAdmin) { 'administrator' } else { 'standard user
 
 Write-Section 'Reboot state'
 
-$rebootPending = $false
-if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') {
-    $rebootPending = $true
-}
-if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') {
-    $rebootPending = $true
-}
-$sessionManager = Get-ItemProperty `
-    -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' `
-    -Name 'PendingFileRenameOperations' `
-    -ErrorAction SilentlyContinue
-if ($sessionManager -and $sessionManager.PendingFileRenameOperations) {
-    $rebootPending = $true
-}
-
-if ($rebootPending) {
+if (Test-PendingReboot) {
     Write-Result -Status warn -Message 'a reboot is pending; finish it before provisioning'
 } else {
     Write-Result -Status ok -Message 'no pending reboot detected'
@@ -302,14 +106,7 @@ if ($rebootPending) {
 
 Write-Section 'WinGet'
 
-$winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-$wingetPath = if ($winget) {
-    $winget.Source
-} else {
-    $candidate = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
-    if (Test-Path -LiteralPath $candidate) { $candidate } else { $null }
-}
-
+$wingetPath = Get-WingetPath
 if (-not $wingetPath) {
     Write-Result -Status fail -Message 'winget.exe not found; install App Installer from the Microsoft Store'
 } else {
@@ -317,8 +114,14 @@ if (-not $wingetPath) {
     Write-Result -Status ok -Message "winget $wingetVersion ($wingetPath)"
 }
 
-$required = @(Read-PackageList (Join-Path $PSScriptRoot 'packages\required.txt'))
-$optional = @(Read-PackageList (Join-Path $PSScriptRoot 'packages\optional.txt'))
+$required = @(Read-PackageList -Path (Join-Path $PSScriptRoot 'packages\required.txt'))
+$optionalCategories = @(Get-OptionalCategories)
+$optional = @()
+if ($optionalCategories.Count -eq 0) {
+    Write-Result -Status warn -Message 'no optional package categories found'
+} else {
+    $optional = @(Get-OptionalPackages -Categories $optionalCategories | ForEach-Object { $_.Id })
+}
 
 if ($required.Count -eq 0) {
     Write-Result -Status fail -Message 'the required Windows package list is empty'
@@ -329,7 +132,7 @@ foreach ($duplicate in $duplicates) {
     Write-Result -Status fail -Message "package listed more than once: $($duplicate.Name)"
 }
 
-Write-Info "Tracking $($required.Count) required and $($optional.Count) optional package IDs"
+Write-Info "Tracking $($required.Count) required and $($optional.Count) optional package IDs across $($optionalCategories.Count) categories"
 
 if ($wingetPath) {
     foreach ($id in $required) {
@@ -344,23 +147,18 @@ if ($wingetPath) {
 
 Write-Section 'WSL'
 
-$wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
-if (-not $wsl) {
+$wsl = Get-WslVersion
+if (-not $wsl.Present) {
     Write-Result -Status fail -Message 'wsl.exe not found; install WSL before importing Arch'
 } else {
-    $versionOutput = (& wsl.exe --version 2>&1) -replace "`0", ''
-    $versionExit = $LASTEXITCODE
-    $versionLine = $versionOutput | Select-Object -First 1
-
-    if ($versionExit -ne 0) {
-        Write-Result -Status fail -Message "wsl.exe is present but not usable (exit $versionExit); install or repair WSL"
-    } elseif ($versionLine -match 'WSL version:\s*(\S+)') {
-        $wslVersion = $Matches[1]
-        Write-Result -Status ok -Message "WSL $wslVersion"
+    if (-not $wsl.Usable) {
+        Write-Result -Status fail -Message "wsl.exe is present but not usable (exit $($wsl.ExitCode)); install or repair WSL"
+    } elseif ($wsl.Version) {
+        Write-Result -Status ok -Message "WSL $($wsl.Version)"
 
         $parsed = $null
-        if ([version]::TryParse($wslVersion, [ref]$parsed) -and $parsed.Major -lt 2) {
-            Write-Result -Status warn -Message "WSL $wslVersion is older than 2.0; run 'wsl --update' for systemd support"
+        if ([version]::TryParse($wsl.Version, [ref]$parsed) -and $parsed.Major -lt 2) {
+            Write-Result -Status warn -Message "WSL $($wsl.Version) is older than 2.0; run 'wsl --update' for systemd support"
         }
 
         if (-not $NoUpdateCheck) {
@@ -374,10 +172,10 @@ if (-not $wsl) {
                 if (-not $latest) {
                     throw 'the release response has no tag_name'
                 }
-                if ([version](Format-Version4 $latest) -gt [version](Format-Version4 $wslVersion)) {
-                    Write-Result -Status warn -Message "WSL $wslVersion is behind the latest stable release $latest; run 'wsl --update'"
+                if ([version](Format-Version4 $latest) -gt [version](Format-Version4 $wsl.Version)) {
+                    Write-Result -Status warn -Message "WSL $($wsl.Version) is behind the latest stable release $latest; run 'wsl --update'"
                 } else {
-                    Write-Result -Status ok -Message "WSL $wslVersion is current with the latest stable release"
+                    Write-Result -Status ok -Message "WSL $($wsl.Version) is current with the latest stable release"
                 }
             } catch {
                 Write-Info "Could not check the latest WSL release: $($_.Exception.Message)"
@@ -387,7 +185,7 @@ if (-not $wsl) {
         Write-Result -Status warn -Message "could not parse 'wsl --version' output"
     }
 
-    if ($versionExit -eq 0) {
+    if ($wsl.Usable) {
         $listOutput = (& wsl.exe --list --verbose 2>&1) -replace "`0", ''
         $defaultLine = $listOutput | Where-Object { $_ -match '^\s*\*\s+' } | Select-Object -First 1
         if ($defaultLine -and $defaultLine -match '^\s*\*\s+(\S+)\s+(\S+)\s+(\d+)') {
@@ -543,19 +341,5 @@ if ($npiperelayPath) {
 
 Write-Section 'Summary'
 
-if ($Strict -and $script:Warnings -gt 0) {
-    $script:Failures += $script:Warnings
-}
-
-$ok = $script:Checks - $script:Warnings - $script:Failures
-if ($ok -lt 0) { $ok = 0 }
-Write-Info "$($script:Checks) checks: $ok ok, $($script:Warnings) warning(s), $($script:Failures) failure(s)"
-
-if ($script:Failures -gt 0) {
-    if ($Strict -and $script:Warnings -gt 0 -and $script:Failures -eq $script:Warnings) {
-        Write-Info 'Strict mode treats warnings as failures.'
-    }
-    exit 1
-}
-
-exit 0
+$exitCode = Show-Summary -Strict:$Strict
+exit $exitCode

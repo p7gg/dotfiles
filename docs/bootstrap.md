@@ -58,9 +58,10 @@ Use the Arch Wiki guide for the initial import:
 
 <https://wiki.archlinux.org/title/Install_Arch_Linux_on_WSL>
 
-The Windows side is intentionally not automated yet. After importing the Arch
-image, open it as root. If the repo is not inside WSL yet, clone it on the
-Windows side and run the script through `/mnt/c`:
+The Windows host bootstrap installs the required host tools; WSL itself is
+installed manually. After importing the Arch image, open it as root. If the repo
+is not inside WSL yet, clone it on the Windows side and run the script through
+`/mnt/c`:
 
 ```bash
 sudo /mnt/c/Users/<you>/dotfiles/provisioning/arch/wsl-init.sh \
@@ -165,17 +166,26 @@ preserves an existing value. It only enables systemd when you pass `--systemd`.
 
 ## Windows host
 
-The Windows host has a read-only audit and a curated WinGet inventory; it does
-not install packages or change settings yet. Run it from WSL:
+The Windows host has a read-only audit and an install-only WinGet bootstrap.
+From WSL:
 
 ```bash
+just windows-check
+just windows-dry-run
+just windows-bootstrap
 just windows-audit
 ```
 
-Or run the PowerShell script directly from a Windows checkout:
+Optional categories are opt-in with `just windows-bootstrap -Optional apps`
+(or `games`, `hardware`, `all`). The bootstrap installs missing packages only
+and never removes or upgrades anything.
+
+Or run the PowerShell scripts directly from a Windows checkout:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\audit.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1 -Check
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1 -DryRun
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1
 ```
 
 See [Windows notes](windows.md) for the boundary, tracked packages, and manual
@@ -249,6 +259,9 @@ just fonts --all
 just doctor
 just auth-check
 just auth
+just windows-check
+just windows-dry-run
+just windows-bootstrap
 just windows-audit
 ```
 
