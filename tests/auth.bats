@@ -60,7 +60,33 @@ EOF
     [[ "$output" != *"BWS token is not stored"* ]]
 }
 
-@test "auth --check points WSL at pass when a token is already stored" {
+@test "auth --check uses GNOME Keyring on WSL too" {
+    local test_bin="$BATS_TEST_TMPDIR/bin"
+    local test_home="$BATS_TEST_TMPDIR/home"
+
+    mkdir -p "$test_bin" "$test_home/.ssh"
+
+    cat >"$test_bin/bws" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    cat >"$test_bin/secret-tool" <<'EOF'
+#!/usr/bin/env bash
+printf '[%s]\n' '/org/freedesktop/secrets/collection/login/1'
+EOF
+    chmod +x "$test_bin/bws" "$test_bin/secret-tool"
+
+    run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
+        "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
+        --skip-gh --skip-gcloud --skip-tailscale --skip-mcp
+
+    [[ "$output" == *"Bitwarden Secrets Manager token is already stored"* ]]
+    [[ "$output" == *"replace: secret-tool store"* ]]
+    [[ "$output" != *"BWS token is not stored"* ]]
+    [[ "$output" != *"pass insert"* ]]
+}
+
+@test "auth --check reports a legacy pass entry instead of using it" {
     local test_bin="$BATS_TEST_TMPDIR/bin"
     local test_home="$BATS_TEST_TMPDIR/home"
 
@@ -71,17 +97,19 @@ EOF
 #!/usr/bin/env bash
 exit 0
 EOF
-    cat >"$test_bin/pass" <<'EOF'
+    # libsecret's search exits 0 even when no item matches.
+    cat >"$test_bin/secret-tool" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-    chmod +x "$test_bin/bws" "$test_bin/pass"
+    chmod +x "$test_bin/bws" "$test_bin/secret-tool"
 
     run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
         "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
         --skip-gh --skip-gcloud --skip-tailscale --skip-mcp
 
-    [[ "$output" == *"Bitwarden Secrets Manager token is already stored"* ]]
-    [[ "$output" == *"replace: pass insert -f bitwarden/bws-token"* ]]
-    [[ "$output" != *"BWS token is not stored"* ]]
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"legacy pass entry found"* ]]
+    [[ "$output" == *"secret-tool store"* ]]
+    [[ "$output" == *"pass rm -f bitwarden/bws-token"* ]]
 }

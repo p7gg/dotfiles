@@ -216,7 +216,7 @@ native_total=$((base_count + native_count + aur_count + aur_native_count))
 wsl_total=$((base_count + wsl_count + aur_count + aur_wsl_count))
 
 expected_total=67
-expected_native=60
+expected_native=61
 expected_wsl=58
 expected_fonts=18
 
@@ -235,27 +235,27 @@ packages_doc="$CHECK_ROOT/docs/packages.md"
 flow_svg="$CHECK_ROOT/docs/assets/provisioning-flow.svg"
 
 expect_literal "$readme" \
-    "67 tracked package names: 60 apply to the native profile and 58 to WSL" \
-    "the 67/60/58 package summary"
+    "67 tracked package names: 61 apply to the native profile and 58 to WSL" \
+    "the 67/61/58 package summary"
 expect_literal "$readme" "18 optional Nerd Fonts" "the optional font count"
 expect_literal "$docs_readme" \
-    "All 67 tracked packages (60 native, 58 WSL) plus" \
-    "the 67/60/58 package summary"
+    "All 67 tracked packages (61 native, 58 WSL) plus" \
+    "the 67/61/58 package summary"
 expect_literal "$docs_readme" "18 optional Nerd Fonts" "the optional font count"
 expect_literal "$packages_doc" \
     "**67 tracked required package names**" "the required package total"
 expect_literal "$packages_doc" \
-    "**51** are installed on both profiles: 46 official packages plus 5 AUR packages" \
+    "**52** are installed on both profiles: 47 official packages plus 5 AUR packages" \
     "the shared package breakdown"
 expect_literal "$packages_doc" \
     "**9** are native-only: 5 official packages plus 4 AUR packages" \
     "the native-only package breakdown"
 expect_literal "$packages_doc" \
-    "**7** are WSL-only: 6 official packages plus 1 AUR package" \
+    "**6** are WSL-only: 5 official packages plus 1 AUR package" \
     "the WSL-only package breakdown"
 expect_literal "$packages_doc" \
-    "\`base.txt\` + \`native.txt\` + \`aur.txt\` + \`aur-native.txt\` | 60 |" \
-    "the 60-package native profile row"
+    "\`base.txt\` + \`native.txt\` + \`aur.txt\` + \`aur-native.txt\` | 61 |" \
+    "the 61-package native profile row"
 expect_literal "$packages_doc" \
     "\`base.txt\` + \`wsl.txt\` + \`aur.txt\` + \`aur-wsl.txt\` | 58 |" \
     "the 58-package WSL profile row"
@@ -276,7 +276,7 @@ aur-wsl.txt|$aur_wsl_count
 fonts.txt|$fonts_count
 EOF
 
-expect_literal "$flow_svg" ">60 packages</text>" "the native package count in the SVG"
+expect_literal "$flow_svg" ">61 packages</text>" "the native package count in the SVG"
 expect_literal "$flow_svg" ">58 packages</text>" "the WSL package count in the SVG"
 
 while IFS= read -r file; do

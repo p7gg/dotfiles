@@ -109,6 +109,71 @@ is_wsl() {
     [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
 }
 
+# Create the WSL login keyring with a blank password. Native GNOME unlocks its
+# login keyring through pam_gnome_keyring; WSL has no PAM login, so the Secret
+# Service can only unlock a blank keyring by itself. The keyring is therefore
+# not meaningfully encrypted at rest: the WSL VHDX and Windows account are the
+# protection boundary. A password-protected keyring remains possible, but it has
+# to be unlocked once per WSL boot. No-op on native systems.
+ensure_login_keyring() {
+    local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    local keyring="$data_home/keyrings/login.keyring"
+    local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    local control_dir="$runtime_dir/keyring"
+    local -a unlock_args=(--unlock)
+
+    is_wsl || return 0
+    if [[ -f "$keyring" ]]; then
+        return 0
+    fi
+
+    if ! command -v gnome-keyring-daemon >/dev/null 2>&1; then
+        warn "gnome-keyring-daemon is not installed; run provisioning/arch/bootstrap.sh"
+        return 1
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would create the WSL login keyring at $keyring"
+        return 0
+    fi
+
+    log "Creating the WSL login keyring (blank password)"
+    mkdir -p -- "$(dirname -- "$keyring")"
+
+    local systemd_user=0
+    if command -v systemctl >/dev/null 2>&1 &&
+        systemctl --user show-environment >/dev/null 2>&1; then
+        systemd_user=1
+        # The socket makes the unlock call reach the daemon that owns the bus.
+        systemctl --user start gnome-keyring-daemon.socket >/dev/null 2>&1 || true
+    fi
+
+    if [[ -d "$control_dir" ]]; then
+        unlock_args+=(--control-directory="$control_dir")
+    else
+        # No user manager owns the daemon; detach it so it survives this shell.
+        unlock_args+=(--daemonize)
+    fi
+
+    if ! printf '\n' | gnome-keyring-daemon "${unlock_args[@]}" >/dev/null 2>&1; then
+        warn "could not create the WSL login keyring"
+        return 1
+    fi
+
+    if ((systemd_user)); then
+        # The running daemon does not notice a collection created behind its
+        # back; restart it so the new login keyring becomes the default.
+        systemctl --user restart gnome-keyring-daemon.service >/dev/null 2>&1 || true
+    fi
+
+    if [[ ! -f "$keyring" ]]; then
+        warn "the WSL login keyring was not created at $keyring"
+        return 1
+    fi
+
+    log "WSL login keyring created; the Secret Service starts it on demand"
+}
+
 # A file with only comments or blank lines is not enough to keep password
 # authentication disabled, so require at least one key-like line.
 has_authorized_key() {

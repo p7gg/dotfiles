@@ -76,7 +76,7 @@ Options:
   --no-completions      Skip fish completion generation
   --no-system           Skip pacman/reflector/timer/firewall/sshd/Tailscale setup
   --no-hooks            Skip `lefthook install`
-  --no-services         Skip enabling desktop systemd services
+  --no-services         Skip desktop systemd services and WSL keyring setup
   --no-shell            Do not change the login shell to fish
   -h, --help            Show this help
 
@@ -1442,6 +1442,9 @@ fi
 
 if ((DO_SERVICES)); then
     setup_services "$PROFILE"
+    if ! ensure_login_keyring; then
+        warn "GNOME Keyring is not ready; run ./provisioning/arch/auth.sh"
+    fi
 else
     log "Skipping services"
 fi

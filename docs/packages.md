@@ -17,9 +17,9 @@ automatically.
 
 There are **67 tracked required package names**:
 
-- **51** are installed on both profiles: 46 official packages plus 5 AUR packages
+- **52** are installed on both profiles: 47 official packages plus 5 AUR packages
 - **9** are native-only: 5 official packages plus 4 AUR packages
-- **7** are WSL-only: 6 official packages plus 1 AUR package
+- **6** are WSL-only: 5 official packages plus 1 AUR package
 
 There are also **18 optional Nerd Fonts** in
 `provisioning/arch/packages/fonts.txt`. They are not installed by default and
@@ -28,7 +28,7 @@ verified npm release, is not counted here, and is not audited as a package.
 
 | Profile | Package lists | Packages | Entry point |
 | --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 60 | `./provisioning/arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./provisioning/arch/bootstrap.sh --profile native` |
 | <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./provisioning/arch/bootstrap.sh --profile wsl` |
 
 Counts are required package names only; the optional fonts are additional.
@@ -52,7 +52,7 @@ and mise toolchains are managed outside these lists.
 
 ## Both profiles — official repositories
 
-Source: `provisioning/arch/packages/base.txt` — 46 packages.
+Source: `provisioning/arch/packages/base.txt` — 47 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -77,12 +77,13 @@ Source: `provisioning/arch/packages/base.txt` — 46 packages.
 | `github-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | `gh` for GitHub auth, pull requests, issues, and SSH keys. | Authenticated by `provisioning/arch/auth.sh`. |
 | `gitleaks` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Scans staged changes and Git history for secrets. | Runs in the pre-commit hook and CI. |
 | `gitui` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal UI for Git. | — |
-| `gnupg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | OpenPGP implementation used by `pass` and signing workflows. | — |
+| `gnome-keyring` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Secret Service implementation and keyring daemon. | Native GNOME ships it; WSL needs it for GitButler and the `bws` wrapper. |
+| `gnupg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | OpenPGP implementation for GPG workflows and package signing. | — |
 | `jq` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Command-line JSON processor. | — |
 | `just` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Task runner for the repository recipes. | Start with `just --list`. |
 | `kubectl` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Kubernetes command-line client. | — |
 | `less` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Terminal pager. | Used for `PAGER` and `MANPAGER`. |
-| `libsecret` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Secret Service client library used by GNOME Keyring. | Native `bws` wrapper calls `secret-tool`. |
+| `libsecret` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Secret Service client library and `secret-tool`. | The `bws` wrapper reads the token through `secret-tool` on both profiles. |
 | `man-db` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Manual pages and the `man` command. | — |
 | `mise` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Toolchain manager for Node, Bun, pnpm, and friends. | Global config: `~/.config/mise/config.toml`. |
 | `nano` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Small terminal editor. | Fallback `EDITOR` when Neovim/Vim are absent. |
@@ -110,7 +111,7 @@ automatically the first time an AUR list is non-empty.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
-| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from Keyring (native) or `pass` (WSL); `provisioning/arch/auth.sh` stores it once. |
+| `bws-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Bitwarden Secrets Manager CLI. | Fish wrapper loads the token from GNOME Keyring on both profiles; `provisioning/arch/auth.sh` stores it once. |
 | `gitbutler-bin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GitButler GUI and the `but` CLI. | Do not add `gitbutler-cli-bin`; both packages own `/usr/bin/but`. WSL GUI needs WSLg. |
 | `google-cloud-cli` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Google Cloud SDK core, including `gcloud` beta and alpha commands. | `provisioning/arch/auth.sh` handles OAuth login and application default credentials. |
 | `google-cloud-cli-component-gke-gcloud-auth-plugin` | <img src="assets/badge-both.svg" alt="Both" height="18"> | GKE authentication plugin for `kubectl`. | Used by `gcloud container clusters get-credentials`. |
@@ -141,12 +142,11 @@ Source: `provisioning/arch/packages/aur-native.txt` — 4 packages.
 
 ## WSL only — official repositories
 
-Source: `provisioning/arch/packages/wsl.txt` — 6 packages.
+Source: `provisioning/arch/packages/wsl.txt` — 5 packages.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
 | `mesa` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | OpenGL and the `d3d12` Gallium driver. | Provides GPU rendering; without it WSLg falls back to `llvmpipe`. |
-| `pass` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | GPG-backed password store. | Holds the BWS access token on WSL. Create a GPG key first; `provisioning/arch/auth.sh` stores it. |
 | `vulkan-dzn` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Experimental `dzn` (`microsoft-experimental`) Vulkan driver. | Upstream calls the driver experimental; expect rough edges. |
 | `vulkan-icd-loader` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Loader that lets Vulkan applications find `vulkan-dzn`. | `lib32-vulkan-icd-loader` is deliberately absent; multilib stays disabled. |
 | `socat` | <img src="assets/badge-wsl.svg" alt="WSL" height="18"> | Multipurpose relay. | Bridges `$XDG_RUNTIME_DIR/ssh-agent.sock` to `npiperelay.exe` and the Windows Bitwarden SSH agent. |
@@ -325,6 +325,9 @@ is why the default `--check` does not fail on untracked packages.
 
 - `gitbutler-bin` includes both the GUI and `but`. Do not also add
   `gitbutler-cli-bin`; the two packages conflict over `/usr/bin/but`.
+- `gnome-keyring` is in both profiles. Native GNOME unlocks its `Login` keyring
+  through PAM; on WSL bootstrap creates a blank-password `Login` keyring because
+  WSL has no PAM login. See [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
 - `yt-dlp` is installed without `ffmpeg`. Add `ffmpeg` if you need stream
   merging, audio extraction, or format conversion.
 - `restic` is installed without a repository, password, or backup schedule.
@@ -334,8 +337,8 @@ is why the default `--check` does not fail on untracked packages.
   firmware, microcode, or GPU drivers. Those belong to the OS installation step.
 - `visual-studio-code-bin`, `brave-bin`, `opencode-desktop-bin`,
   `gnome-tweaks`, `fwupd`, `zellij`, and `restic` are native-only. `mesa`,
-  `vulkan-dzn`, `vulkan-icd-loader`, `pass`, `socat`, `xdg-utils`,
-  and `wslu` are WSL-only; the GL/Vulkan drivers render through the Windows GPU.
+  `vulkan-dzn`, `vulkan-icd-loader`, `socat`, `xdg-utils`, and `wslu` are
+  WSL-only; the GL/Vulkan drivers render through the Windows GPU.
 - AUR packages execute code at build time. Review the PKGBUILD before using
   `--yes`. `paru` itself is built from the commit pinned in `PARU_COMMIT` in
   `provisioning/arch/bootstrap.sh`; bump it deliberately when updating paru.

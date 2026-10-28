@@ -120,8 +120,8 @@ git log --show-signature -1
 socket when `SSH_AUTH_SOCK` is missing; see
 [commit signing troubleshooting](auth.md#commit-signing-troubleshooting).
 Work projects under `~/Projects/work/` use the work email from
-`~/.config/git/work.inc` and the same key (Bitwarden on WSL, GNOME
-Keyring-backed file on native).
+`~/.config/git/work.inc` and the same key (the Bitwarden agent on WSL, the
+GNOME Keyring SSH agent on native).
 
 ## chezmoi: preview everything
 
@@ -276,51 +276,44 @@ If Windows `node.exe`, `git.exe`, or `python.exe` starts shadowing Linux tools,
 check with `type -a node`, then set `appendWindowsPath = false` deliberately and
 add explicit Windows helpers.
 
-## Secrets: not plaintext at rest
+## Secrets: keyring, not shell exports
 
 The `bws` fish wrapper never exports the token globally. It loads the token only
-for the `bws` process and its children. `./provisioning/arch/auth.sh` offers to store the
-token once, skips the prompt when an entry already exists, and accepts
+for the `bws` process and its children. `./provisioning/arch/auth.sh` offers to
+store the token once, skips the prompt when an entry already exists, and accepts
 `--skip-bws` to leave it manual. Because the wrapper is a fish function, bash
 scripts and systemd units do not inherit the token; pass `BWS_ACCESS_TOKEN`
 explicitly in those contexts.
 
-`--bws-account NAME` selects the GNOME Keyring label on native systems. WSL
-always reads the single `pass` entry at `bitwarden/bws-token`, so the flag is a
-no-op there and the wrapper's WSL error message points at `pass` instead.
-
-**Native GNOME** <img src="assets/badge-native.svg" alt="Native" height="18">
+Store or replace the token on either profile:
 
 ```bash
 secret-tool store --label='BWS access token' service bws account personal
-secret-tool lookup service bws account personal
+secret-tool lookup service bws account personal   # prints the secret
 ```
 
-**WSL** <img src="assets/badge-wsl.svg" alt="WSL" height="18">
+`secret-tool store` prompts twice and hides input. Paste the access token, which
+starts with `0.`, at both prompts. `--bws-account NAME` selects a different
+label; it works the same on native and WSL. Verify through the wrapper with
+`bws -o none project list`.
 
-```bash
-gpg --full-generate-key
-pass init <gpg-key-id>
-pass insert bitwarden/bws-token
-pass insert -f bitwarden/bws-token   # replace an existing or wrong token
-pass show bitwarden/bws-token        # prints the secret; avoid in shared terminals
-```
+Native GNOME unlocks its `Login` keyring at login through PAM. WSL has no PAM
+login, so bootstrap creates a blank-password keyring that the daemon unlocks by
+itself. The blank password means the keyring is not meaningfully encrypted at
+rest: the WSL VHDX and Windows account are the boundary. If you prefer a
+passphrase, install `seahorse`, set one, and unlock it once per WSL boot.
+Windows Hello PAM authenticates `sudo`; it does not unlock the keyring. See
+[GNOME Keyring](auth.md#gnome-keyring-both-profiles).
 
-`pass insert` prompts twice and hides input. Paste the access token, which
-starts with `0.`, at both prompts. Use `pass insert -f` to overwrite a wrong
-value, then verify through the wrapper with `bws -o none project list`.
-
-`provisioning/arch/auth.sh` initializes an empty store automatically when exactly one GPG
-secret key exists. If it cannot choose a key, create one and run
-`pass init <gpg-key-id>` first, then rerun the helper.
+Older WSL installs used `pass`. To migrate, see
+[Migrating from `pass`](auth.md#migrating-from-pass).
 
 Use a read-only machine account token scoped to one project, and rotate it. For
 application secrets, prefer `bws run -- <command>` over exporting a shell full
 of environment variables.
 
-Do not put private keys, tokens, or password-store data in the repository. SSH
-keys stay per-machine; see the main README for the reasoning and the recovery
-path.
+Do not put private keys, tokens, or keyring data in the repository. SSH keys
+stay per-machine; see the main README for the reasoning and the recovery path.
 
 ## OpenCode and MCP
 

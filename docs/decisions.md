@@ -54,6 +54,21 @@ Worth considering later: `feature.manyFiles = true` for large repositories,
 `diff.renames = copies`, and `push.followTags = true`. Avoid `merge.ff = only`
 unless every repository enforces linear history.
 
+## GNOME Keyring on both profiles
+
+Native Arch already uses GNOME Keyring for the desktop and the SSH agent. WSL
+used `pass` only because it has no PAM login to unlock a keyring; that split
+doubled the secret paths and made the `bws` wrapper behave differently per
+profile. Both profiles now install `gnome-keyring` and talk to the Secret Service
+through `secret-tool`.
+
+On WSL the login keyring is created with a blank password so the daemon can
+unlock it without a login password. That is a deliberate tradeoff: the keyring
+file is not meaningfully encrypted at rest, and the WSL VHDX plus the Windows
+account are the boundary. A password-protected keyring is still possible, but it
+must be unlocked once per WSL boot. Windows Hello PAM is not a solution: it
+authenticates `sudo` and supplies no password to `pam_gnome_keyring`.
+
 ## Private SSH key in Bitwarden
 
 Bitwarden has two different products:

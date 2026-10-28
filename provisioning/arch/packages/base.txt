@@ -22,6 +22,7 @@ git-delta
 github-cli
 gitleaks
 gitui
+gnome-keyring
 gnupg
 jq
 just

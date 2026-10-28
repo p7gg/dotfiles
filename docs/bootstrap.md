@@ -137,6 +137,12 @@ Windows OpenSSH Authentication Agent service must be disabled so Bitwarden can
 own the pipe. Install Bitwarden Desktop and `npiperelay` on Windows first; see
 [Windows SSH agent relay](auth.md#windows-ssh-agent-relay-wsl).
 
+It also installs `gnome-keyring` (from `base.txt`) and creates the WSL `Login`
+keyring with a blank password, so the Secret Service works without a PAM login.
+GitButler and the `bws` wrapper use it; see
+[GNOME Keyring](auth.md#gnome-keyring-both-profiles) for the tradeoff and how to
+choose a passphrase instead.
+
 Keep the repo inside WSL, not on `/mnt/c`, for sensible permissions, file modes,
 and Git performance.
 

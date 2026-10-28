@@ -53,8 +53,8 @@ Options:
   --skip-gcloud       Do not configure or authenticate the gcloud CLI
   --skip-tailscale    Do not authenticate Tailscale
   --skip-bws          Do not set up the Bitwarden Secrets Manager token
-  --bws-account NAME  Keyring account label for the BWS token (default:
-                      personal; native keyring only, WSL always uses pass)
+  --bws-account NAME  GNOME Keyring account label for the BWS token
+                      (default: personal)
   --skip-linear       Do not authenticate the Linear MCP server
   --skip-jira         Do not authenticate the Jira MCP server
   --skip-mcp          Do not authenticate the Linear or Jira MCP servers
@@ -67,7 +67,7 @@ What this does:
   - uploads the same key as a GitHub signing key
   - authenticates `gcloud` and application default credentials
   - authenticates Tailscale when its daemon is running
-  - offers to store the Bitwarden Secrets Manager token in Keyring or `pass`
+  - offers to store the Bitwarden Secrets Manager token in GNOME Keyring
   - authenticates the Linear and Jira MCP servers in OpenCode
   - prints Cloud Source Repositories SSH registration instructions for work
 
@@ -141,16 +141,6 @@ bws_token_shape_ok() {
 }
 
 bws_token_present() {
-    local store_dir
-
-    # Do not decrypt secrets just to check for them: `pass show` can trigger a
-    # pinentry prompt, and `secret-tool lookup` can unlock the keyring.
-    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-        store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
-        [[ -f "$store_dir/bitwarden/bws-token.gpg" ]]
-        return
-    fi
-
     # `secret-tool search` exits 0 even when nothing matches, so inspect the
     # output for an item path. Search reports locked items without unlocking.
     command -v secret-tool >/dev/null 2>&1 &&
@@ -158,79 +148,20 @@ bws_token_present() {
         grep -q '^\['
 }
 
-pass_store_initialized() {
+legacy_pass_token_present() {
     local store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
-    [[ -s "$store_dir/.gpg-id" ]]
-}
-
-gpg_secret_key_ids() {
-    gpg --list-secret-keys --keyid-format=long --with-colons 2>/dev/null |
-        awk -F: '/^sec:/ { print $5 }' || true
-}
-
-ensure_pass_store() {
-    local key_ids key_count
-
-    if pass_store_initialized; then
-        return 0
-    fi
-
-    if ! command -v gpg >/dev/null 2>&1; then
-        warn "gpg is not installed; run provisioning/arch/bootstrap.sh"
-        return 1
-    fi
-
-    key_ids="$(gpg_secret_key_ids)"
-    if [[ -z "$key_ids" ]]; then
-        warn "pass is not initialized and no GPG secret key was found"
-        warn "create one with 'gpg --full-generate-key', then run 'pass init <gpg-key-id>'"
-        return 1
-    fi
-
-    key_count="$(wc -l <<<"$key_ids")"
-    if ((key_count > 1)); then
-        warn "pass is not initialized and multiple GPG secret keys exist"
-        warn "initialize it with one of these key IDs: $(tr '\n' ' ' <<<"$key_ids")"
-        warn "run 'pass init <gpg-key-id>', then rerun provisioning/arch/auth.sh"
-        return 1
-    fi
-
-    log "Initializing pass with GPG key $key_ids"
-    if ! pass init "$key_ids"; then
-        warn "could not initialize pass; run 'pass init $key_ids'"
-        return 1
-    fi
+    [[ -f "$store_dir/bitwarden/bws-token.gpg" ]]
 }
 
 store_bws_token() {
     local stored
-
-    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-        if ! command -v pass >/dev/null 2>&1; then
-            warn "pass is not installed; run provisioning/arch/bootstrap.sh"
-            return 1
-        fi
-        ensure_pass_store || return 1
-        log "Storing the BWS access token in pass"
-        log "Paste the token at both prompts (input is hidden)"
-        if ! pass insert bitwarden/bws-token; then
-            warn "could not insert the BWS token into pass"
-            return 1
-        fi
-        if ! stored="$(pass show bitwarden/bws-token 2>/dev/null)" ||
-            ! bws_token_shape_ok "$stored"; then
-            warn "the value in pass does not look like a BWS access token"
-            warn "replace it with: pass insert -f bitwarden/bws-token"
-            return 1
-        fi
-        return
-    fi
 
     if ! command -v secret-tool >/dev/null 2>&1; then
         warn "secret-tool is not installed; run provisioning/arch/bootstrap.sh"
         return 1
     fi
     log "Storing the BWS access token in GNOME Keyring"
+    log "Paste the token at both prompts (input is hidden)"
     if ! secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"; then
         warn "could not store the BWS token in GNOME Keyring"
         return 1
@@ -686,18 +617,20 @@ if ((SKIP_BWS == 0)); then
     if ! command -v bws >/dev/null 2>&1; then
         warn "bws is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
-    elif [[ -n "${WSL_DISTRO_NAME:-}" ]] && ! command -v pass >/dev/null 2>&1; then
-        warn "pass is not installed; run provisioning/arch/bootstrap.sh --profile wsl"
-        AUTH_INCOMPLETE=1
-    elif [[ -z "${WSL_DISTRO_NAME:-}" ]] && ! command -v secret-tool >/dev/null 2>&1; then
+    elif ! command -v secret-tool >/dev/null 2>&1; then
         warn "secret-tool is not installed; run provisioning/arch/bootstrap.sh"
         AUTH_INCOMPLETE=1
+    elif ! ensure_login_keyring; then
+        warn "the GNOME Keyring login keyring is not ready; run provisioning/arch/bootstrap.sh"
+        AUTH_INCOMPLETE=1
     elif bws_token_present; then
-        if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-            log "Bitwarden Secrets Manager token is already stored (replace: pass insert -f bitwarden/bws-token)"
-        else
-            log "Bitwarden Secrets Manager token is already stored (replace: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT)"
-        fi
+        log "Bitwarden Secrets Manager token is already stored (replace: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT)"
+    elif legacy_pass_token_present; then
+        warn "legacy pass entry found at ${PASSWORD_STORE_DIR:-$HOME/.password-store}/bitwarden/bws-token.gpg"
+        warn "migrate it with:"
+        warn "  pass show bitwarden/bws-token | secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT"
+        warn "  pass rm -f bitwarden/bws-token"
+        AUTH_INCOMPLETE=1
     elif ((DRY_RUN || NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
         warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
         AUTH_INCOMPLETE=1

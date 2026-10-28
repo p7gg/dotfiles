@@ -52,7 +52,7 @@ Start with the task you need:
   pinned AUR commit; review other AUR packages before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
   inspect `chezmoi diff` first.
-- Do not commit private keys, tokens, or password-store data.
+- Do not commit private keys, tokens, or keyring data.
 
 ## Quick start
 
@@ -104,7 +104,7 @@ tooling stay outside the managed home directory.
 
 ## Packages
 
-There are 67 tracked package names: 60 apply to the native profile and 58 to
+There are 67 tracked package names: 61 apply to the native profile and 58 to
 WSL. The lists live in `provisioning/arch/packages/` and split shared, native,
 and WSL packages across official and AUR files. The bootstrap also manages the
 OpenCode CLI outside those lists, and offers 18 optional Nerd Fonts that nothing
@@ -134,7 +134,7 @@ just render     # template rendering only
 lefthook run pre-commit
 ```
 
-`just test` runs the docs checker first. It verifies the 67/60/58 package counts
+`just test` runs the docs checker first. It verifies the 67/61/58 package counts
 against `provisioning/arch/packages/*.txt` and checks every relative Markdown
 link and local asset.
 
@@ -144,7 +144,7 @@ link and local asset.
 - Kernel, firmware, CPU microcode, GPU drivers
 - Hostname, timezone, locale on native installs
 - GNOME/dconf, browser profiles, app caches
-- Private SSH keys, GPG keys, Bitwarden tokens, password stores
+- Private SSH keys, GPG keys, Bitwarden tokens, keyring contents
 - Restic repository/password and backup schedule
 - Tailscale account authentication and ACLs
 - OpenCode provider credentials and MCP OAuth tokens

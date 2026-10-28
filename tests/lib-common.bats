@@ -107,6 +107,31 @@ EOF
     [ "$status" -eq 0 ]
 }
 
+@test "ensure_login_keyring is a no-op outside WSL" {
+    unset WSL_DISTRO_NAME
+    if is_wsl; then
+        skip "test host is WSL"
+    fi
+
+    export XDG_DATA_HOME="$TEST_TMP/data"
+    run ensure_login_keyring
+
+    [ "$status" -eq 0 ]
+    [ ! -e "$TEST_TMP/data/keyrings/login.keyring" ]
+}
+
+@test "ensure_login_keyring reports the WSL keyring in dry-run mode" {
+    export WSL_DISTRO_NAME=arch
+    export XDG_DATA_HOME="$TEST_TMP/data"
+    DRY_RUN=1
+
+    run ensure_login_keyring
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would create the WSL login keyring"* ]]
+    [ ! -e "$TEST_TMP/data/keyrings/login.keyring" ]
+}
+
 @test "cleanup_tmp removes registered files" {
     touch "$TEST_TMP/temp-file"
     register_tmp "$TEST_TMP/temp-file"

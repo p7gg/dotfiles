@@ -1,11 +1,11 @@
 # Extra packages for Arch inside WSL.
-# WSL is CLI-only here: no GNOME, PipeWire, or NetworkManager.
+# WSL is CLI-only here: no GNOME desktop, PipeWire, or NetworkManager.
+# GNOME Keyring comes from base.txt and provides the Secret Service.
 
 # Hardware accelerated rendering through the Windows GPU. mesa ships the d3d12
 # Gallium driver for OpenGL and vulkan-dzn the experimental dzn Vulkan driver;
 # lib32-vulkan-icd-loader is omitted because multilib stays disabled here.
 mesa
-pass
 vulkan-dzn
 vulkan-icd-loader
 

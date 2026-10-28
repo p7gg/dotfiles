@@ -14,6 +14,10 @@ Manager vault and served by the Bitwarden agent:
 - `source.developers.google.com:2022` for work Cloud Source Repositories,
   with `User` set to the work email
 
+GNOME Keyring is also the Secret Service on both profiles; on WSL it runs only
+the secrets component, so the SSH agent remains Bitwarden. See
+[GNOME Keyring](#gnome-keyring-both-profiles).
+
 If you prefer stronger isolation, use separate personal/work keys and adjust the
 two `Host` entries; Bitwarden can hold both, but its agent has no per-request key
 selection, so use `IdentityFile`/`IdentitiesOnly` to choose the offered key.
@@ -38,20 +42,20 @@ It will:
 - add the key to personal GitHub for both authentication and signing
 - authenticate `gcloud` and application default credentials
 - authenticate Tailscale when the daemon is running
-- offer to store the Bitwarden Secrets Manager token in GNOME Keyring or `pass`
+- offer to store the Bitwarden Secrets Manager token in GNOME Keyring
 - authenticate the Linear and Jira MCP servers in OpenCode with OAuth
 - print the key fingerprint and the Cloud Source Repositories registration URL
 
 The helper skips MCP sign-in when a server is already connected. Use
 `--skip-mcp`, `--skip-linear`, or `--skip-jira` to skip those steps; Context7
 needs no sign-in. Use `--skip-bws` to leave the BWS token setup manual, and
-`--bws-account NAME` if your native keyring label is not `personal` (WSL always
-uses the single `pass` entry `bitwarden/bws-token`, so the flag has no effect
-there). For non-interactive runs, pass `--email` and `--non-interactive`; steps
-that need a browser or TTY are reported instead of prompted for. Native GNOME
-already has an SSH agent through gnome-keyring. On WSL, the Windows **Bitwarden
-Password Manager** desktop app is the agent; the `bws` Secrets Manager CLI is
-not. The private key lives in the Bitwarden vault, not in the WSL filesystem.
+`--bws-account NAME` if your keyring label is not `personal`. For non-interactive
+runs, pass `--email` and `--non-interactive`; steps that need a browser or TTY
+are reported instead of prompted for. Native GNOME already has an SSH agent
+through gnome-keyring. On WSL, the Windows **Bitwarden Password Manager** desktop
+app is the agent; GNOME Keyring runs only its secrets component there, and the
+`bws` Secrets Manager CLI is not an SSH agent. The private key lives in the
+Bitwarden vault, not in the WSL filesystem.
 Fish exports the relay socket in new shells, and the helper installs
 `~/.vscode-server/server-env-setup` so the Remote-WSL server inherits it.
 
@@ -249,45 +253,89 @@ Do not work around signing failures with `commit.gpgsign=false`,
 `gitbutler.signCommits=false`, or by temporarily disabling signing; that leaves
 unsigned commits and hides the real problem.
 
+## GNOME Keyring (both profiles)
+
+Both profiles install `gnome-keyring` and `libsecret`; `secret-tool` talks to
+the Secret Service at `org.freedesktop.secrets`. GitButler, `bws`, and other
+libsecret clients use the same store on native Arch and WSL.
+
+- **Native GNOME** starts the daemon at login and unlocks the `Login` keyring
+  through `pam_gnome_keyring`. It also provides the SSH agent.
+- **WSL** has no PAM login. Bootstrap creates a `Login` keyring with a blank
+  password, the socket-activated daemon unlocks it automatically, and only the
+  secrets component runs so the Windows Bitwarden agent stays the SSH agent.
+
+The blank password is a deliberate tradeoff: the keyring file is not
+meaningfully encrypted at rest, and the WSL VHDX plus the Windows account are the
+protection boundary. If you prefer a passphrase, install `seahorse`, set one, and
+unlock the keyring once per WSL boot; bootstrap only creates a keyring when it is
+missing, so it will not overwrite your choice.
+
+The ArchWiki's PAM Windows Hello setup (`pam_wsl_hello`, package
+`wsl-hello-sudo-bin`) is for authenticating `sudo`. It does not unlock a keyring:
+WSL has no PAM login, and Windows Hello supplies no password to
+`pam_gnome_keyring`. Do not add it for this.
+
+Check the service and a canary item:
+
+```bash
+systemctl --user status gnome-keyring-daemon.service
+printf 'test' | secret-tool store --label='canary' service dotfiles account canary
+secret-tool lookup service dotfiles account canary
+secret-tool clear service dotfiles account canary
+```
+
 ## Bitwarden Secrets Manager
 
 `bws-bin` is tracked in `provisioning/arch/packages/aur.txt`. The fish wrapper in
-`home/dot_config/fish/functions/bws.fish` loads the token from GNOME Keyring
-(native) or `pass` (WSL) and exports it only for the `bws` process. Run
+`home/dot_config/fish/functions/bws.fish` loads the token from GNOME Keyring on
+both profiles and exports it only for the `bws` process. Run
 `provisioning/arch/auth.sh` to store it, or see
-[the secrets section in tips-and-tricks.md](tips-and-tricks.md#secrets-not-plaintext-at-rest)
+[the secrets section in tips-and-tricks.md](tips-and-tricks.md#secrets-keyring-not-shell-exports)
 for the manual commands and operational notes.
 
-`--bws-account NAME` selects the GNOME Keyring label on native systems only. WSL
-always reads the single `pass` entry at `bitwarden/bws-token`, so the wrapper's
-WSL error message does not suggest `--bws-account`.
+`--bws-account NAME` selects the keyring account label (default: `personal`) on
+both profiles.
 
-On WSL, `pass` also needs a GPG key and an initialized password store. If you do
-not have a key yet:
+Store or replace the token manually:
 
 ```bash
-gpg --full-generate-key
-gpg --list-secret-keys --keyid-format=long
-pass init <gpg-key-id>
+secret-tool store --label='BWS access token' service bws account personal
+secret-tool lookup service bws account personal   # prints the secret
 ```
 
-`provisioning/arch/auth.sh` initializes an empty store automatically when exactly
-one GPG secret key exists; otherwise it prints the `pass init <gpg-key-id>`
-command to run. When the helper asks whether to store the token, answer `y`;
-`pass` then prompts twice, and you paste the machine-account access token (a long
-string starting with `0.`) at both prompts. Input is hidden.
+`secret-tool store` prompts twice and hides input. Paste the machine-account
+access token (a long string starting with `0.`) at both prompts. `--check` only
+verifies that an item exists; it does not decrypt or validate it.
 
-`--check` only verifies that the `pass` entry exists; it does not decrypt or
-validate it. If a wrong value is stored, replace it directly:
+If a wrong value is stored, replace it with the same `secret-tool store` command,
+then verify through the wrapper:
 
 ```bash
-pass insert -f bitwarden/bws-token
 bws -o none project list
 ```
 
-`bws -o none project list` exercises the token through the fish wrapper without
-printing secrets. Use `pass rm bitwarden/bws-token` first if you want
+`bws -o none project list` exercises the token without printing it. Use
+`secret-tool clear service bws account personal` first if you want
 `provisioning/arch/auth.sh` to prompt for the token again.
+
+### Migrating from `pass`
+
+Older WSL revisions stored the token in `pass`. Move it once, then remove the
+legacy store:
+
+```bash
+token="$(pass show bitwarden/bws-token)"
+printf '%s' "$token" | secret-tool store --label='BWS access token' service bws account personal
+unset token
+secret-tool lookup service bws account personal >/dev/null && pass rm -f bitwarden/bws-token
+sudo pacman -Rns pass
+```
+
+Verify `bws -o none project list` before removing `pass`. Delete the empty
+`~/.password-store` if nothing else uses it; the GPG key created for `pass` can
+be removed separately. `auth.sh --check` warns when the legacy entry is still
+present and prints the migration commands.
 
 ## Back to
 
