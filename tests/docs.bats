@@ -62,6 +62,15 @@ teardown() {
     [[ "$output" == *"broken link 'assets/package-loop.svg'"* ]]
 }
 
+@test "a package missing from the catalog fails the docs check" {
+    sed -i '/`bat`/d' "$FIXTURE/docs/packages.md"
+
+    run "$REPO_ROOT/tests/check-docs.sh" --root "$FIXTURE"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"no catalog entry for 'bat'"* ]]
+}
+
 @test "a stale heading anchor fails the docs check" {
     sed -i 's|#native-arch--gnome|#native-arch-gnome|' "$FIXTURE/docs/README.md"
 

@@ -192,7 +192,7 @@ The bootstrap applies:
 - timestamped backups of managed system files: `pacman.conf`, `wsl.conf`, and
   `locale.conf` keep the newest 3 backups per file instead of accumulating
   forever. Override with `BACKUP_RETENTION=<count>` for a longer history.
-- `arch-audit` for package vulnerability checks
+- `arch-audit` is installed for manual package vulnerability checks
 
 Tailscale is installed on both profiles. Native enables `tailscaled.service`.
 For WSL, use `wsl-init.sh --systemd` so `tailscaled.service` can be managed;
@@ -230,6 +230,7 @@ just audit-check native
 just lint
 just fmt
 just test
+just verify
 just fonts --list
 just fonts --all
 just doctor
@@ -237,8 +238,9 @@ just auth-check
 just auth
 ```
 
-Atuin is installed in local-only mode for fish history; no sync login is
-configured. Zellij is installed on native only.
+The profile examples use `native`; on WSL use `wsl` instead, or omit the profile
+and let it auto-detect. Atuin is installed in local-only mode for fish history;
+no sync login is configured. Zellij is installed on native only.
 
 Tooling-language rationale lives in [decisions.md](decisions.md).
 

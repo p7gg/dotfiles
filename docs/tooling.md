@@ -150,8 +150,9 @@ servers:
 `provisioning/arch/auth.sh` signs in to Linear and Jira through their OAuth
 flows. To authenticate later, run `opencode mcp auth linear` or
 `opencode mcp auth jira`, or use `/mcps` in OpenCode. Context7 works without an
-API key; set `CONTEXT7_API_KEY` and add it as a `CONTEXT7_API_KEY` header in
-`opencode.json` only if you want the higher rate limits.
+API key. The tracked `opencode.json` already sends `CONTEXT7_API_KEY` from the
+environment when it is set; export the variable only if you want the higher rate
+limits.
 
 OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a

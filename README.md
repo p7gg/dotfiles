@@ -130,12 +130,14 @@ The same entry points run locally and in CI:
 ```bash
 just lint       # Bash syntax, ShellCheck, shfmt, fish, actionlint, Just, gitleaks
 just test       # docs consistency, bats tests, and every chezmoi template render
+just verify     # lint and tests together
 just render     # template rendering only
 lefthook run pre-commit
 ```
 
 `just test` runs the docs checker first. It verifies the 67/61/58 package counts
-against `provisioning/arch/packages/*.txt` and checks every relative Markdown
+against `provisioning/arch/packages/*.txt`, checks that every tracked package and
+optional font appears by name in the catalog, and checks every relative Markdown
 link and local asset.
 
 ## What is not managed

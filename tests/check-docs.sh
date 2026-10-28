@@ -279,6 +279,27 @@ EOF
 expect_literal "$flow_svg" ">61 packages</text>" "the native package count in the SVG"
 expect_literal "$flow_svg" ">58 packages</text>" "the WSL package count in the SVG"
 
+# Counts alone cannot catch a renamed package or a swapped table row. Every
+# tracked package and optional font must still appear by name in the catalog.
+check_documented_package() {
+    local package="$1"
+    local source="$2"
+
+    if ! grep -Fq -- "\`$package\`" "$packages_doc"; then
+        fail "docs/packages.md: no catalog entry for '$package' (from $source)"
+    fi
+}
+
+for file in base.txt native.txt wsl.txt aur.txt aur-native.txt aur-wsl.txt; do
+    while IFS= read -r package; do
+        check_documented_package "$package" "$file"
+    done < <(filter_packages "$packages_dir/$file")
+done
+
+while IFS= read -r package; do
+    check_documented_package "$package" "fonts.txt"
+done < <(filter_optional_packages "$packages_dir/fonts.txt")
+
 while IFS= read -r file; do
     check_markdown_file "$file"
 done < <(markdown_files)

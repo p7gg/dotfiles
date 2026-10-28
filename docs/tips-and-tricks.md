@@ -10,7 +10,7 @@ terminal browsers. They are diagrams, not screenshots.
 
 ## Shell: fewer keystrokes
 
-The tracked fish config adds six global abbreviations:
+The tracked fish config adds seven global abbreviations:
 
 | Abbreviation | Expands to |
 | --- | --- |
@@ -20,6 +20,7 @@ The tracked fish config adds six global abbreviations:
 | `gl` | `git log --oneline --graph --decorate -20` |
 | `ch` | `fzf-checkout` |
 | `ll` | `ls -lah` |
+| `oc` | `opencode` |
 
 Abbreviations expand when you press space, so they stay visible before a command
 runs. They are defined in `home/dot_config/fish/conf.d/40-abbr.fish`.
@@ -42,7 +43,7 @@ Useful moves:
 
 ```bash
 fd -e fish                         # find by extension, not by walking find(1)
-rg -n 'tailscale' arch home        # search contents, respecting .gitignore
+rg -n 'tailscale' provisioning/arch home  # search contents, respecting .gitignore
 bat provisioning/arch/bootstrap.sh              # read with syntax highlighting
 eza --tree --level=2               # inspect a directory shape
 dust -r                            # see what is using disk space

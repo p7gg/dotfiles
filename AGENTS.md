@@ -10,7 +10,10 @@ install.
 - Read [README.md](README.md) and [docs/](docs/README.md) before changing
   provisioning behavior.
 - `just check native`, `just dry-run native`, `just audit-check native`,
-  `just lint`, `just test`, and `just render` are the preferred entry points.
+  `just lint`, `just test`, `just verify`, and `just render` are the preferred
+  entry points.
+- On WSL, use the `wsl` profile (or omit the profile to auto-detect); an
+  explicit `native` profile is refused outside native Arch by design.
 - Do not run `provisioning/arch/bootstrap.sh`, `provisioning/arch/wsl-init.sh`,
   or `provisioning/arch/auth.sh` on the agent host unless the user explicitly
   asks. They install packages, change system files, start agents, or write

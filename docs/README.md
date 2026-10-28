@@ -31,7 +31,8 @@ Start with the task you need instead of reading everything:
 
 `provisioning/arch/packages/*.txt` and the scripts are the source of truth.
 `just test` runs `tests/check-docs.sh`, which verifies the 67 total / 61 native /
-58 WSL counts here, in the README, package catalog, and provisioning SVG, and
+58 WSL counts here, in the README, package catalog, and provisioning SVG, checks
+that every tracked package and optional font appears by name in the catalog, and
 checks every relative Markdown link and local asset. Update the docs and the
 checker together when a package list changes. The package lists are install-only:
 bootstrap adds missing packages and never removes anything, and the audit makes
