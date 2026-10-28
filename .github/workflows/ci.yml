@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Weekly canary for rolling-package and upstream-tool changes.
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: read
@@ -17,9 +20,26 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     container:
-      image: archlinux:latest
+      # Pinned to archlinux:base-20261025.0.616225 so the base layer does not
+      # move underneath a workflow run. Update deliberately; `pacman -Syu`
+      # below still picks up current Arch packages.
+      image: archlinux@sha256:e82623936fa1a69700b48e98b058df6eaab18b737c27473a7234a40fdecb9413
       options: --user root
     steps:
+      # actions/cache uses zstd, which the minimal Arch image does not include.
+      - name: Install cache helper
+        run: pacman -Sy --noconfirm --needed zstd
+
+      # Bump the v1 suffix when the tool list changes so stale packages are
+      # not reused indefinitely.
+      - name: Cache pacman packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /var/cache/pacman/pkg
+          key: pacman-${{ runner.os }}-v1
+          restore-keys: |
+            pacman-${{ runner.os }}-
+
       - name: Install tooling
         run: |
           pacman -Syu --noconfirm --needed \
