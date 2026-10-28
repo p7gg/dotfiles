@@ -234,6 +234,12 @@ json_string_field() {
     sed -n "s/.*\"${field}\":\"\([^\"]*\)\".*/\1/p" <<<"$json" | head -n 1
 }
 
+# Fetch over HTTPS only, including redirects, so a downgrade to plain HTTP is
+# rejected before any download is trusted.
+curl_https() {
+    curl -fsSL --proto '=https' --tlsv1.2 "$@"
+}
+
 fetch_opencode_package() {
     local scope="$1"
     local target="$2"
@@ -242,7 +248,7 @@ fetch_opencode_package() {
 
     package="${scope}/cli-${target}"
     url="https://registry.npmjs.org/${package//\//%2f}/${version}"
-    if curl -fsSL "$url" 2>/dev/null; then
+    if curl_https "$url" 2>/dev/null; then
         return 0
     fi
 
@@ -250,7 +256,7 @@ fetch_opencode_package() {
     # official installer uses for a pinned pre-rename version.
     package="@opencode-ai/cli-${target}"
     url="https://registry.npmjs.org/${package//\//%2f}/${version}"
-    curl -fsSL "$url"
+    curl_https "$url"
 }
 
 setup_opencode() {
@@ -278,7 +284,7 @@ setup_opencode() {
     require_cmd base64
     require_cmd od
 
-    latest_metadata="$(curl -fsSL https://opencode.ai/update/api/latest/cli/npm)" ||
+    latest_metadata="$(curl_https https://opencode.ai/update/api/latest/cli/npm)" ||
         die "could not read the OpenCode release metadata; skip with --no-opencode"
     package_name="$(json_string_field "$latest_metadata" package)"
     package_scope="${package_name%/cli}"
@@ -304,7 +310,7 @@ setup_opencode() {
     download_tmp="$(mktemp -d)"
     register_tmp_dir "$download_tmp"
 
-    curl -fsSL -o "$download_tmp/opencode.tgz" "$tarball" ||
+    curl_https -o "$download_tmp/opencode.tgz" "$tarball" ||
         die "could not download the OpenCode tarball"
     verify_sha512_integrity "$download_tmp/opencode.tgz" "$integrity" ||
         die "OpenCode tarball checksum verification failed"

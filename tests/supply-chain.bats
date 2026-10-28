@@ -15,6 +15,12 @@ setup() {
     grep -Fq 'OPENCODE_VERSION' "$BOOTSTRAP"
 }
 
+@test "OpenCode downloads are HTTPS-only" {
+    grep -Fq -- "--proto '=https'" "$BOOTSTRAP"
+    grep -Fq -- '--tlsv1.2' "$BOOTSTRAP"
+    grep -Fq 'curl_https -o "$download_tmp/opencode.tgz" "$tarball"' "$BOOTSTRAP"
+}
+
 @test "paru is cloned at a pinned 40-character commit" {
     grep -Eq '^PARU_COMMIT="\$\{PARU_COMMIT:-[0-9a-f]{40}\}"' "$BOOTSTRAP"
     grep -Fq 'git -C "$tmp/paru" checkout --detach "$PARU_COMMIT"' "$BOOTSTRAP"
