@@ -4,6 +4,17 @@ setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 }
 
+# --check only needs the daemon on PATH; it never starts it.
+stub_gnome_keyring_daemon() {
+    local test_bin="$1"
+
+    cat >"$test_bin/gnome-keyring-daemon" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$test_bin/gnome-keyring-daemon"
+}
+
 auth_check() {
     local secret_tool_output="$1"
     local test_bin="$BATS_TEST_TMPDIR/bin"
@@ -28,6 +39,7 @@ exit 0
 EOF
     fi
     chmod +x "$test_bin/bws" "$test_bin/secret-tool"
+    stub_gnome_keyring_daemon "$test_bin"
 
     run env -u WSL_DISTRO_NAME HOME="$test_home" PATH="$test_bin:$PATH" \
         "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
@@ -75,6 +87,7 @@ EOF
 printf '[%s]\n' '/org/freedesktop/secrets/collection/login/1'
 EOF
     chmod +x "$test_bin/bws" "$test_bin/secret-tool"
+    stub_gnome_keyring_daemon "$test_bin"
 
     run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
         "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \
@@ -103,6 +116,7 @@ EOF
 exit 0
 EOF
     chmod +x "$test_bin/bws" "$test_bin/secret-tool"
+    stub_gnome_keyring_daemon "$test_bin"
 
     run env WSL_DISTRO_NAME=arch HOME="$test_home" PATH="$test_bin:$PATH" \
         "$REPO_ROOT/provisioning/arch/auth.sh" --check --email test@example.com \

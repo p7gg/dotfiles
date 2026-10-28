@@ -121,8 +121,19 @@ EOF
 }
 
 @test "ensure_login_keyring reports the WSL keyring in dry-run mode" {
+    local test_bin="$TEST_TMP/bin"
+
+    # Dry-run only checks that the daemon is on PATH; it never starts it.
+    mkdir -p "$test_bin"
+    cat >"$test_bin/gnome-keyring-daemon" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$test_bin/gnome-keyring-daemon"
+
     export WSL_DISTRO_NAME=arch
     export XDG_DATA_HOME="$TEST_TMP/data"
+    export PATH="$test_bin:$PATH"
     DRY_RUN=1
 
     run ensure_login_keyring
