@@ -25,6 +25,8 @@ if command -v pwsh.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; th
     log "Running Windows PowerShell helper tests"
     pwsh.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \
         "$(wslpath -w "$REPO_ROOT/tests/windows-lib.ps1")"
+    pwsh.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \
+        "$(wslpath -w "$REPO_ROOT/tests/windows-settings.ps1")"
 fi
 
 log "tests passed"

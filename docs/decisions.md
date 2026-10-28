@@ -112,8 +112,10 @@ Windows is provisioned as a host for WSL, not as a second dotfiles target:
   package. The installed Store build is not always available from the WinGet
   source, and `wsl --update` is the supported update path.
 - Settings are limited to the ones that affect the WSL workflow: `.wslconfig`,
-  Windows Terminal defaults, and the SSH agent service. The audit only reports
-  them; a later apply step must back up and merge rather than replace.
+  Windows Terminal defaults, and the SSH agent service. The audit reports them;
+  `settings.ps1` merges tracked defaults, preserves unrelated keys/properties,
+  and keeps timestamped backups rather than replacing whole files. Terminal
+  settings are rewritten as JSON (comments are lost) and hot-reload.
 - Windows-side elevation uses normal UAC. The bootstrap runs as the normal user
   and lets WinGet request elevation per installer; if the prompt cannot appear,
   rerun from an elevated terminal. It does not self-elevate or hide output. It

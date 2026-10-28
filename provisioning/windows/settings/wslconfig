@@ -1,0 +1,5 @@
+# Managed WSL defaults. These values target a 32 GB host; lower memory and swap
+# on smaller machines before applying.
+[wsl2]
+memory=24GB
+swap=8GB

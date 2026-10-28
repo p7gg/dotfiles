@@ -1,0 +1,6 @@
+# WinGet package ID | installed display name
+#
+# Used when an application was installed outside WinGet and the installed ID
+# differs from the WinGet manifest ID. The name is matched exactly with
+# `winget list --name <name> -e`.
+Spotify.Spotify|Spotify

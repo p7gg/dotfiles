@@ -173,12 +173,16 @@ From WSL:
 just windows-check
 just windows-dry-run
 just windows-bootstrap
+just windows-settings-check
+just windows-settings-dry-run
+just windows-settings
 just windows-audit
 ```
 
 Optional categories are opt-in with `just windows-bootstrap -Optional apps`
 (or `games`, `hardware`, `all`). The bootstrap installs missing packages only
-and never removes or upgrades anything.
+and never removes or upgrades anything. The settings apply merges `.wslconfig`
+and Windows Terminal defaults with timestamped backups.
 
 Or run the PowerShell scripts directly from a Windows checkout:
 
@@ -262,6 +266,9 @@ just auth
 just windows-check
 just windows-dry-run
 just windows-bootstrap
+just windows-settings-check
+just windows-settings-dry-run
+just windows-settings
 just windows-audit
 ```
 

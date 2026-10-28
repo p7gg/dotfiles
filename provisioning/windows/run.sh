@@ -18,6 +18,7 @@ Usage: provisioning/windows/run.sh <command> [options]
 Commands:
   audit [options]       Run the read-only Windows host audit
   bootstrap [options]   Install missing Windows packages
+  settings [options]    Apply managed .wslconfig and Terminal settings
 
 Options:
   -h, --help        Show this help
@@ -49,6 +50,9 @@ audit)
     ;;
 bootstrap)
     script="bootstrap.ps1"
+    ;;
+settings)
+    script="settings.ps1"
     ;;
 -h | --help)
     usage
@@ -99,8 +103,8 @@ command -v wslpath >/dev/null 2>&1 || die "wslpath not found; run this inside WS
 
 # PowerShell sees stdin as redirected when it runs through WSL interop, so its
 # Read-Host prompt cannot be used here. Ask in the WSL terminal instead, then
-# pass -Yes to the bootstrap. --help, -Check, -DryRun, and -Yes skip this.
-if [[ "$subcommand" == "bootstrap" && -t 0 ]]; then
+# pass -Yes to the script. --help, -Check, -DryRun, and -Yes skip this.
+if [[ ("$subcommand" == "bootstrap" || "$subcommand" == "settings") && -t 0 ]]; then
     has_yes=0
     has_noninteractive=0
     for arg in "$@"; do
@@ -110,7 +114,12 @@ if [[ "$subcommand" == "bootstrap" && -t 0 ]]; then
         esac
     done
     if ((has_yes == 0 && has_noninteractive == 0)); then
-        read -r -p "Install missing Windows packages? [y/N] " answer
+        if [[ "$subcommand" == "settings" ]]; then
+            prompt="Apply Windows settings? [y/N] "
+        else
+            prompt="Install missing Windows packages? [y/N] "
+        fi
+        read -r -p "$prompt" answer
         [[ "$answer" =~ ^[Yy]$ ]] || {
             printf '%s\n' "Aborted."
             exit 1

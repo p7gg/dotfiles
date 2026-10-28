@@ -334,6 +334,21 @@ if [[ -d "$windows_packages_dir" ]]; then
         if [[ -n "$windows_duplicates" ]]; then
             fail "duplicate Windows package names: $(tr '\n' ' ' <<<"$windows_duplicates")"
         fi
+
+        aliases_file="$windows_packages_dir/aliases.txt"
+        if [[ -f "$aliases_file" ]]; then
+            while IFS='|' read -r alias_id alias_name; do
+                alias_id="$(sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' <<<"${alias_id%%#*}")"
+                alias_name="$(sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' <<<"${alias_name%%#*}")"
+                if [[ -z "$alias_id" || -z "$alias_name" ]]; then
+                    fail "invalid alias entry in provisioning/windows/packages/aliases.txt"
+                    continue
+                fi
+                if ! printf '%s\n' "${windows_packages[@]}" | grep -qxF -- "$alias_id"; then
+                    fail "aliases.txt: '$alias_id' is not a tracked Windows package"
+                fi
+            done < <(grep -vE '^[[:space:]]*(#|$)' "$aliases_file")
+        fi
     fi
 fi
 

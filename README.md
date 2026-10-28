@@ -10,7 +10,7 @@ Supported targets:
 | --- | --- | --- |
 | Arch Linux + GNOME (native) | Supported | `provisioning/arch/bootstrap.sh --profile native` |
 | Arch Linux in WSL | Supported | `provisioning/arch/wsl-init.sh` as root, then `provisioning/arch/bootstrap.sh --profile wsl` |
-| Windows host | Install-only bootstrap | `provisioning/windows/bootstrap.ps1`; see [Windows notes](docs/windows.md) |
+| Windows host | Install-only bootstrap + settings | `provisioning/windows/bootstrap.ps1`; see [Windows notes](docs/windows.md) |
 
 The bootstrap does **not** partition disks, install a bootloader, configure
 encryption, install hardware drivers, or manage secrets. Those are separate
@@ -93,12 +93,15 @@ From WSL, run:
 just windows-check          # validate prerequisites
 just windows-dry-run        # preview package installs
 just windows-bootstrap      # install missing required packages
+just windows-settings-check # report settings drift
+just windows-settings       # apply .wslconfig and Terminal defaults
 just windows-audit          # report drift
 ```
 
 Optional categories are opt-in with `just windows-bootstrap -Optional apps`
 (or `games`, `hardware`, `all`). See [Windows notes](docs/windows.md) for the
-tracked packages, manual steps, and the boundary with the Linux bootstrap.
+tracked packages, settings, manual steps, and the boundary with the Linux
+bootstrap.
 
 ## Layout
 
@@ -113,12 +116,14 @@ provisioning/arch/     Arch/WSL bootstrap, package lists, system files
   lib/common.sh        shared shell helpers
   system/              pacman, reflector, sshd, and WSL support files
   packages/            tracked package lists and the font catalog
-provisioning/windows/  Windows host inventory, audit, and bootstrap
+provisioning/windows/  Windows host inventory, audit, bootstrap, and settings
   audit.ps1            read-only Windows host audit
   bootstrap.ps1        install-only WinGet bootstrap
+  settings.ps1         merge .wslconfig and Terminal defaults
   lib/common.ps1       shared PowerShell helpers
   run.sh               WSL wrapper around the PowerShell scripts
   packages/            required and optional WinGet package IDs
+  settings/            tracked .wslconfig and Terminal defaults
 docs/                  task-oriented documentation
 scripts/               developer entry points (lint, fmt, test, doctor)
 tests/                 bats suites plus docs and template checks

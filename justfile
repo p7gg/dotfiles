@@ -40,6 +40,18 @@ windows-dry-run *args:
 windows-bootstrap *args:
     ./provisioning/windows/run.sh bootstrap {{ args }}
 
+# Report whether managed Windows settings differ.
+windows-settings-check *args:
+    ./provisioning/windows/run.sh settings -Check {{ args }}
+
+# Preview managed Windows settings changes.
+windows-settings-dry-run *args:
+    ./provisioning/windows/run.sh settings -DryRun {{ args }}
+
+# Apply managed .wslconfig and Windows Terminal defaults.
+windows-settings *args:
+    ./provisioning/windows/run.sh settings {{ args }}
+
 # Generate fish completions for mise and user-installed tools.
 completions *args:
     ./provisioning/arch/tools/completions.sh {{ args }}

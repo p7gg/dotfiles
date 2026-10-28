@@ -10,6 +10,7 @@ function Initialize-Output {
     $script:Checks = 0
     $script:Warnings = 0
     $script:Failures = 0
+    $script:PackageAliasCache = $null
 }
 
 function Write-Info {
@@ -97,6 +98,50 @@ function Read-PackageList {
     return $packages
 }
 
+function Read-PackageAliasList {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return @()
+    }
+
+    $aliases = @()
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        $value = ($line -replace '#.*$', '').Trim()
+        if (-not $value) {
+            continue
+        }
+
+        $parts = $value -split '\|', 2
+        if ($parts.Count -ne 2 -or -not $parts[0].Trim() -or -not $parts[1].Trim()) {
+            Write-Result -Status fail -Message "invalid alias entry in $(Split-Path -Leaf $Path): $value"
+            continue
+        }
+
+        $aliases += [pscustomobject]@{
+            Id   = $parts[0].Trim()
+            Name = $parts[1].Trim()
+        }
+    }
+
+    return $aliases
+}
+
+function Get-PackageAliases {
+    param([string]$Id)
+
+    if ($null -eq $script:PackageAliasCache) {
+        $path = Join-Path $PSScriptRoot '..\packages\aliases.txt'
+        $script:PackageAliasCache = @(Read-PackageAliasList -Path $path)
+    }
+
+    return @(
+        $script:PackageAliasCache |
+            Where-Object { $_.Id -eq $Id } |
+            ForEach-Object { $_.Name }
+    )
+}
+
 function Get-OptionalCategories {
     $directory = Join-Path $PSScriptRoot '..\packages\optional'
     if (-not (Test-Path -LiteralPath $directory)) {
@@ -176,6 +221,40 @@ function Get-WingetPath {
     return $null
 }
 
+function Get-WingetInstallArgs {
+    param(
+        [string]$Id,
+        [switch]$NoSilent
+    )
+
+    $arguments = @(
+        'install',
+        '--id', $Id,
+        '-e',
+        '--source', 'winget',
+        '--accept-package-agreements',
+        '--accept-source-agreements',
+        '--disable-interactivity'
+    )
+    if (-not $NoSilent) {
+        $arguments += '--silent'
+    }
+
+    return $arguments
+}
+
+function Install-WingetPackage {
+    param(
+        [string]$WingetPath,
+        [string]$Id,
+        [switch]$NoSilent
+    )
+
+    $arguments = Get-WingetInstallArgs -Id $Id -NoSilent:$NoSilent
+    & $WingetPath @arguments | Out-Host
+    return $LASTEXITCODE
+}
+
 function Get-InstalledWingetPackage {
     param(
         [string]$WingetPath,
@@ -201,16 +280,79 @@ function Get-InstalledWingetPackage {
     }
 
     $text = ($output | Out-String)
-    $version = ''
-    if ($exitCode -eq 0 -and $text -match ([regex]::Escape($Id) + '\s+(\S+)')) {
-        $version = $Matches[1]
+
+    if ($exitCode -eq 0) {
+        $version = ''
+        if ($text -match ([regex]::Escape($Id) + '\s+(\S+)')) {
+            $version = $Matches[1]
+        }
+        return [pscustomobject]@{
+            Id        = $Id
+            Installed = $true
+            Missing   = $false
+            MatchedBy = 'id'
+            Alias     = $null
+            Version   = $version
+            ExitCode  = $exitCode
+            Output    = $text.Trim()
+        }
+    }
+
+    if ($exitCode -eq 20 -or $exitCode -eq $noPackageExitCode) {
+        foreach ($alias in @(Get-PackageAliases -Id $Id)) {
+            $aliasOutput = @()
+            $aliasExitCode = $null
+
+            for ($attempt = 1; $attempt -le 2; $attempt++) {
+                $aliasOutput = & $WingetPath list --name $alias -e --accept-source-agreements --disable-interactivity 2>&1
+                $aliasExitCode = $LASTEXITCODE
+                if ($aliasExitCode -eq 0 -or $aliasExitCode -eq 20 -or $aliasExitCode -eq $noPackageExitCode) {
+                    break
+                }
+                if ($attempt -lt 2) {
+                    Start-Sleep -Milliseconds 500
+                }
+            }
+
+            if ($aliasExitCode -eq 0) {
+                $aliasText = ($aliasOutput | Out-String)
+                $version = ''
+                $lastLine = $aliasOutput | Where-Object { $_ -match '\S' } | Select-Object -Last 1
+                if ($lastLine -and $lastLine -match '(\S+)\s*$') {
+                    $version = $Matches[1]
+                }
+                return [pscustomobject]@{
+                    Id        = $Id
+                    Installed = $true
+                    Missing   = $false
+                    MatchedBy = 'alias'
+                    Alias     = $alias
+                    Version   = $version
+                    ExitCode  = $aliasExitCode
+                    Output    = $aliasText.Trim()
+                }
+            }
+        }
+
+        return [pscustomobject]@{
+            Id        = $Id
+            Installed = $false
+            Missing   = $true
+            MatchedBy = 'none'
+            Alias     = $null
+            Version   = ''
+            ExitCode  = $exitCode
+            Output    = $text.Trim()
+        }
     }
 
     return [pscustomobject]@{
         Id        = $Id
-        Installed = ($exitCode -eq 0)
-        Missing   = ($exitCode -eq 20 -or $exitCode -eq $noPackageExitCode)
-        Version   = $version
+        Installed = $false
+        Missing   = $false
+        MatchedBy = 'error'
+        Alias     = $null
+        Version   = ''
         ExitCode  = $exitCode
         Output    = $text.Trim()
     }
@@ -238,18 +380,23 @@ function Test-PendingReboot {
 }
 
 function Get-WslVersion {
-    $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
-    if (-not $wsl) {
-        return [pscustomobject]@{
-            Present  = $false
-            Usable   = $false
-            Version  = $null
-            ExitCode = $null
-            Output   = ''
+    param([string]$WslPath)
+
+    if (-not $WslPath) {
+        $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
+        if (-not $wsl) {
+            return [pscustomobject]@{
+                Present  = $false
+                Usable   = $false
+                Version  = $null
+                ExitCode = $null
+                Output   = ''
+            }
         }
+        $WslPath = $wsl.Source
     }
 
-    $output = (& wsl.exe --version 2>&1) -replace "`0", ''
+    $output = (& $WslPath --version 2>&1) -replace "`0", ''
     $exitCode = $LASTEXITCODE
     $version = $null
     $line = $output | Select-Object -First 1
@@ -315,6 +462,65 @@ function Read-IniFile {
     }
 
     return $result
+}
+
+function Set-IniValue {
+    param(
+        [string]$Path,
+        [string]$Section,
+        [string]$Key,
+        [string]$Value
+    )
+
+    $lines = @()
+    if (Test-Path -LiteralPath $Path) {
+        $lines = @(Get-Content -LiteralPath $Path)
+    }
+
+    $sectionPattern = '^\s*\[' + [regex]::Escape($Section) + '\]\s*$'
+    $sectionAnyPattern = '^\s*\['
+    $keyPattern = '^\s*' + [regex]::Escape($Key) + '\s*='
+    $sectionIndex = -1
+    $keyIndex = -1
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $sectionPattern) {
+            $sectionIndex = $i
+            break
+        }
+    }
+
+    if ($sectionIndex -ge 0) {
+        for ($i = $sectionIndex + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match $sectionAnyPattern) {
+                break
+            }
+            if ($lines[$i] -match $keyPattern) {
+                $keyIndex = $i
+                break
+            }
+        }
+    }
+
+    $newLine = "$Key=$Value"
+    if ($keyIndex -ge 0) {
+        $lines[$keyIndex] = $newLine
+    } elseif ($sectionIndex -ge 0) {
+        $list = [System.Collections.Generic.List[string]]::new()
+        foreach ($line in $lines) {
+            $list.Add($line)
+        }
+        $list.Insert($sectionIndex + 1, $newLine)
+        $lines = $list.ToArray()
+    } else {
+        if ($lines.Count -gt 0 -and $lines[$lines.Count - 1].Trim() -ne '') {
+            $lines += ''
+        }
+        $lines += "[$Section]"
+        $lines += $newLine
+    }
+
+    Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
 }
 
 function Format-WslValue {

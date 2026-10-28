@@ -102,7 +102,13 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      # Dependency-free tests for package parsing, categories, and versions.
+      # Dependency-free tests for package parsing, categories, aliases, install
+      # arguments, and WSL version parsing.
       - name: Test shared PowerShell helpers
         shell: pwsh
         run: ./tests/windows-lib.ps1
+
+      # Applies the tracked settings to a temporary HOME and checks the result.
+      - name: Test managed Windows settings
+        shell: pwsh
+        run: ./tests/windows-settings.ps1

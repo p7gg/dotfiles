@@ -63,28 +63,6 @@ try {
     # Encoding is best-effort; the bootstrap still works with the console default.
 }
 
-function Get-WingetInstallArgs {
-    param(
-        [string]$Id,
-        [switch]$NoSilent
-    )
-
-    $arguments = @(
-        'install',
-        '--id', $Id,
-        '-e',
-        '--source', 'winget',
-        '--accept-package-agreements',
-        '--accept-source-agreements',
-        '--disable-interactivity'
-    )
-    if (-not $NoSilent) {
-        $arguments += '--silent'
-    }
-
-    return $arguments
-}
-
 # Accept both `-Optional apps,games` and `-Optional apps -Optional games`.
 $Optional = @(
     $Optional |
@@ -198,10 +176,11 @@ foreach ($package in $selectedPackages) {
     $status = Get-InstalledWingetPackage -WingetPath $wingetPath -Id $package.Id
 
     if ($status.Installed) {
+        $matchedBy = if ($status.MatchedBy -eq 'alias') { " (matched '$($status.Alias)')" } else { '' }
         if ($status.Version) {
-            Write-Result -Status ok -Message "$($package.Id) is installed ($($status.Version))"
+            Write-Result -Status ok -Message "$($package.Id) is installed$matchedBy ($($status.Version))"
         } else {
-            Write-Result -Status ok -Message "$($package.Id) is installed"
+            Write-Result -Status ok -Message "$($package.Id) is installed$matchedBy"
         }
         continue
     }
@@ -263,10 +242,8 @@ Write-Section 'Installing'
 
 $failedPackages = @()
 foreach ($package in $installList) {
-    $arguments = Get-WingetInstallArgs -Id $package.Id -NoSilent:$NoSilent
     Write-Section "Installing $($package.Id) [$($package.Category)]"
-    & $wingetPath @arguments
-    $installExit = $LASTEXITCODE
+    $installExit = Install-WingetPackage -WingetPath $wingetPath -Id $package.Id -NoSilent:$NoSilent
 
     if ($installExit -eq 0) {
         Write-Result -Status ok -Message "installed $($package.Id)"

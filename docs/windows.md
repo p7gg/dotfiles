@@ -6,10 +6,10 @@ the Arch/WSL workflow are tracked here.
 
 ## Status
 
-A read-only audit and an install-only WinGet bootstrap are available. The
-bootstrap installs missing packages only; it never uninstalls or upgrades
-anything. The audit checks that WSL is installed and compares the installed WSL
-build with the latest stable release.
+A read-only audit, an install-only WinGet bootstrap, and an opt-in settings
+apply are available. The bootstrap installs missing packages only; it never
+uninstalls or upgrades anything. The audit checks that WSL is installed and
+compares the installed WSL build with the latest stable release.
 
 ## What is tracked
 
@@ -64,8 +64,10 @@ passes.
 WinGet source, so it is not part of the inventory. Install it manually or add a
 supported source before tracking it.
 
-`Spotify.Spotify` is installed from the Store on this host; the WinGet ID is the
-one a fresh machine would use, so the audit may report it as missing here.
+Packages installed outside WinGet can be matched by display name through
+`provisioning/windows/packages/aliases.txt`. `Spotify.Spotify` uses this: the
+host installed Spotify from the Store, so the audit and bootstrap match the
+existing app instead of reporting it missing or installing a second copy.
 
 ## Run the audit
 
@@ -135,6 +137,44 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.p
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\bootstrap.ps1
 ```
 
+## Apply Windows settings
+
+The settings apply merges tracked defaults into the current user's files and
+backs them up first. It manages:
+
+- `.wslconfig`: the `[wsl2]` `memory` and `swap` values from
+  `provisioning/windows/settings/wslconfig`.
+- Windows Terminal: default WSL profile, color scheme, theme, copy behavior,
+  keybindings, and the remaining-profiles new-tab menu from
+  `provisioning/windows/settings/terminal.json`.
+
+```bash
+just windows-settings-check
+just windows-settings-dry-run
+just windows-settings
+```
+
+The apply preserves unrelated `.wslconfig` keys and Terminal properties, and
+keeps the newest three timestamped backups per file. Terminal settings are
+rewritten as JSON, so comments are lost; the backup keeps the original. Windows
+Terminal hot-reloads `settings.json`, so no restart is required. Run
+`wsl --shutdown` from Windows and reopen the distro for `.wslconfig` changes to
+take effect. `-Yes` skips the WSL-side confirmation prompt.
+
+The `.wslconfig` template targets a 32 GB host. Edit
+`provisioning/windows/settings/wslconfig` before applying on a smaller machine.
+
+From Windows:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\settings.ps1 -Check
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\settings.ps1 -DryRun
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\settings.ps1
+```
+
+The settings script requires PowerShell 7 because Terminal settings are JSONC;
+the bootstrap installs PowerShell 7.
+
 ## What the audit checks
 
 - Windows build and architecture (Windows 11 is the documented target).
@@ -191,9 +231,11 @@ The Windows host is prepared before the Arch import:
 4. Run `just windows-check`, then `just windows-dry-run`, then
    `just windows-bootstrap`. Add `-Optional apps` if you want the optional
    application set.
-5. Import Arch and run `provisioning/arch/wsl-init.sh` as root, then run
+5. Run `just windows-settings-check`, then `just windows-settings-dry-run`,
+   then `just windows-settings`.
+6. Import Arch and run `provisioning/arch/wsl-init.sh` as root, then run
    `provisioning/arch/bootstrap.sh --profile wsl` as your user.
-6. Run `just windows-audit` again from WSL.
+7. Run `just windows-audit` again from WSL.
 
 The Linux bootstrap must not be run from Windows.
 
@@ -201,8 +243,8 @@ The Linux bootstrap must not be run from Windows.
 
 - Disk partitioning, drivers, firmware, Windows updates, and WSL updates.
 - Games themselves, vendor utilities, and general application configuration.
-- Windows Terminal settings, `.wslconfig`, and services; the audit only reports
-  them.
+- Windows services; the audit reports them and the settings apply does not
+  change them.
 - A second dotfiles manager or a Windows-side copy of the chezmoi state.
 
 The bootstrap installs missing WinGet packages from the tracked lists; it does
@@ -225,5 +267,9 @@ not remove or upgrade them.
   settings may contain comments that Windows PowerShell 5.1 cannot read.
 - **A Terminal settings change did not appear.** Windows Terminal hot-reloads
   `settings.json`; if it still looks stale, reopen Terminal.
+- **The settings apply requires PowerShell 7.** Run it with `pwsh`; the
+  bootstrap installs PowerShell 7.
+- **Terminal comments disappeared.** The settings apply rewrites the JSON;
+  timestamped backups keep the previous file.
 
 Back to [the documentation index](README.md) or [the project README](../README.md).

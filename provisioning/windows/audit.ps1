@@ -51,10 +51,11 @@ function Test-WingetPackage {
     $result = Get-InstalledWingetPackage -WingetPath $WingetPath -Id $Id
 
     if ($result.Installed) {
+        $matchedBy = if ($result.MatchedBy -eq 'alias') { " (matched '$($result.Alias)')" } else { '' }
         if ($result.Version) {
-            Write-Result -Status ok -Message "$Kind package $Id ($($result.Version))"
+            Write-Result -Status ok -Message "$Kind package $Id$matchedBy ($($result.Version))"
         } else {
-            Write-Result -Status ok -Message "$Kind package $Id"
+            Write-Result -Status ok -Message "$Kind package $Id$matchedBy"
         }
         return
     }

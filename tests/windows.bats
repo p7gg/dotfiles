@@ -23,12 +23,13 @@ EOF
     chmod +x "$TEST_TMP/bin/wslpath" "$TEST_TMP/bin/pwsh.exe"
 }
 
-@test "windows run.sh --help documents the audit and bootstrap commands" {
+@test "windows run.sh --help documents the audit, bootstrap, and settings commands" {
     run "$RUN_SH" --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"audit [options]"* ]]
     [[ "$output" == *"bootstrap [options]"* ]]
+    [[ "$output" == *"settings [options]"* ]]
     [[ "$output" == *"WINDOWS_POWERSHELL"* ]]
 }
 
@@ -40,10 +41,10 @@ EOF
 }
 
 @test "windows run.sh rejects unknown commands before touching Windows" {
-    run "$RUN_SH" settings
+    run "$RUN_SH" nonsense
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"unknown command: settings"* ]]
+    [[ "$output" == *"unknown command: nonsense"* ]]
 }
 
 @test "windows run.sh invokes the Windows PowerShell host from WSL" {
@@ -72,6 +73,20 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"-File C:\\repo\\bootstrap.ps1"* ]]
+    [[ "$output" == *"-DryRun"* ]]
+}
+
+@test "windows run.sh invokes the settings script" {
+    grep -qi microsoft /proc/version 2>/dev/null || skip "requires WSL interop"
+    install_stubs
+
+    run env \
+        PATH="$TEST_TMP/bin:$PATH" \
+        WINDOWS_POWERSHELL="$TEST_TMP/bin/pwsh.exe" \
+        "$RUN_SH" settings -DryRun
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"-File C:\\repo\\settings.ps1"* ]]
     [[ "$output" == *"-DryRun"* ]]
 }
 
