@@ -17,8 +17,8 @@ The audit compares the host against two lists:
 
 - `provisioning/windows/packages/required.txt` — host tools the WSL workflow
   depends on. Missing required packages fail the audit.
-- `provisioning/windows/packages/optional.txt` — desktop apps that mirror the
-  Arch side. Missing optional packages are warnings.
+- `provisioning/windows/packages/optional.txt` — desktop apps and utilities
+  worth reproducing on a fresh machine. Missing optional packages are warnings.
 
 ### Windows package inventory
 
@@ -32,13 +32,39 @@ The audit compares the host against two lists:
 | `Microsoft.VisualStudioCode` | Optional | Editor tracked on the native Arch side. |
 | `SST.OpenCodeDesktop` | Optional | OpenCode desktop app tracked on the native Arch side. |
 | `T3Tools.T3Code` | Optional | T3 Code tracked on the native Arch side. |
-| `Git.Git` | Optional | Windows-side Git and editor integration; WSL uses Linux Git. |
 | `Docker.DockerDesktop` | Optional | Docker Desktop on Windows; not required by the Arch distro. |
+| `Microsoft.PowerToys` | Optional | Windows utilities. |
+| `OctasoftLtd.WSLUI` | Optional | WSL management GUI. |
+| `Discord.Discord` | Optional | Chat. |
+| `LinearOrbit.Linear` | Optional | Issue tracking. |
+| `Mozilla.Thunderbird` | Optional | Email. |
+| `Spotify.Spotify` | Optional | Music streaming. |
+| `Stremio.Stremio.Beta` | Optional | Media center. |
+| `Blizzard.BattleNet` | Optional | Battle.net game launcher. |
+| `ElectronicArts.EADesktop` | Optional | EA game launcher. |
+| `EpicGames.EpicGamesLauncher` | Optional | Epic Games launcher. |
+| `Valve.Steam` | Optional | Steam game launcher. |
+| `Devolutions.UniGetUI` | Optional | GUI front-end for WinGet; provisioning still uses WinGet directly. |
+| `memstechtips.Winhance` | Optional | Windows tweaking utility; review its changes before applying. |
+| `Guru3D.Afterburner` | Optional | GPU tuning utility. |
+| `Guru3D.RTSS` | Optional | GPU overlay and statistics. |
+| `NZXT.CAM` | Optional | NZXT hardware utility. |
 
 WSL itself is a prerequisite, not a WinGet package here. The installed WSL
 build may not exist in the WinGet source, so the audit checks `wsl --version`
 and `wsl --list --verbose`; the documented update path is `wsl --update` from
 Windows.
+
+All tracked WinGet IDs resolve with
+`winget show --id <id> -e --source winget`. Add a package only after that check
+passes.
+
+`Tw93.Mole` is installed on the current host but is not available from the
+WinGet source, so it is not part of the inventory. Install it manually or add a
+supported source before tracking it.
+
+`Spotify.Spotify` is installed from the Store on this host; the WinGet ID is the
+one a fresh machine would use, so the audit may report it as missing here.
 
 ## Run the audit
 

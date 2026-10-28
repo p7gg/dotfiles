@@ -102,7 +102,7 @@ Windows is provisioned as a host for WSL, not as a second dotfiles target:
 - PowerShell is the implementation language. Bash only wraps it from WSL so the
   normal `just` workflow can call the same scripts. The PowerShell scripts also
   run natively on Windows, which matters before WSL exists.
-- WinGet is the only package manager. The tracked lists are small, curated, and
+- WinGet is the only package manager. The tracked lists are hand-curated and
   install-only; the audit reports drift and never removes anything.
 - WSL itself is a prerequisite checked through `wsl --version`, not a WinGet
   package. The installed Store build is not always available from the WinGet

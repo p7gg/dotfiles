@@ -143,8 +143,8 @@ See the [package catalog](docs/packages.md) for every package with its
 environment badge, purpose, and configuration notes.
 
 The Windows inventory is separate and smaller: it tracks the host tools needed
-by the WSL workflow plus a few optional desktop apps. See
-[Windows package inventory](docs/windows.md#windows-package-inventory).
+by the WSL workflow plus a curated set of optional desktop apps and utilities.
+See [Windows package inventory](docs/windows.md#windows-package-inventory).
 
 ## Validation
 
