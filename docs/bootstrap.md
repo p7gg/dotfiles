@@ -165,9 +165,22 @@ preserves an existing value. It only enables systemd when you pass `--systemd`.
 
 ## Windows host
 
-Nothing is provisioned yet. See [Windows notes](windows.md). When needed, this
-should be a small curated WinGet list plus optional Windows Terminal settings,
-not a second dotfiles manager.
+The Windows host has a read-only audit and a curated WinGet inventory; it does
+not install packages or change settings yet. Run it from WSL:
+
+```bash
+just windows-audit
+```
+
+Or run the PowerShell script directly from a Windows checkout:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\provisioning\windows\audit.ps1
+```
+
+See [Windows notes](windows.md) for the boundary, tracked packages, and manual
+steps. The Windows side is prepared before `wsl-init.sh`; the Linux bootstrap
+still runs inside WSL.
 
 ## System maintenance
 
@@ -236,6 +249,7 @@ just fonts --all
 just doctor
 just auth-check
 just auth
+just windows-audit
 ```
 
 The profile examples use `native`; on WSL use `wsl` instead, or omit the profile

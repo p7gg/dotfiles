@@ -73,3 +73,31 @@ jobs:
 
       - name: Test
         run: runuser -u tester -- env HOME=/home/tester ./scripts/test.sh
+
+  windows-parse:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Arch container cannot lint PowerShell. Parse-only is intentionally
+      # dependency-free; PSScriptAnalyzer can be added when the scripts grow.
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem provisioning/windows -Filter *.ps1 -Recurse | ForEach-Object {
+              $file = $_
+              $tokens = $null
+              $parseErrors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $file.FullName, [ref]$tokens, [ref]$parseErrors
+              ) | Out-Null
+              foreach ($parseError in $parseErrors) {
+                  Write-Host "::error file=$($file.FullName),line=$($parseError.Extent.StartLineNumber)::$($parseError.Message)"
+                  $failed = $true
+              }
+          }
+          if ($failed) { exit 1 }

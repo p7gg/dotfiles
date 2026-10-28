@@ -10,7 +10,7 @@ Supported targets:
 | --- | --- | --- |
 | Arch Linux + GNOME (native) | Supported | `provisioning/arch/bootstrap.sh --profile native` |
 | Arch Linux in WSL | Supported | `provisioning/arch/wsl-init.sh` as root, then `provisioning/arch/bootstrap.sh --profile wsl` |
-| Windows host | Placeholder | Nothing yet; see [Windows notes](docs/windows.md) |
+| Windows host | Read-only audit | `provisioning/windows/audit.ps1`; see [Windows notes](docs/windows.md) |
 
 The bootstrap does **not** partition disks, install a bootloader, configure
 encryption, install hardware drivers, or manage secrets. Those are separate
@@ -28,6 +28,7 @@ Start with the task you need:
 | Check shell, editor, OpenCode, or Git defaults | [Tooling and defaults](docs/tooling.md) |
 | Look up a shell, Git, chezmoi, WSL, or secrets workflow | [Tips and tricks](docs/tips-and-tricks.md) |
 | Understand a design choice | [Decisions](docs/decisions.md) |
+| Audit the Windows host | [Windows notes](docs/windows.md) |
 | See every document | [Documentation index](docs/README.md) |
 
 ## Safety
@@ -35,6 +36,8 @@ Start with the task you need:
 - Run `provisioning/arch/bootstrap.sh` as your normal user, never as root.
 - Run `provisioning/arch/wsl-init.sh` as root, only inside WSL, once for the
   initial import. Rerun it with `--systemd` if you later enable systemd.
+- The Windows audit is read-only. It does not install packages or change
+  Windows settings; WinGet may refresh its local source metadata.
 - An explicit `--profile` must match the current environment. Bootstrap refuses
   `native` inside WSL and `wsl` outside it before installing anything; use
   `--allow-profile-mismatch` only for deliberate cross-profile work.
@@ -81,6 +84,18 @@ Run `provisioning/arch/wsl-init.sh` as root once, restart WSL, then run
 systemd, and validation flow is in
 [Bootstrapping — WSL](docs/bootstrap.md#arch-linux-in-wsl).
 
+### Windows host (audit only)
+
+The Windows host has a read-only audit and a curated WinGet inventory. From WSL,
+run:
+
+```bash
+just windows-audit
+```
+
+See [Windows notes](docs/windows.md) for the tracked packages, manual steps, and
+the boundary with the Linux bootstrap.
+
 ## Layout
 
 ```text
@@ -94,6 +109,10 @@ provisioning/arch/     Arch/WSL bootstrap, package lists, system files
   lib/common.sh        shared shell helpers
   system/              pacman, reflector, sshd, and WSL support files
   packages/            tracked package lists and the font catalog
+provisioning/windows/  Windows host inventory and read-only audit
+  audit.ps1            read-only Windows host audit
+  run.sh               WSL wrapper around the PowerShell scripts
+  packages/            required and optional WinGet package IDs
 docs/                  task-oriented documentation
 scripts/               developer entry points (lint, fmt, test, doctor)
 tests/                 bats suites plus docs and template checks
@@ -123,6 +142,10 @@ anything, and the audit makes drift visible:
 See the [package catalog](docs/packages.md) for every package with its
 environment badge, purpose, and configuration notes.
 
+The Windows inventory is separate and smaller: it tracks the host tools needed
+by the WSL workflow plus a few optional desktop apps. See
+[Windows package inventory](docs/windows.md#windows-package-inventory).
+
 ## Validation
 
 The same entry points run locally and in CI:
@@ -137,8 +160,9 @@ lefthook run pre-commit
 
 `just test` runs the docs checker first. It verifies the 67/61/58 package counts
 against `provisioning/arch/packages/*.txt`, checks that every tracked package and
-optional font appears by name in the catalog, and checks every relative Markdown
-link and local asset.
+optional font appears by name in the catalog, checks the Windows inventory
+against `docs/windows.md`, and checks every relative Markdown link and local
+asset.
 
 ## What is not managed
 
@@ -150,7 +174,8 @@ link and local asset.
 - Restic repository/password and backup schedule
 - Tailscale account authentication and ACLs
 - OpenCode provider credentials and MCP OAuth tokens
-- Windows apps, WSL installation, Windows Terminal settings
+- Windows app installation, WSL installation, Windows Terminal settings; the
+  Windows audit only reports drift for the tracked inventory
 - `/etc` broadly; the bootstrap only manages the pacman, reflector, firewall,
   and sshd files listed in [Bootstrapping](docs/bootstrap.md#system-maintenance),
   and `wsl-init.sh` handles the WSL-specific bootstrap files

@@ -300,6 +300,37 @@ while IFS= read -r package; do
     check_documented_package "$package" "fonts.txt"
 done < <(filter_optional_packages "$packages_dir/fonts.txt")
 
+windows_count=0
+windows_packages_dir="$CHECK_ROOT/provisioning/windows/packages"
+windows_doc="$CHECK_ROOT/docs/windows.md"
+
+if [[ -d "$windows_packages_dir" ]]; then
+    if [[ ! -f "$windows_doc" ]]; then
+        fail "missing documentation file: docs/windows.md"
+    else
+        windows_packages=()
+        for file in required.txt optional.txt; do
+            path="$windows_packages_dir/$file"
+            if [[ ! -f "$path" ]]; then
+                fail "missing package list: ${path#"$CHECK_ROOT/"}"
+                continue
+            fi
+            while IFS= read -r package; do
+                windows_packages+=("$package")
+                windows_count=$((windows_count + 1))
+                if ! grep -Fq -- "\`$package\`" "$windows_doc"; then
+                    fail "docs/windows.md: no catalog entry for '$package' (from ${path#"$CHECK_ROOT/"})"
+                fi
+            done < <(filter_packages "$path")
+        done
+
+        windows_duplicates="$(printf '%s\n' "${windows_packages[@]}" | LC_ALL=C sort | uniq -d)"
+        if [[ -n "$windows_duplicates" ]]; then
+            fail "duplicate Windows package names: $(tr '\n' ' ' <<<"$windows_duplicates")"
+        fi
+    fi
+fi
+
 while IFS= read -r file; do
     check_markdown_file "$file"
 done < <(markdown_files)
@@ -309,4 +340,4 @@ if ((FAIL > 0)); then
     exit 1
 fi
 
-log "docs check passed: $total_count packages ($native_total native, $wsl_total WSL), $fonts_count optional fonts, and all local links and assets resolve"
+log "docs check passed: $total_count packages ($native_total native, $wsl_total WSL), $fonts_count optional fonts, $windows_count Windows package IDs, and all local links and assets resolve"

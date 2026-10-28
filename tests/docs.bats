@@ -5,8 +5,9 @@ setup() {
     TEST_TMP="$(mktemp -d)"
     FIXTURE="$TEST_TMP/repo"
 
-    mkdir -p "$FIXTURE/provisioning/arch/packages" "$FIXTURE/docs"
+    mkdir -p "$FIXTURE/provisioning/arch/packages" "$FIXTURE/provisioning/windows/packages" "$FIXTURE/docs"
     cp "$REPO_ROOT"/provisioning/arch/packages/*.txt "$FIXTURE/provisioning/arch/packages/"
+    cp "$REPO_ROOT"/provisioning/windows/packages/*.txt "$FIXTURE/provisioning/windows/packages/"
     cp "$REPO_ROOT/README.md" "$REPO_ROOT/AGENTS.md" "$FIXTURE/"
     cp -a "$REPO_ROOT/docs/." "$FIXTURE/docs/"
 }
@@ -88,4 +89,23 @@ teardown() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"the native package count in the SVG"* ]]
+}
+
+@test "a Windows package missing from the catalog fails the docs check" {
+    sed -i '/`Microsoft.WindowsTerminal`/d' "$FIXTURE/docs/windows.md"
+
+    run "$REPO_ROOT/tests/check-docs.sh" --root "$FIXTURE"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"no catalog entry for 'Microsoft.WindowsTerminal'"* ]]
+}
+
+@test "a duplicate Windows package fails the docs check" {
+    printf '%s\n' 'Microsoft.WindowsTerminal' \
+        >>"$FIXTURE/provisioning/windows/packages/optional.txt"
+
+    run "$REPO_ROOT/tests/check-docs.sh" --root "$FIXTURE"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"duplicate Windows package names"* ]]
 }

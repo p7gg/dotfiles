@@ -12,7 +12,7 @@ Start with the task you need instead of reading everything:
 | Recover a broken shell or dotfiles | [Tips — recovery moves](tips-and-tricks.md#recovery-moves) |
 | Check shell, editor, OpenCode, and Git defaults | [Tooling and defaults](tooling.md) |
 | Understand a design choice | [Decisions and rationale](decisions.md) |
-| See the Windows-side status | [Windows notes](windows.md) |
+| Audit the Windows host | [Windows notes](windows.md) |
 
 ## Reference documents
 
@@ -23,6 +23,7 @@ Start with the task you need instead of reading everything:
 | [Tooling and defaults](tooling.md) | Fish, mise, Go, completions, OpenCode, Git defaults, and editor/app defaults. |
 | [Tips and tricks](tips-and-tricks.md) | Fish, Git, chezmoi, mise, WSL, secrets, OpenCode, recovery, and a small maintenance rhythm. |
 | [Authentication and SSH](auth.md) | Key, GitHub, gcloud, Tailscale, BWS, and MCP setup and troubleshooting. |
+| [Windows notes](windows.md) | Windows host boundary, WinGet inventory, read-only audit, and manual steps. |
 | [Decisions](decisions.md) | Tooling-language rationale, optional Git defaults, the shared keyring decision, and the BWS private-key decision. |
 
 ![Native and WSL provisioning flow](assets/provisioning-flow.svg)
@@ -37,6 +38,11 @@ checks every relative Markdown link and local asset. Update the docs and the
 checker together when a package list changes. The package lists are install-only:
 bootstrap adds missing packages and never removes anything, and the audit makes
 drift visible.
+
+The Windows inventory lives in `provisioning/windows/packages/` and is checked by
+name against [Windows notes](windows.md#windows-package-inventory). It is
+deliberately smaller than the Arch catalog and is separate from the Arch counts
+above.
 
 ## Environment badges
 

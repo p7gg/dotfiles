@@ -95,6 +95,32 @@ If you absolutely must store the key in BWS, fetch it into `$XDG_RUNTIME_DIR`
 with mode `0600`, add it to an agent, and delete it immediately; do not keep a
 permanent copy in the repo or home directory.
 
+## Windows provisioning boundary
+
+Windows is provisioned as a host for WSL, not as a second dotfiles target:
+
+- PowerShell is the implementation language. Bash only wraps it from WSL so the
+  normal `just` workflow can call the same scripts. The PowerShell scripts also
+  run natively on Windows, which matters before WSL exists.
+- WinGet is the only package manager. The tracked lists are small, curated, and
+  install-only; the audit reports drift and never removes anything.
+- WSL itself is a prerequisite checked through `wsl --version`, not a WinGet
+  package. The installed Store build is not always available from the WinGet
+  source, and `wsl --update` is the supported update path.
+- Settings are limited to the ones that affect the WSL workflow: `.wslconfig`,
+  Windows Terminal defaults, and the SSH agent service. The audit only reports
+  them; a later apply step must back up and merge rather than replace.
+- Windows-side elevation uses normal UAC. A bootstrap may run from an elevated
+  terminal or relaunch itself and let the consent prompt appear on the desktop;
+  it must log to a file because an elevated child process does not share the WSL
+  shell's output. It reports reboot requirements but never reboots automatically.
+- WSL updates and driver installs stay manual. The audit checks that WSL is
+  installed and compares it with the latest stable release through the GitHub
+  API; `-NoUpdateCheck` keeps the audit offline.
+- A WinGet DSC/Configuration file is not used yet. It would add a PSGallery
+  resource dependency and hide the processors; the explicit list and loop are
+  easier to review. Revisit if version or scope pinning becomes necessary.
+
 ## Back to
 
 - [Documentation index](README.md)

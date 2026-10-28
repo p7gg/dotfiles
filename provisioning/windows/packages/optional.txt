@@ -1,0 +1,13 @@
+# Optional Windows desktop apps.
+#
+# These mirror tools tracked on the Arch side or support the Windows side of
+# the development workflow. The audit warns when they are missing; it never
+# installs them. Add packages here only when they are worth reproducing on a
+# fresh machine.
+
+Brave.Brave
+Microsoft.VisualStudioCode
+SST.OpenCodeDesktop
+T3Tools.T3Code
+Git.Git
+Docker.DockerDesktop

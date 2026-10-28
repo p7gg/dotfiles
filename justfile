@@ -24,6 +24,10 @@ audit profile="auto" *args:
 audit-check profile="auto" *args:
     ./provisioning/arch/audit.sh --profile {{ quote(profile) }} --check {{ args }}
 
+# Run the read-only Windows host audit from WSL.
+windows-audit *args:
+    ./provisioning/windows/run.sh audit {{ args }}
+
 # Generate fish completions for mise and user-installed tools.
 completions *args:
     ./provisioning/arch/tools/completions.sh {{ args }}
