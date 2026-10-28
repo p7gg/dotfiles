@@ -67,16 +67,23 @@ collect_files() {
 }
 
 check_bash_syntax() {
-    local file
+    local file status=0
 
     if ((${#SH_FILES[@]} == 0)); then
         log "no shell files"
         return 0
     fi
 
+    # Run every file so one syntax error does not hide the others. The caller
+    # invokes this function in a conditional, so set -e would not stop the loop.
     for file in "${SH_FILES[@]}"; do
-        bash -n "$file"
+        if ! bash -n "$file"; then
+            warn "Bash syntax failed: $file"
+            status=1
+        fi
     done
+
+    return "$status"
 }
 
 check_shellcheck() {
@@ -98,7 +105,7 @@ check_shfmt() {
 }
 
 check_fish_syntax() {
-    local file
+    local file status=0
 
     if ((${#FISH_FILES[@]} == 0)); then
         log "no fish files"
@@ -106,12 +113,17 @@ check_fish_syntax() {
     fi
 
     for file in "${FISH_FILES[@]}"; do
-        fish --no-execute "$file"
+        if ! fish --no-execute "$file"; then
+            warn "fish syntax failed: $file"
+            status=1
+        fi
     done
+
+    return "$status"
 }
 
 check_fish_format() {
-    local file
+    local file status=0
 
     if ((${#FISH_FILES[@]} == 0)); then
         log "no fish files"
@@ -119,8 +131,13 @@ check_fish_format() {
     fi
 
     for file in "${FISH_FILES[@]}"; do
-        fish_indent --check "$file"
+        if ! fish_indent --check "$file"; then
+            warn "fish formatting failed: $file (run: just fmt)"
+            status=1
+        fi
     done
+
+    return "$status"
 }
 
 check_workflows() {
