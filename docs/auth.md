@@ -186,14 +186,20 @@ ssh -p 2022 -T <work-email>@source.developers.google.com
 ### SSH multiplexing
 
 `ControlMaster` keeps one connection per `%C` hash. The socket lives under
-`$XDG_RUNTIME_DIR`, so a WSL restart or logout clears it. If a master is killed
-and leaves a socket behind, SSH can report `PERMISSION_DENIED` or
-`ControlSocket ... already exists` for every remote. When no SSH session is
-active, remove the stale sockets:
+`$XDG_RUNTIME_DIR`, so a WSL restart or logout clears it. If a master is left
+behind — or is still alive after its original client is gone — SSH can report
+`PERMISSION_DENIED` or `ControlSocket ... already exists` for every remote.
+Close a specific master with `ssh -O exit <host>`, or remove the sockets when no
+SSH session is active:
 
 ```bash
-rm -f "${XDG_RUNTIME_DIR}"/ssh-control-* ~/.ssh/control-*
+ssh -O exit git@github.com
+rm -f "$XDG_RUNTIME_DIR"/ssh-control-* ~/.ssh/control-*
 ```
+
+Cloud Source Repositories opts out of multiplexing (`ControlMaster no`,
+`ControlPath none`) because its SSH endpoint returns `PERMISSION_DENIED` when a
+persisted master outlives its client.
 
 If you prefer to manage authentication yourself, use the individual commands
 above; the helper only automates them. It exits nonzero when a required

@@ -1,3 +1,18 @@
+{{ if .work_email -}}
+# Google Cloud Source Repositories (work). Keep this before Host * so the
+# multiplexing opt-out wins: ssh_config uses the first value it obtains.
+Host source.developers.google.com
+    HostName source.developers.google.com
+    Port 2022
+    User {{ .work_email }}
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    # Cloud Source Repositories can return PERMISSION_DENIED when a persisted
+    # master outlives its original client. Use a fresh connection per fetch.
+    ControlMaster no
+    ControlPath none
+{{ end -}}
+
 # Global defaults.
 Host *
     AddKeysToAgent yes
@@ -20,16 +35,6 @@ Host gitlab.com
     HostName gitlab.com
     User git
     IdentityFile ~/.ssh/id_ed25519
-
-{{ if .work_email -}}
-# Google Cloud Source Repositories (work).
-Host source.developers.google.com
-    HostName source.developers.google.com
-    Port 2022
-    User {{ .work_email }}
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-{{ end -}}
 
 {{ if contains "microsoft" .chezmoi.kernel.osrelease -}}
 # WSL tools started outside a login shell (T3, OpenCode, systemd scopes) do not
