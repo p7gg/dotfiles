@@ -9,6 +9,8 @@ ConditionUser=!root
 ExecStart=%h/.local/bin/ssh-agent-bridge
 Restart=always
 RestartSec=2
+NoNewPrivileges=yes
+PrivateTmp=yes
 
 [Install]
 WantedBy=default.target

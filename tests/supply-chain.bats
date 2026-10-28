@@ -36,6 +36,8 @@ setup() {
     grep -Fq 'npiperelay' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
     grep -Fq 'pipe/openssh-ssh-agent' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
     grep -Fq 'Restart=always' "$REPO_ROOT/home/dot_config/systemd/user/ssh-agent-bridge.service"
+    grep -Fq 'NoNewPrivileges=yes' "$REPO_ROOT/home/dot_config/systemd/user/ssh-agent-bridge.service"
+    grep -Fq 'PrivateTmp=yes' "$REPO_ROOT/home/dot_config/systemd/user/ssh-agent-bridge.service"
     grep -Fq 'socat' "$REPO_ROOT/provisioning/arch/packages/wsl.txt"
     [ ! -e "$REPO_ROOT/home/dot_config/systemd/user/wsl2-ssh-agent.service" ]
 }
