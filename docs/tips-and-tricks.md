@@ -301,7 +301,8 @@ Native GNOME unlocks its `Login` keyring at login through PAM. WSL has no PAM
 login, so bootstrap creates a blank-password keyring that the daemon unlocks by
 itself. The blank password means the keyring is not meaningfully encrypted at
 rest: the WSL VHDX and Windows account are the boundary. If you prefer a
-passphrase, install `seahorse`, set one, and unlock it once per WSL boot.
+passphrase, install `seahorse`, set one, and run `keyring-unlock` once per WSL
+session. A passphrase-protected keyring stays locked after the distro starts.
 Windows Hello PAM authenticates `sudo`; it does not unlock the keyring. See
 [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
 

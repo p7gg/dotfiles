@@ -62,12 +62,16 @@ doubled the secret paths and made the `bws` wrapper behave differently per
 profile. Both profiles now install `gnome-keyring` and talk to the Secret Service
 through `secret-tool`.
 
-On WSL the login keyring is created with a blank password so the daemon can
-unlock it without a login password. That is a deliberate tradeoff: the keyring
-file is not meaningfully encrypted at rest, and the WSL VHDX plus the Windows
-account are the boundary. A password-protected keyring is still possible, but it
-must be unlocked once per WSL boot. Windows Hello PAM is not a solution: it
-authenticates `sudo` and supplies no password to `pam_gnome_keyring`.
+Bootstrap creates the WSL login keyring with a blank password by default so the
+daemon can unlock it without a login password. That is a deliberate convenience
+tradeoff: the keyring file is not meaningfully encrypted at rest, and the WSL
+VHDX plus the Windows account are the boundary. A passphrase-protected keyring is
+supported for stronger at-rest protection; it stays locked after the distro
+starts and `keyring-unlock` opens it once per WSL session. Windows Hello PAM is
+not a solution either way: it authenticates `sudo` and supplies no password to
+`pam_gnome_keyring`. A Windows scheduled task or Credential Manager bridge could
+pass a stored passphrase into WSL, but any process running as the Windows user
+could retrieve it, so it would not create a stronger boundary than the WSL disk.
 
 ## Private SSH key in Bitwarden
 

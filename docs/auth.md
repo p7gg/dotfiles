@@ -262,14 +262,24 @@ libsecret clients use the same store on native Arch and WSL.
 - **Native GNOME** starts the daemon at login and unlocks the `Login` keyring
   through `pam_gnome_keyring`. It also provides the SSH agent.
 - **WSL** has no PAM login. Bootstrap creates a `Login` keyring with a blank
-  password, the socket-activated daemon unlocks it automatically, and only the
-  secrets component runs so the Windows Bitwarden agent stays the SSH agent.
+  password by default, so the socket-activated daemon unlocks it automatically.
+  It runs only the secrets component, so the Windows Bitwarden agent stays the
+  SSH agent.
 
-The blank password is a deliberate tradeoff: the keyring file is not
-meaningfully encrypted at rest, and the WSL VHDX plus the Windows account are the
-protection boundary. If you prefer a passphrase, install `seahorse`, set one, and
-unlock the keyring once per WSL boot; bootstrap only creates a keyring when it is
-missing, so it will not overwrite your choice.
+A blank keyring is convenient but not meaningfully encrypted at rest: the WSL
+VHDX plus the Windows account are the protection boundary. For at-rest
+protection, set a passphrase with `seahorse` (optional, not tracked) and unlock
+the keyring once per WSL session:
+
+```bash
+keyring-unlock
+```
+
+The `keyring-unlock` fish function stops the socket-activated daemon, starts one
+with the keyring unlocked, and leaves it running. A passphrase-protected keyring
+stays locked after the distro starts, so run `keyring-unlock` again after
+`wsl --shutdown` or a reboot. Bootstrap only creates a keyring when it is
+missing, so it will not overwrite your passphrase.
 
 The ArchWiki's PAM Windows Hello setup (`pam_wsl_hello`, package
 `wsl-hello-sudo-bin`) is for authenticating `sudo`. It does not unlock a keyring:
@@ -296,6 +306,10 @@ for the manual commands and operational notes.
 
 `--bws-account NAME` selects the keyring account label (default: `personal`) on
 both profiles.
+
+If the keyring is locked (a passphrase-protected WSL keyring after a restart),
+run `keyring-unlock` first. Otherwise `secret-tool` opens the graphical keyring
+prompt.
 
 Store or replace the token manually:
 

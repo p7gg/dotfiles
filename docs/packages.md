@@ -327,7 +327,9 @@ is why the default `--check` does not fail on untracked packages.
   `gitbutler-cli-bin`; the two packages conflict over `/usr/bin/but`.
 - `gnome-keyring` is in both profiles. Native GNOME unlocks its `Login` keyring
   through PAM; on WSL bootstrap creates a blank-password `Login` keyring because
-  WSL has no PAM login. See [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
+  WSL has no PAM login. A passphrase-protected keyring stays locked after each
+  WSL start; run `keyring-unlock` to open it. See
+  [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
 - `yt-dlp` is installed without `ffmpeg`. Add `ffmpeg` if you need stream
   merging, audio extraction, or format conversion.
 - `restic` is installed without a repository, password, or backup schedule.

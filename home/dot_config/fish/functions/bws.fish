@@ -20,7 +20,7 @@ function bws --wraps bws --description 'bws with access token from GNOME Keyring
     set -l token (secret-tool lookup service bws account $account 2>/dev/null | string collect)
 
     if test -z "$token"
-        echo "bws: no access token stored in GNOME Keyring for account '$account'; run ./provisioning/arch/auth.sh --bws-account $account" >&2
+        echo "bws: no access token in GNOME Keyring for account '$account'; if the keyring is locked run 'keyring-unlock', or run ./provisioning/arch/auth.sh --bws-account $account" >&2
         return 1
     end
 

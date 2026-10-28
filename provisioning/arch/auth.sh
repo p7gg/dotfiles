@@ -161,6 +161,9 @@ store_bws_token() {
         return 1
     fi
     log "Storing the BWS access token in GNOME Keyring"
+    if is_wsl; then
+        log "If the keyring is locked, run 'keyring-unlock' first."
+    fi
     log "Paste the token at both prompts (input is hidden)"
     if ! secret-tool store --label='BWS access token' service bws account "$BWS_ACCOUNT"; then
         warn "could not store the BWS token in GNOME Keyring"

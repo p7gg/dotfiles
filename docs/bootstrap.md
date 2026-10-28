@@ -141,7 +141,9 @@ It also installs `gnome-keyring` (from `base.txt`) and creates the WSL `Login`
 keyring with a blank password, so the Secret Service works without a PAM login.
 GitButler and the `bws` wrapper use it; see
 [GNOME Keyring](auth.md#gnome-keyring-both-profiles) for the tradeoff and how to
-choose a passphrase instead.
+choose a passphrase instead. Bootstrap never replaces an existing keyring; a
+passphrase-protected keyring stays locked after each WSL start until you run
+`keyring-unlock`.
 
 Keep the repo inside WSL, not on `/mnt/c`, for sensible permissions, file modes,
 and Git performance.
