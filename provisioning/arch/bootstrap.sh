@@ -66,8 +66,8 @@ Options:
   --non-interactive     Never prompt (implies --yes); fail if data is missing
   --no-packages         Skip pacman/AUR package installation
   --fonts LIST          Install selected Nerd Fonts without prompting; LIST is
-                        all or a comma-separated list of numbers, packages, or
-                        display names (implies the fonts step)
+                        all, none, or a comma-separated list of numbers,
+                        packages, or display names (implies the fonts step)
   --no-fonts            Skip the optional Nerd Fonts step
   --no-opencode         Skip installing/updating the OpenCode CLI
   --no-wsl-ssh-agent    Skip the Windows SSH agent relay (WSL only)

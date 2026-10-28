@@ -117,3 +117,11 @@ teardown() {
     [[ "$output" == *"No selected fonts need installation."* ]]
     [ ! -s "$FAKE_PACMAN_LOG" ]
 }
+
+@test "--font none selects nothing without prompting" {
+    run bash -c 'exec "$1" --font none </dev/null' _ "$REPO_ROOT/provisioning/arch/tools/fonts.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"No fonts selected."* ]]
+    [ ! -s "$FAKE_PACMAN_LOG" ]
+}

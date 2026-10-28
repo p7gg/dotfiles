@@ -37,7 +37,8 @@ Options:
   --list              List the font catalog and installed state
   --all               Install every font in the catalog
   --font SPEC         Install a font by number, package, or display name
-                      (repeatable; comma-separated values are accepted)
+                      (repeatable; comma-separated values are accepted; use
+                      none to select no fonts)
   --dry-run           Print the pacman command without installing anything
   --yes               Pass --noconfirm to pacman
   --non-interactive   Never prompt when no selection is given
@@ -45,7 +46,7 @@ Options:
 
 Run without --list, --all, or --font for an interactive selection menu.
 Selections accept numbers and ranges (for example: 1 3-5), package names such as
-ttf-firacode-nerd, display names such as "Fira Code", or all.
+ttf-firacode-nerd, display names such as "Fira Code", all, or none.
 
 The catalog lives in provisioning/arch/packages/fonts.txt and contains optional packages only.
 EOF
@@ -296,6 +297,13 @@ fi
 for spec in "${FONT_SPECS[@]}"; do
     apply_spec "$spec" || die "invalid font selection: $spec"
 done
+
+# An explicit --font selection that resolves to nothing (for example --font
+# none) should not fall through to the interactive menu.
+if ((${#FONT_SPECS[@]} > 0)) && ((${#SELECTED[@]} == 0)); then
+    log "No fonts selected."
+    exit 0
+fi
 
 if ((${#SELECTED[@]} == 0)); then
     if ((NON_INTERACTIVE)); then
