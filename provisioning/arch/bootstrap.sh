@@ -809,14 +809,20 @@ configure_pacman() {
 
 configure_reflector() {
     local src="$REPO_ROOT/provisioning/arch/system/reflector.conf"
+    local dest="/etc/xdg/reflector/reflector.conf"
 
     if [[ ! -f "$src" ]]; then
         warn "reflector config not found: $src"
         return 0
     fi
 
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        log "Reflector config already up to date"
+        return 0
+    fi
+
     log "Installing Brazil-prioritized reflector config"
-    run_sudo install -Dm644 "$src" /etc/xdg/reflector/reflector.conf
+    run_sudo install -Dm644 "$src" "$dest"
 }
 
 enable_timer() {
