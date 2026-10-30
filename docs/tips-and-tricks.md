@@ -328,18 +328,18 @@ If an older machine still has the pacman package, remove it once with
 present or when `opencode` resolves somewhere else. Update with
 `opencode upgrade` or by rerunning bootstrap.
 
-The global OpenCode config tracks three MCP servers:
+OpenCode MCP servers are scoped by directory:
 
-- `linear` — OAuth
-- `jira` — OAuth
-- `context7` — no authentication required
+- global — `context7`, no authentication required
+- `~/Projects` — `linear`, OAuth, for personal projects
+- `~/Projects/work` — `jira`, OAuth; `linear` disabled
 
 Check and repair authentication:
 
 ```bash
 opencode mcp list
-opencode mcp auth linear
-opencode mcp auth jira
+(cd ~/Projects && opencode mcp auth linear)
+(cd ~/Projects/work && opencode mcp auth jira)
 ```
 
 Inside a session, `/mcps` shows server status. `provisioning/arch/auth.sh` connects

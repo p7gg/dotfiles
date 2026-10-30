@@ -68,7 +68,7 @@ What this does:
   - authenticates `gcloud` and application default credentials
   - authenticates Tailscale when its daemon is running
   - offers to store the Bitwarden Secrets Manager token in GNOME Keyring
-  - authenticates the Linear and Jira MCP servers in OpenCode
+  - authenticates Linear from ~/Projects and Jira from ~/Projects/work in OpenCode
   - prints Cloud Source Repositories SSH registration instructions for work
 
 SSH commit signing is configured by chezmoi. Work projects under
@@ -77,7 +77,8 @@ EOF
 }
 
 mcp_list_output() {
-    "$OPENCODE_BIN" mcp list 2>/dev/null
+    local dir="${1:-$PWD}"
+    (cd "$dir" && "$OPENCODE_BIN" mcp list 2>/dev/null)
 }
 
 mcp_matches() {
@@ -86,11 +87,17 @@ mcp_matches() {
 }
 
 authenticate_mcp() {
-    local name="$1" label="$2" output
+    local name="$1" label="$2" dir="${3:-$PWD}" output
     local state_text
 
-    if ! output="$(mcp_list_output)"; then
-        warn "$label MCP status check failed; run: opencode mcp list"
+    if [[ ! -d "$dir" ]]; then
+        warn "$label MCP directory does not exist: $dir"
+        AUTH_INCOMPLETE=1
+        return
+    fi
+
+    if ! output="$(mcp_list_output "$dir")"; then
+        warn "$label MCP status check failed; run: (cd $dir && opencode mcp list)"
         AUTH_INCOMPLETE=1
         return
     fi
@@ -107,28 +114,28 @@ authenticate_mcp() {
     fi
 
     if ((DRY_RUN || NON_INTERACTIVE)); then
-        warn "$label MCP $state_text; run: opencode mcp auth $name"
+        warn "$label MCP $state_text; run: (cd $dir && opencode mcp auth $name)"
         AUTH_INCOMPLETE=1
         return
     fi
 
     if [[ "$state_text" != "needs authentication" ]]; then
-        warn "$label MCP is $state_text; check: opencode mcp list"
+        warn "$label MCP is $state_text; check: (cd $dir && opencode mcp list)"
         AUTH_INCOMPLETE=1
         return
     fi
 
-    log "Authenticating $label MCP in OpenCode (a browser window will open)"
-    if ! "$OPENCODE_BIN" mcp auth "$name"; then
-        warn "$label MCP authentication failed; retry: opencode mcp auth $name"
+    log "Authenticating $label MCP in OpenCode from $dir (a browser window will open)"
+    if ! (cd "$dir" && "$OPENCODE_BIN" mcp auth "$name"); then
+        warn "$label MCP authentication failed; retry: (cd $dir && opencode mcp auth $name)"
         AUTH_INCOMPLETE=1
         return
     fi
 
-    if output="$(mcp_list_output)" && mcp_matches "$output" "$name" "connected"; then
+    if output="$(mcp_list_output "$dir")" && mcp_matches "$output" "$name" "connected"; then
         log "$label MCP connected"
     else
-        warn "$label MCP is still not connected; check: opencode mcp list"
+        warn "$label MCP is still not connected; check: (cd $dir && opencode mcp list)"
         AUTH_INCOMPLETE=1
     fi
 }
@@ -658,10 +665,10 @@ if ((SKIP_LINEAR == 0 || SKIP_JIRA == 0)); then
         AUTH_INCOMPLETE=1
     else
         if ((SKIP_LINEAR == 0)); then
-            authenticate_mcp linear "Linear"
+            authenticate_mcp linear "Linear" "$HOME/Projects"
         fi
         if ((SKIP_JIRA == 0)); then
-            authenticate_mcp jira "Jira"
+            authenticate_mcp jira "Jira" "$HOME/Projects/work"
         fi
     fi
 fi

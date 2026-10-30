@@ -139,20 +139,28 @@ the `opencode` CLI.
 
 Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings, and `~/.config/opencode/opencode.json` with the global MCP
-servers:
+servers. MCP servers are scoped to the projects that need them:
 
-- `linear` — Linear's remote MCP server at `https://mcp.linear.app/mcp` (OAuth)
-- `jira` — Atlassian's remote MCP server for Jira, Confluence, and related
-  products at `https://mcp.atlassian.com/v2/mcp` (OAuth)
-- `context7` — Context7 documentation lookup at `https://mcp.context7.com/mcp`
-  (no authentication required)
+- `~/.config/opencode/opencode.json` — `context7` only, at
+  `https://mcp.context7.com/mcp` (no authentication required). It is available
+  in every project.
+- `~/Projects/opencode.json` — `linear`, at `https://mcp.linear.app/mcp`
+  (OAuth), for personal projects.
+- `~/Projects/work/opencode.json` — `jira`, at
+  `https://mcp.atlassian.com/v2/mcp` (OAuth), and `linear` explicitly disabled,
+  for work projects.
 
-`provisioning/arch/auth.sh` signs in to Linear and Jira through their OAuth
-flows. To authenticate later, run `opencode mcp auth linear` or
-`opencode mcp auth jira`, or use `/mcps` in OpenCode. Context7 works without an
-API key. The tracked `opencode.json` already sends `CONTEXT7_API_KEY` from the
-environment when it is set; export the variable only if you want the higher rate
-limits.
+OpenCode merges configs from ancestor directories, so personal projects inherit
+Linear from `~/Projects/opencode.json`. Work projects inherit that file too and
+then override the `linear` server with `disabled: true` in the work config.
+
+`provisioning/arch/auth.sh` signs in to Linear from `~/Projects` and Jira from
+`~/Projects/work` through their OAuth flows. To authenticate later, run
+`(cd ~/Projects && opencode mcp auth linear)` or
+`(cd ~/Projects/work && opencode mcp auth jira)`, or use `/mcps` in OpenCode.
+Context7 works without an API key. The tracked `opencode.json` already sends
+`CONTEXT7_API_KEY` from the environment when it is set; export the variable only
+if you want the higher rate limits.
 
 OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
