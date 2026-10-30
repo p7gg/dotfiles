@@ -51,17 +51,23 @@ check() {
 collect_files() {
     if ((STAGED)); then
         mapfile -t SH_FILES < <(
-            git diff --cached --name-only --diff-filter=ACM -- '*.sh'
+            git diff --cached --name-only --diff-filter=ACM -- '*.sh' |
+                grep -v '^home/dot_agents/' || true
         )
         mapfile -t FISH_FILES < <(
-            git diff --cached --name-only --diff-filter=ACM -- '*.fish'
+            git diff --cached --name-only --diff-filter=ACM -- '*.fish' |
+                grep -v '^home/dot_agents/' || true
         )
     else
+        # Agent skills under home/dot_agents are vendored third-party content;
+        # do not lint or reformat them as dotfiles.
         mapfile -t SH_FILES < <(
-            find "$REPO_ROOT" -name '*.sh' -not -path '*/.git/*'
+            find "$REPO_ROOT" -name '*.sh' -not -path '*/.git/*' \
+                -not -path '*/home/dot_agents/*'
         )
         mapfile -t FISH_FILES < <(
-            find "$REPO_ROOT/home" -name '*.fish'
+            find "$REPO_ROOT/home" -name '*.fish' \
+                -not -path '*/home/dot_agents/*'
         )
     fi
 }

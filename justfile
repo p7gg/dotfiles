@@ -88,6 +88,11 @@ apply-dry-run:
 update:
     chezmoi update
 
+# Update global agent skills and refresh the tracked chezmoi copy.
+skills:
+    npx skills@latest update -g
+    chezmoi add ~/.agents
+
 # Run shell, fish, workflow, and secret lint checks.
 lint:
     ./scripts/lint.sh

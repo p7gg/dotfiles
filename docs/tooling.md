@@ -166,6 +166,17 @@ OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
 local service password.
 
+Global agent skills are tracked from `~/.agents/skills` and
+`~/.agents/.skill-lock.json` under `home/dot_agents`. The lock records the source
+repository and content hash for each skill; the skill folders are tracked so a
+new machine can restore them with `chezmoi apply` without network access.
+
+To update skills, run `just skills` (or `npx skills update -g` followed by
+`chezmoi add ~/.agents`), review `chezmoi diff`, and commit the result. To add a
+skill, run `npx skills add <owner/repo> -g -a opencode -s <skill>` and add it
+the same way. Project-local skills under a repository's `.agents/skills` are not
+managed by chezmoi; work repositories ignore those folders.
+
 ## Git defaults
 
 Beyond SSH signing (see [authentication](auth.md)), the tracked Git config
