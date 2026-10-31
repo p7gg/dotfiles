@@ -56,7 +56,17 @@ command -v socat >/dev/null 2>&1 || {
     exit 1
 }
 
+# socat splits EXEC: on whitespace. A Windows profile such as "John Smith"
+# would otherwise turn the executable path into two arguments, so point EXEC
+# at a space-free symlink in the runtime directory.
+launcher="$runtime/npiperelay.exe"
+rm -f "$launcher"
+if ! ln -s "$npiperelay" "$launcher" 2>/dev/null; then
+    printf '%s\n' "ssh-agent-bridge: could not create launcher at $launcher" >&2
+    exit 1
+fi
+
 umask 077
 exec /usr/bin/socat \
     "UNIX-LISTEN:$socket,fork,mode=0600,unlink-early,unlink-close" \
-    "EXEC:$npiperelay -ei -s //./pipe/openssh-ssh-agent"
+    "EXEC:$launcher -ei -s //./pipe/openssh-ssh-agent"

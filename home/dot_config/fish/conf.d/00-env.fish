@@ -16,12 +16,22 @@ if test $editor = nano
         end
     end
 end
-set -gx EDITOR $editor
 
-set -gx VISUAL $EDITOR
-set -gx PAGER less
-set -gx MANPAGER "less -R"
-set -gx LESS -R
+# Fall back to PATH only when neither standard location matched, so unusual
+# installs (mise, /opt, Homebrew) still work without slowing the common case.
+if test $editor = nano
+    if type -q nvim
+        set editor nvim
+    else if type -q vim
+        set editor vim
+    end
+end
+
+set -q EDITOR; or set -gx EDITOR $editor
+set -q VISUAL; or set -gx VISUAL $EDITOR
+set -q PAGER; or set -gx PAGER less
+set -q MANPAGER; or set -gx MANPAGER "less -R"
+set -q LESS; or set -gx LESS -R
 
 # Bitwarden Secrets Manager account label used by functions/bws.fish.
 # Keep an explicitly configured account (for example, from a local config).

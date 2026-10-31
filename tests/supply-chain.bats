@@ -21,6 +21,11 @@ setup() {
     grep -Fq 'curl_https -o "$download_tmp/opencode.tgz" "$tarball"' "$BOOTSTRAP"
 }
 
+@test "documentation does not advertise the retired remote installer" {
+    ! grep -Rq 'opencode.ai/v2/install' \
+        "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/provisioning/arch"
+}
+
 @test "paru is cloned at a pinned 40-character commit" {
     grep -Eq '^PARU_COMMIT="\$\{PARU_COMMIT:-[0-9a-f]{40}\}"' "$BOOTSTRAP"
     grep -Fq 'git -C "$tmp/paru" checkout --detach "$PARU_COMMIT"' "$BOOTSTRAP"

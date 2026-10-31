@@ -24,6 +24,13 @@ start_agent() {
     ssh-add "$TEST_KEY" >/dev/null 2>&1
 }
 
+@test "tracked authorized keys contain no personal email comments" {
+    local keys="$REPO_ROOT/home/private_dot_ssh/private_authorized_keys"
+
+    grep -Eq '^ssh-[^ ]+ [^ ]+' "$keys"
+    ! grep -Eq '^ssh-[^ ]+ [^ ]+ .*@' "$keys"
+}
+
 @test "sshd hardening keeps key-only authentication and disables forwarding" {
     local conf="$REPO_ROOT/provisioning/arch/system/sshd-hardening.conf"
 
@@ -32,7 +39,11 @@ start_agent() {
     grep -qx 'PermitRootLogin no' "$conf"
     grep -qx 'PubkeyAuthentication yes' "$conf"
     grep -qx 'AuthenticationMethods publickey' "$conf"
-    grep -qx 'MaxAuthTries 3' "$conf"
+    grep -qx 'PermitEmptyPasswords no' "$conf"
+    grep -qx 'MaxAuthTries 6' "$conf"
+    grep -qx 'LoginGraceTime 30' "$conf"
+    grep -qx 'UseDNS no' "$conf"
+    grep -qx 'GSSAPIAuthentication no' "$conf"
     grep -qx 'AllowAgentForwarding no' "$conf"
     grep -qx 'X11Forwarding no' "$conf"
 }

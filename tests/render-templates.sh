@@ -83,12 +83,16 @@ HOME="$TMP_ROOT/blank/home" XDG_CONFIG_HOME="$TMP_ROOT/blank/home/.config" \
 
 expect_not_contains "$TMP_ROOT/blank/gitconfig" 'includeIf .*Projects/work' \
     "blank work email omits the work include"
-expect_not_contains "$TMP_ROOT/blank/ssh-config" 'source\.developers\.google\.com' \
+expect_not_contains "$TMP_ROOT/blank/ssh-config" 'Host source\.developers\.google\.com' \
     "blank work email omits the Cloud Source host"
 expect_contains "$TMP_ROOT/blank/ssh-config" 'ProxyCommand tailscale nc' \
     "Tailscale device names proxy through tailscaled"
-expect_contains "$TMP_ROOT/blank/ssh-config" 'ControlPath .*XDG_RUNTIME_DIR.*ssh-control-%C' \
-    "SSH control sockets live in the runtime directory"
+expect_contains "$TMP_ROOT/blank/ssh-config" 'Match host "\*,!github.com,!gitlab.com' \
+    "Tailscale matching skips ordinary Git hosts"
+expect_contains "$TMP_ROOT/blank/ssh-config" 'ControlPath %d/\.ssh/control-%C' \
+    "SSH control sockets live in the user home directory"
+expect_contains "$TMP_ROOT/blank/ssh-config" 'IdentityAgent /run/user/[0-9]+/ssh-agent.sock' \
+    "WSL agent relay is used when SSH_AUTH_SOCK is absent"
 if [[ -s "$TMP_ROOT/blank/work.inc" ]]; then
     fail "blank work email leaves work.inc empty"
 else

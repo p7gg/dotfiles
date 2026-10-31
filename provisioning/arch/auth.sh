@@ -35,6 +35,10 @@ fi
 ROOT_RUNNER=run_sudo
 export ROOT_RUNNER
 
+can_prompt() {
+    ((DRY_RUN == 0 && NON_INTERACTIVE == 0)) && [[ -t 0 ]]
+}
+
 trap 'on_error' ERR
 
 usage() {
@@ -42,7 +46,7 @@ usage() {
 Usage: provisioning/arch/auth.sh [options]
 
 Options:
-  --check             Report missing authentication without changing anything
+  --check             Report missing authentication without signing in
   --dry-run           Print actions without changing anything
   --generate-key      Generate ~/.ssh/id_ed25519 if it does not exist (on WSL,
                       import it into the Bitwarden vault, then remove the private
@@ -113,7 +117,7 @@ authenticate_mcp() {
         state_text="not waiting for authentication"
     fi
 
-    if ((DRY_RUN || NON_INTERACTIVE)); then
+    if ((DRY_RUN)) || ! can_prompt; then
         warn "$label MCP $state_text; run: (cd $dir && opencode mcp auth $name)"
         AUTH_INCOMPLETE=1
         return
@@ -148,11 +152,13 @@ bws_token_shape_ok() {
 }
 
 bws_token_present() {
+    local output
     # `secret-tool search` exits 0 even when nothing matches, so inspect the
-    # output for an item path. Search reports locked items without unlocking.
-    command -v secret-tool >/dev/null 2>&1 &&
-        secret-tool search --all service bws account "$BWS_ACCOUNT" 2>/dev/null |
-        grep -q '^\['
+    # output for an item path. Capture first so `grep -q` cannot close the pipe
+    # early and turn a match into a SIGPIPE failure.
+    command -v secret-tool >/dev/null 2>&1 || return 1
+    output="$(secret-tool search --all service bws account "$BWS_ACCOUNT" 2>/dev/null || true)"
+    grep -q '^\[' <<<"$output"
 }
 
 store_bws_token() {
@@ -180,14 +186,51 @@ store_bws_token() {
 }
 
 gh_key_exists() {
-    local endpoint="$1" key="$2"
-    gh api --paginate "$endpoint" --jq '.[].key' 2>/dev/null | grep -Fxq "$key"
+    local endpoint="$1" key="$2" keys
+    keys="$(gh api --hostname github.com --paginate "$endpoint" --jq '.[].key' 2>/dev/null || true)"
+    grep -Fxq "$key" <<<"$keys"
 }
 
 gh_has_scopes() {
     local status
     status="$(gh auth status --hostname github.com 2>&1 || true)"
     [[ "$status" == *"admin:public_key"* && "$status" == *"admin:ssh_signing_key"* ]]
+}
+
+check_commit_signing() {
+    local format program signingkey allowed status=0
+
+    format="$(git config --global --get gpg.format 2>/dev/null || true)"
+    [[ "$format" == ssh ]] || {
+        warn "git gpg.format is not ssh; commit signing is not configured"
+        status=1
+    }
+
+    program="$(git config --global --get gpg.ssh.program 2>/dev/null || true)"
+    program="${program/#\~/$HOME}"
+    [[ -n "$program" && -x "$program" ]] || {
+        warn "git gpg.ssh.program is missing or not executable"
+        status=1
+    }
+
+    signingkey="$(git config --global --get user.signingkey 2>/dev/null || true)"
+    signingkey="${signingkey/#\~/$HOME}"
+    [[ -n "$signingkey" && -f "$signingkey" ]] || {
+        warn "git user.signingkey does not point at a public key file"
+        status=1
+    }
+
+    allowed="$(git config --global --get gpg.ssh.allowedSignersFile 2>/dev/null || true)"
+    allowed="${allowed/#\~/$HOME}"
+    if [[ -z "$allowed" || ! -f "$allowed" ]]; then
+        warn "git gpg.ssh.allowedSignersFile is missing"
+        status=1
+    elif [[ -n "$public_key" ]] && ! grep -Fq -- "$public_key" "$allowed"; then
+        warn "allowed_signers does not contain the current public key"
+        status=1
+    fi
+
+    ((status == 0)) || AUTH_INCOMPLETE=1
 }
 
 ensure_gh_key() {
@@ -307,7 +350,7 @@ fi
 
 email="${AUTH_EMAIL:-$(git config --global --get user.email 2>/dev/null || true)}"
 if [[ -z "$email" ]]; then
-    if ((NON_INTERACTIVE || DRY_RUN)) || [[ ! -t 0 ]]; then
+    if ((DRY_RUN)) || ! can_prompt; then
         warn "no email for the SSH key comment; pass --email or set git user.email"
         AUTH_INCOMPLETE=1
     else
@@ -326,13 +369,13 @@ have_pub=0
 if [[ -f "$KEY" ]]; then
     have_key=1
 fi
-if [[ -f "${KEY}.pub" ]]; then
+if [[ -s "${KEY}.pub" ]] && ssh-keygen -lf "${KEY}.pub" >/dev/null 2>&1; then
     have_pub=1
 fi
 
 if ((have_key == 0 && have_pub == 0)); then
     if ((GENERATE_KEY)); then
-        if ((DRY_RUN || NON_INTERACTIVE)); then
+        if ((DRY_RUN)) || ! can_prompt; then
             warn "SSH key is missing; rerun interactively with --generate-key"
             AUTH_INCOMPLETE=1
         else
@@ -352,18 +395,29 @@ if ((have_key)); then
     fi
 
     if [[ ! -f "${KEY}.pub" ]]; then
-        if ((DRY_RUN || NON_INTERACTIVE)); then
+        if ((DRY_RUN)) || ! can_prompt; then
             warn "public key is missing: ${KEY}.pub; rerun interactively to derive it"
             AUTH_INCOMPLETE=1
         else
             log "Deriving public key from $KEY"
-            ssh-keygen -y -f "$KEY" >"${KEY}.pub"
-            chmod 644 "${KEY}.pub"
+            derived_pub="$(mktemp)"
+            if ssh-keygen -y -f "$KEY" >"$derived_pub" && [[ -s "$derived_pub" ]]; then
+                mv "$derived_pub" "${KEY}.pub"
+                chmod 644 "${KEY}.pub"
+            else
+                rm -f "$derived_pub"
+                warn "could not derive a valid public key from $KEY"
+                AUTH_INCOMPLETE=1
+            fi
         fi
     fi
 fi
 
-[[ -f "${KEY}.pub" ]] && have_pub=1
+if [[ -s "${KEY}.pub" ]] && ssh-keygen -lf "${KEY}.pub" >/dev/null 2>&1; then
+    have_pub=1
+else
+    have_pub=0
+fi
 
 public_key=""
 if ((have_pub)); then
@@ -390,6 +444,12 @@ if ((have_pub)) && [[ -n "$email" ]]; then
     fi
 fi
 
+if ((have_pub)); then
+    check_commit_signing
+fi
+
+check_commit_signing
+
 if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
     agent_socket=""
     agent_ready=0
@@ -411,6 +471,16 @@ if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
                 AUTH_INCOMPLETE=1
             elif systemctl --user enable --now ssh-agent-bridge.service >/dev/null 2>&1; then
                 log "Started ssh-agent-bridge.service"
+                # Type=simple returns as soon as socat starts; give it a moment
+                # to bind the socket before deciding the relay is unavailable.
+                for _ in {1..10}; do
+                    [[ -S "$agent_socket" ]] && break
+                    sleep 0.5
+                done
+                if [[ ! -S "$agent_socket" ]]; then
+                    warn "ssh-agent-bridge.service started but $agent_socket is missing"
+                    AUTH_INCOMPLETE=1
+                fi
             else
                 warn "could not start ssh-agent-bridge.service; run provisioning/arch/bootstrap.sh"
                 AUTH_INCOMPLETE=1
@@ -433,6 +503,9 @@ if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
         ssh-add -l >/dev/null 2>&1 || agent_status=$?
         if [[ "$agent_status" -eq 0 || "$agent_status" -eq 1 ]]; then
             agent_ready=1
+        else
+            warn "SSH agent at $agent_socket is not reachable"
+            AUTH_INCOMPLETE=1
         fi
     else
         warn "no SSH agent in this session; start one (GNOME Keyring provides it)"
@@ -454,7 +527,7 @@ if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
         elif ((DRY_RUN)); then
             warn "SSH key is not loaded; would run: ssh-add $KEY"
             AUTH_INCOMPLETE=1
-        elif ((NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+        elif ! can_prompt; then
             warn "SSH key is not loaded; run 'ssh-add $KEY' in a terminal"
             AUTH_INCOMPLETE=1
         elif ! ssh-add "$KEY"; then
@@ -487,7 +560,7 @@ if ((SKIP_GH == 0)); then
         warn "gh is not installed; run provisioning/arch/bootstrap.sh and rerun this script"
         AUTH_INCOMPLETE=1
     elif ! gh auth status --hostname github.com >/dev/null 2>&1; then
-        if ((DRY_RUN || NON_INTERACTIVE)); then
+        if ((DRY_RUN)) || ! can_prompt; then
             warn "GitHub CLI is not authenticated; run: gh auth login"
             AUTH_INCOMPLETE=1
         else
@@ -499,7 +572,7 @@ if ((SKIP_GH == 0)); then
             fi
         fi
     elif ! gh_has_scopes; then
-        if ((DRY_RUN || NON_INTERACTIVE)); then
+        if ((DRY_RUN)) || ! can_prompt; then
             warn "GitHub CLI token is missing admin:public_key or admin:ssh_signing_key"
             AUTH_INCOMPLETE=1
         else
@@ -534,7 +607,7 @@ if ((SKIP_GCLOUD == 0)); then
     else
         active_account="$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 || true)"
         if [[ -z "$active_account" ]]; then
-            if ((DRY_RUN || NON_INTERACTIVE)); then
+            if ((DRY_RUN)) || ! can_prompt; then
                 warn "gcloud is not authenticated; run: gcloud auth login"
                 AUTH_INCOMPLETE=1
             else
@@ -550,7 +623,7 @@ if ((SKIP_GCLOUD == 0)); then
         fi
 
         if [[ -z "$(gcloud auth application-default print-access-token 2>/dev/null || true)" ]]; then
-            if ((DRY_RUN || NON_INTERACTIVE)); then
+            if ((DRY_RUN)) || ! can_prompt; then
                 warn "gcloud application default credentials are missing; run: gcloud auth application-default login"
                 AUTH_INCOMPLETE=1
             else
@@ -601,7 +674,7 @@ if ((SKIP_TAILSCALE == 0)); then
 
         if [[ "$tailscale_state" == "Running" ]]; then
             log "Tailscale is already connected"
-        elif ((DRY_RUN || NON_INTERACTIVE)); then
+        elif ((DRY_RUN)) || ! can_prompt; then
             warn "Tailscale is not connected (state: ${tailscale_state:-unknown}); run: sudo tailscale up"
             AUTH_INCOMPLETE=1
         else
@@ -609,7 +682,7 @@ if ((SKIP_TAILSCALE == 0)); then
             run_optional sudo tailscale up || AUTH_INCOMPLETE=1
         fi
 
-        if ((DRY_RUN || NON_INTERACTIVE)); then
+        if ((DRY_RUN)) || ! can_prompt; then
             log "Would ensure Tailscale operator is $(id -un)"
         elif ! run_optional sudo tailscale set --operator="$(id -un)"; then
             warn "could not set Tailscale operator"
@@ -630,7 +703,7 @@ if ((SKIP_BWS == 0)); then
         AUTH_INCOMPLETE=1
     elif bws_token_present; then
         log "Bitwarden Secrets Manager token is already stored (replace: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT)"
-    elif ((DRY_RUN || NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
+    elif ((DRY_RUN)) || ! can_prompt; then
         warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
         AUTH_INCOMPLETE=1
     else

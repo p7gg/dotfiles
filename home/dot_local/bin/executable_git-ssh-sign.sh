@@ -14,6 +14,17 @@ set -eu
 
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
+# A socket file can outlive the agent that created it. Probe the inherited
+# socket before trusting it, then prefer a reachable candidate that actually
+# holds keys.
+agent_has_keys() {
+    ssh-add -l >/dev/null 2>&1
+}
+
+if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "${SSH_AUTH_SOCK}" ] && ! agent_has_keys; then
+    unset SSH_AUTH_SOCK
+fi
+
 if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
     for candidate in \
         "$runtime/ssh-agent.sock" \
@@ -22,8 +33,10 @@ if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
         "$runtime/gcr/ssh"; do
         if [ -S "$candidate" ]; then
             SSH_AUTH_SOCK="$candidate"
-            export SSH_AUTH_SOCK
-            break
+            if agent_has_keys; then
+                export SSH_AUTH_SOCK
+                break
+            fi
         fi
     done
 fi

@@ -22,7 +22,7 @@ If you prefer stronger isolation, use separate personal/work keys and adjust the
 two `Host` entries; Bitwarden can hold both, but its agent has no per-request key
 selection, so use `IdentityFile`/`IdentitiesOnly` to choose the offered key.
 
-Inspect authentication without changing anything:
+Inspect authentication without signing in or storing secrets:
 
 ```bash
 ./provisioning/arch/auth.sh --check
@@ -187,7 +187,7 @@ ssh -p 2022 -T <work-email>@source.developers.google.com
 ### SSH multiplexing
 
 `ControlMaster` keeps one connection per `%C` hash. The socket lives under
-`$XDG_RUNTIME_DIR`, so a WSL restart or logout clears it. If a master is left
+`~/.ssh`, so it works even when `XDG_RUNTIME_DIR` is unset. If a master is left
 behind — or is still alive after its original client is gone — SSH can report
 `PERMISSION_DENIED` or `ControlSocket ... already exists` for every remote.
 Close a specific master with `ssh -O exit <host>`, or remove the sockets when no
@@ -195,7 +195,7 @@ SSH session is active:
 
 ```bash
 ssh -O exit git@github.com
-rm -f "$XDG_RUNTIME_DIR"/ssh-control-* ~/.ssh/control-*
+rm -f ~/.ssh/control-*
 ```
 
 Cloud Source Repositories opts out of multiplexing (`ControlMaster no`,

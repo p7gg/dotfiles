@@ -61,9 +61,10 @@ heading_slugs() {
     local file="$1"
 
     # Ignore headings inside fenced code blocks; shell/PowerShell comments that
-    # start with '#' are not Markdown anchors.
+    # start with '#' are not Markdown anchors. Accept up to three leading
+    # spaces and both backtick and tilde fences.
     awk '
-        /^```/ { in_code = !in_code; next }
+        /^ {0,3}(```|~~~)/ { in_code = !in_code; next }
         !in_code && /^#{1,6}[[:space:]]+/ {
             sub(/^#{1,6}[[:space:]]+/, "")
             print
@@ -160,8 +161,11 @@ markdown_files() {
 packages_dir="$CHECK_ROOT/provisioning/arch/packages"
 package_files=(base.txt native.txt wsl.txt aur.txt aur-native.txt aur-wsl.txt fonts.txt)
 for file in "${package_files[@]}"; do
-    [[ -f "$packages_dir/$file" ]] ||
+    if [[ ! -f "$packages_dir/$file" ]]; then
         fail "missing package list: provisioning/arch/packages/$file"
+    elif [[ -z "$(filter_packages "$packages_dir/$file")" ]]; then
+        fail "empty package list: provisioning/arch/packages/$file"
+    fi
 done
 
 all_required="$(

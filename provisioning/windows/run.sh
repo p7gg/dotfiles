@@ -110,7 +110,7 @@ if [[ ("$subcommand" == "bootstrap" || "$subcommand" == "settings") && -t 0 ]]; 
     for arg in "$@"; do
         case "${arg,,}" in
         -yes | --yes) has_yes=1 ;;
-        -check | --check | -dryrun | --dryrun) has_noninteractive=1 ;;
+        -check | --check | -dryrun | --dryrun | -dry-run | --dry-run) has_noninteractive=1 ;;
         esac
     done
     if ((has_yes == 0 && has_noninteractive == 0)); then

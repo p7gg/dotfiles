@@ -110,7 +110,7 @@ By default the CLI tracks the latest release. Pin a reviewed version when
 reproducibility matters:
 
 ```bash
-OPENCODE_VERSION=<version> ./provisioning/arch/bootstrap.sh --profile wsl
+OPENCODE_VERSION='<version>' ./provisioning/arch/bootstrap.sh --profile wsl
 ```
 
 Use `--no-opencode` to skip the step. If the release metadata or checksum is

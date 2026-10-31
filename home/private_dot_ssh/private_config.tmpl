@@ -21,9 +21,11 @@ Host *
     ServerAliveCountMax 3
     HashKnownHosts yes
     ControlMaster auto
-    # Keep multiplexing sockets in the per-user runtime directory; a WSL
-    # restart or logout clears them, so stale masters do not survive.
-    ControlPath ${XDG_RUNTIME_DIR}/ssh-control-%C
+    # Keep multiplexing sockets under the user's home. Unlike an
+    # XDG_RUNTIME_DIR-based path, this still works for cron jobs and agent
+    # processes that do not inherit the variable. ControlPersist closes idle
+    # masters; see docs/auth.md for cleanup.
+    ControlPath %d/.ssh/control-%C
     ControlPersist 10m
 
 Host github.com
@@ -47,6 +49,7 @@ Match exec "test -S /run/user/{{ .chezmoi.uid }}/ssh-agent.sock"
 # `ssh gabriel@laptop` reaches the device named laptop. `tailscale ip` resolves
 # the name from tailscaled's peer list and `tailscale nc` carries the session
 # through the daemon, so this does not depend on the OS resolving MagicDNS
-# names. Hosts that are not tailnet devices are left to the normal resolver.
-Match exec "tailscale ip -4 '%h' >/dev/null 2>&1"
+# names. Skip public hosts and localhost: the daemon lookup costs ~200ms and
+# must not run for every GitHub/GitLab fetch.
+Match host "*,!github.com,!gitlab.com,!source.developers.google.com,!localhost,!127.0.0.1,!::1" exec "timeout 1 tailscale ip -4 '%h' >/dev/null 2>&1"
     ProxyCommand tailscale nc "$(tailscale ip -4 '%h')" %p

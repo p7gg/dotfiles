@@ -47,7 +47,7 @@ Start with the task you need:
   setup, and `--non-interactive` only after setting root and user passwords; it
   fails before changes when a `passwd` prompt would be needed.
 - Use `provisioning/arch/auth.sh --check` to inspect authentication without
-  changing it.
+  signing in.
 - Package reconciliation is install-only. The bootstrap never removes packages.
 - The OpenCode CLI is installed from a verified npm tarball.
 - AUR packages execute code at build time. The bootstrap builds `paru` from a

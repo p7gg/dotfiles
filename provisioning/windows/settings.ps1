@@ -274,7 +274,7 @@ if (-not $needsChanges) {
 }
 
 if ($Check) {
-    Write-Info 'Check complete: settings need updates.'
+    Write-Result -Status fail -Message 'managed settings differ from the tracked defaults'
     Write-Section 'Summary'
     $exitCode = Show-Summary
     exit $exitCode

@@ -938,31 +938,36 @@ setup_sshd() {
 }
 
 sshd_hardening_effective() {
-    local effective
+    local effective expected user
 
-    effective="$(sudo sshd -T 2>/dev/null)" || return 1
-    # sshd -T prints canonical CamelCase keys; compare lowercase so the check
-    # does not depend on the wording used in the managed file.
-    effective="${effective,,}"
+    # sshd -T without -C reports only global settings, so a Match block in an
+    # unmanaged drop-in could re-enable password auth for a specific user. Check
+    # root and the invoking user explicitly and fail closed if either differs.
+    for user in root "$(id -un)"; do
+        effective="$(sudo sshd -T -C "user=$user,host=localhost,addr=127.0.0.1" 2>/dev/null)" ||
+            return 1
+        # sshd -T prints canonical CamelCase keys; compare lowercase so the
+        # check does not depend on the wording used in the managed file.
+        effective="${effective,,}"
 
-    local expected
-    while IFS= read -r expected; do
-        [[ -n "$expected" ]] || continue
-        grep -qx -- "$expected" <<<"$effective" || return 1
-    done <<'EOF'
+        while IFS= read -r expected; do
+            [[ -n "$expected" ]] || continue
+            grep -qx -- "$expected" <<<"$effective" || return 1
+        done <<'EOF'
 passwordauthentication no
 kbdinteractiveauthentication no
 permitrootlogin no
 pubkeyauthentication yes
 authenticationmethods publickey
 permitemptypasswords no
-maxauthtries 3
+maxauthtries 6
 logingracetime 30
 usedns no
 gssapiauthentication no
 allowagentforwarding no
 x11forwarding no
 EOF
+    done
 }
 
 restore_sshd_config() {
@@ -970,13 +975,15 @@ restore_sshd_config() {
     local backup="$2"
 
     if [[ -n "$backup" ]]; then
-        run_optional sudo install -Dm644 "$backup" "$dest" ||
-            warn "could not restore $dest"
+        if run_optional sudo install -Dm644 "$backup" "$dest"; then
+            rm -f "$backup"
+        else
+            warn "could not restore $dest; backup kept at $backup"
+        fi
     else
         run_optional sudo rm -f "$dest" ||
             warn "could not remove $dest"
     fi
-    rm -f "$backup"
 }
 
 setup_sshd_hardening() {
@@ -1447,7 +1454,6 @@ if ((DO_SYSTEM)); then
     configure_reflector
     setup_timers "$PROFILE"
     setup_firewall "$PROFILE"
-    setup_sshd "$PROFILE"
     setup_tailscale "$PROFILE"
 else
     log "Skipping system maintenance"
@@ -1464,11 +1470,12 @@ if ((DO_SYSTEM)); then
 fi
 
 # Run after dotfiles so a managed ~/.ssh/authorized_keys exists before password
-# auth is disabled.
+# auth is disabled. Start sshd only after the hardening drop-in is effective.
 if ((DO_SYSTEM)); then
     setup_sshd_hardening
+    setup_sshd "$PROFILE"
 else
-    log "Skipping sshd hardening"
+    log "Skipping sshd setup and hardening"
 fi
 
 if ((DO_HOOKS)); then
