@@ -57,6 +57,16 @@ else
     warn "opencode is not installed at $opencode_bin; run ./provisioning/arch/bootstrap.sh"
 fi
 
+login_shell="$(getent passwd "$USER" | cut -d: -f7 || true)"
+if [[ -n "$login_shell" ]] && ! grep -qxF -- "$login_shell" /etc/shells; then
+    canonical_shell="$(readlink -f -- "$login_shell" 2>/dev/null || true)"
+    if [[ -n "$canonical_shell" ]] && grep -qxF -- "$canonical_shell" /etc/shells; then
+        warn "login shell $login_shell is not listed in /etc/shells; run: sudo chsh -s $canonical_shell $USER"
+    else
+        warn "login shell $login_shell is not listed in /etc/shells"
+    fi
+fi
+
 log "==> repository"
 log "repository: $REPO_ROOT"
 if [[ "$(git config --local --get gitbutler.signCommits 2>/dev/null || true)" == "false" ]]; then

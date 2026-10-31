@@ -581,7 +581,10 @@ setup_shell() {
     fi
 
     user="$(id -un)"
-    fish_path="$(command -v fish)"
+    # Resolve /usr/sbin to /usr/bin on Arch: pam_shells matches the literal
+    # login shell against /etc/shells, so a /usr/sbin spelling breaks SSH
+    # password authentication even though it points at the same binary.
+    fish_path="$(readlink -f -- "$(command -v fish)")"
     current_shell="$(getent passwd "$user" | cut -d: -f7)"
 
     if [[ "$current_shell" == "$fish_path" ]]; then
