@@ -65,6 +65,19 @@ render() {
         <"$REPO_ROOT/home/$template" >"$output"
 }
 
+# Render a template with a simulated kernel release so OS-specific branches are
+# exercised the same way on every host, including the Linux CI container.
+render_for_kernel() {
+    local template="$1"
+    local config="$2"
+    local output="$3"
+    local osrelease="$4"
+
+    chezmoi --config "$config" execute-template \
+        --override-data "{\"chezmoi\":{\"kernel\":{\"osrelease\":\"$osrelease\"}}}" \
+        <"$REPO_ROOT/home/$template" >"$output"
+}
+
 mkdir -p "$TMP_ROOT/blank" "$TMP_ROOT/work" "$TMP_ROOT/init-home/.config"
 
 write_config "" "$TMP_ROOT/blank/chezmoi.toml"
@@ -72,7 +85,10 @@ write_config "work@example.com" "$TMP_ROOT/work/chezmoi.toml"
 
 render dot_gitconfig.tmpl "$TMP_ROOT/blank/chezmoi.toml" "$TMP_ROOT/blank/gitconfig"
 render dot_config/git/work.inc.tmpl "$TMP_ROOT/blank/chezmoi.toml" "$TMP_ROOT/blank/work.inc"
-render private_dot_ssh/private_config.tmpl "$TMP_ROOT/blank/chezmoi.toml" "$TMP_ROOT/blank/ssh-config"
+render_for_kernel private_dot_ssh/private_config.tmpl "$TMP_ROOT/blank/chezmoi.toml" \
+    "$TMP_ROOT/blank/ssh-config" "6.18.0-arch1-1"
+render_for_kernel private_dot_ssh/private_config.tmpl "$TMP_ROOT/blank/chezmoi.toml" \
+    "$TMP_ROOT/blank/ssh-config-wsl" "6.18.0-microsoft-standard-WSL2"
 HOME="$TMP_ROOT/blank/home" XDG_CONFIG_HOME="$TMP_ROOT/blank/home/.config" \
     chezmoi --config "$TMP_ROOT/blank/chezmoi.toml" execute-template \
     <"$REPO_ROOT/home/dot_config/go/env.tmpl" >"$TMP_ROOT/blank/go-env"
@@ -91,7 +107,9 @@ expect_contains "$TMP_ROOT/blank/ssh-config" 'Match host "\*,!github.com,!gitlab
     "Tailscale matching skips ordinary Git hosts"
 expect_contains "$TMP_ROOT/blank/ssh-config" 'ControlPath %d/\.ssh/control-%C' \
     "SSH control sockets live in the user home directory"
-expect_contains "$TMP_ROOT/blank/ssh-config" 'IdentityAgent /run/user/[0-9]+/ssh-agent.sock' \
+expect_not_contains "$TMP_ROOT/blank/ssh-config" 'IdentityAgent /run/user/[0-9]+/ssh-agent.sock' \
+    "non-WSL hosts do not use the WSL agent relay"
+expect_contains "$TMP_ROOT/blank/ssh-config-wsl" 'IdentityAgent /run/user/[0-9]+/ssh-agent.sock' \
     "WSL agent relay is used when SSH_AUTH_SOCK is absent"
 if [[ -s "$TMP_ROOT/blank/work.inc" ]]; then
     fail "blank work email leaves work.inc empty"
