@@ -320,18 +320,19 @@ reviewed release with `OPENCODE_VERSION`; skip the step with `--no-opencode`.
 `just doctor` warns when `opencode` resolves somewhere other than the managed
 binary. Update with `opencode upgrade` or by rerunning bootstrap.
 
-OpenCode MCP servers are scoped by directory:
+OpenCode MCP servers are configured globally and available in every project:
 
-- global — `context7`, no authentication required
-- `~/Projects` — `linear`, OAuth, for personal projects
-- `~/Projects/work` — `jira`, OAuth; `linear` disabled
+- `context7`, no authentication required
+- `gh_grep`, no authentication required
+- `linear`, OAuth
+- `jira`, OAuth
 
 Check and repair authentication:
 
 ```bash
 opencode mcp list
-(cd ~/Projects && opencode mcp auth linear)
-(cd ~/Projects/work && opencode mcp auth jira)
+opencode mcp auth linear
+opencode mcp auth jira
 ```
 
 Inside a session, `/mcps` shows server status. `provisioning/arch/auth.sh` connects

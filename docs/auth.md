@@ -43,8 +43,7 @@ It will:
 - authenticate `gcloud` and application default credentials
 - authenticate Tailscale when the daemon is running
 - offer to store the Bitwarden Secrets Manager token in GNOME Keyring
-- authenticate the Linear MCP server from `~/Projects` and the Jira MCP server
-  from `~/Projects/work` with OAuth
+- authenticate the Linear and Jira MCP servers with OAuth
 - print the key fingerprint and the Cloud Source Repositories registration URL
 
 The helper skips MCP sign-in when a server is already connected. Use
