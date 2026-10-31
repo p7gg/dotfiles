@@ -141,9 +141,9 @@ Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings, and `~/.config/opencode/opencode.json` with the global MCP
 servers. MCP servers are scoped to the projects that need them:
 
-- `~/.config/opencode/opencode.json` — `context7` only, at
-  `https://mcp.context7.com/mcp` (no authentication required). It is available
-  in every project.
+- `~/.config/opencode/opencode.json` — `context7` at
+  `https://mcp.context7.com/mcp` and `gh_grep` at `https://mcp.grep.app` (both
+  without authentication). They are available in every project.
 - `~/Projects/opencode.json` — `linear`, at `https://mcp.linear.app/mcp`
   (OAuth), for personal projects.
 - `~/Projects/work/opencode.json` — `jira`, at
@@ -158,13 +158,23 @@ then override the `linear` server with `disabled: true` in the work config.
 `~/Projects/work` through their OAuth flows. To authenticate later, run
 `(cd ~/Projects && opencode mcp auth linear)` or
 `(cd ~/Projects/work && opencode mcp auth jira)`, or use `/mcps` in OpenCode.
-Context7 works without an API key. The tracked `opencode.json` already sends
-`CONTEXT7_API_KEY` from the environment when it is set; export the variable only
-if you want the higher rate limits.
+Context7 and `gh_grep` work without an API key. The tracked `opencode.json`
+already sends `CONTEXT7_API_KEY` from the environment when it is set; export the
+variable only if you want the higher rate limits.
 
 OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
 local service password.
+
+### Agents and context
+
+T3 Code always runs the primary `build` agent (or `plan` in plan mode); it does
+not expose OpenCode's agent picker. This setup keeps OpenCode's default agents
+and does not install a custom subagent roster or orchestration instruction, so
+`build` and `plan` behave like vanilla OpenCode.
+
+The only additions are the `context7` and `gh_grep` MCP servers above and the
+`reflect` skill below.
 
 Global agent skills are tracked from `~/.agents/skills` and
 `~/.agents/.skill-lock.json` under `home/dot_agents`. The lock records the source
@@ -176,6 +186,11 @@ To update skills, run `just skills` (or `npx skills update -g` followed by
 skill, run `npx skills add <owner/repo> -g -a opencode -s <skill>` and add it
 the same way. Project-local skills under a repository's `.agents/skills` are not
 managed by chezmoi; work repositories ignore those folders.
+
+The custom `reflect` skill lives in `~/.config/opencode/skills/reflect/` and is
+exposed as `/reflect`. It reviews recent work for repeated friction and proposes
+the smallest reusable improvement; `--sessions` reads the local OpenCode session
+database. It is adapted from the `oh-my-opencode-slim` reflect skill (MIT).
 
 ## Git defaults
 
