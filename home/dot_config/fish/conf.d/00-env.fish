@@ -1,11 +1,22 @@
-# Interactive shell environment.
-if type -q nvim
-    set -gx EDITOR nvim
-else if type -q vim
-    set -gx EDITOR vim
-else
-    set -gx EDITOR nano
+# Interactive shell environment. Check the usual install locations directly;
+# `type -q` walks the whole PATH, which is noticeably slow when WSL appends the
+# Windows PATH.
+set -l editor nano
+for candidate in $HOME/.local/bin/nvim /usr/local/bin/nvim /usr/bin/nvim
+    if test -x $candidate
+        set editor nvim
+        break
+    end
 end
+if test $editor = nano
+    for candidate in $HOME/.local/bin/vim /usr/local/bin/vim /usr/bin/vim
+        if test -x $candidate
+            set editor vim
+            break
+        end
+    end
+end
+set -gx EDITOR $editor
 
 set -gx VISUAL $EDITOR
 set -gx PAGER less
