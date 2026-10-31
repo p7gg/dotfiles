@@ -6,32 +6,22 @@ setup() {
     source "$REPO_ROOT/provisioning/arch/lib/common.sh"
 }
 
-@test "bootstrap --help documents the profile override" {
+@test "bootstrap documents its options and rejects invalid arguments" {
     run "$REPO_ROOT/provisioning/arch/bootstrap.sh" --help
-
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: provisioning/arch/bootstrap.sh"* ]]
     [[ "$output" == *"--allow-profile-mismatch"* ]]
     [[ "$output" == *"--profile native|wsl"* ]]
-}
 
-@test "bootstrap rejects unknown options" {
     run "$REPO_ROOT/provisioning/arch/bootstrap.sh" --not-a-real-option
-
     [ "$status" -eq 1 ]
     [[ "$output" == *"unknown option: --not-a-real-option"* ]]
-}
 
-@test "bootstrap requires an argument for --profile" {
     run "$REPO_ROOT/provisioning/arch/bootstrap.sh" --profile
-
     [ "$status" -eq 1 ]
     [[ "$output" == *"--profile requires an argument"* ]]
-}
 
-@test "bootstrap rejects an invalid profile" {
     run "$REPO_ROOT/provisioning/arch/bootstrap.sh" --profile solaris --check
-
     [ "$status" -eq 1 ]
     [[ "$output" == *"invalid profile: solaris"* ]]
 }

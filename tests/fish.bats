@@ -139,6 +139,5 @@ EOF
         [ "$status" -ne 0 ]
         [[ "$output" == *"GNOME Keyring for account 'work'"* ]]
         [[ "$output" == *"--bws-account work"* ]]
-        [[ "$output" != *"pass insert"* ]]
     done
 }

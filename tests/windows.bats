@@ -23,26 +23,19 @@ EOF
     chmod +x "$TEST_TMP/bin/wslpath" "$TEST_TMP/bin/pwsh.exe"
 }
 
-@test "windows run.sh --help documents the audit, bootstrap, and settings commands" {
+@test "windows run.sh documents commands and rejects missing or unknown ones" {
     run "$RUN_SH" --help
-
     [ "$status" -eq 0 ]
     [[ "$output" == *"audit [options]"* ]]
     [[ "$output" == *"bootstrap [options]"* ]]
     [[ "$output" == *"settings [options]"* ]]
     [[ "$output" == *"WINDOWS_POWERSHELL"* ]]
-}
 
-@test "windows run.sh requires a command" {
     run "$RUN_SH"
-
     [ "$status" -eq 1 ]
     [[ "$output" == *"Usage:"* ]]
-}
 
-@test "windows run.sh rejects unknown commands before touching Windows" {
     run "$RUN_SH" nonsense
-
     [ "$status" -eq 1 ]
     [[ "$output" == *"unknown command: nonsense"* ]]
 }

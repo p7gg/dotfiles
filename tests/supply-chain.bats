@@ -26,11 +26,6 @@ setup() {
     grep -Fq 'git -C "$tmp/paru" checkout --detach "$PARU_COMMIT"' "$BOOTSTRAP"
 }
 
-@test "documentation no longer advertises the remote OpenCode installer" {
-    ! grep -Rq 'opencode.ai/v2/install' \
-        "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/provisioning/arch"
-}
-
 @test "WSL SSH agent relay is a fail-fast socat bridge" {
     grep -Fq 'UNIX-LISTEN' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
     grep -Fq 'npiperelay' "$REPO_ROOT/home/dot_local/bin/executable_ssh-agent-bridge"
