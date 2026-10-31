@@ -140,6 +140,16 @@ function Merge-TerminalSettings {
                 if (-not $Settings.profiles.defaults) {
                     Set-JsonProperty -Object $Settings.profiles -Name 'defaults' -Value ([pscustomobject]@{})
                 }
+                $desiredFont = $property.Value.defaults.font
+                if ($desiredFont -and $desiredFont.face) {
+                    if (-not $Settings.profiles.defaults.font) {
+                        Set-JsonProperty -Object $Settings.profiles.defaults -Name 'font' -Value ([pscustomobject]@{ face = $desiredFont.face })
+                        $changed = $true
+                    } elseif ($Settings.profiles.defaults.font.face -ne $desiredFont.face) {
+                        Set-JsonProperty -Object $Settings.profiles.defaults.font -Name 'face' -Value $desiredFont.face
+                        $changed = $true
+                    }
+                }
                 $desiredScheme = $property.Value.defaults.colorScheme
                 $currentScheme = $Settings.profiles.defaults.colorScheme
                 if (-not $currentScheme -or

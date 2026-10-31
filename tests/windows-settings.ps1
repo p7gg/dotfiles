@@ -67,6 +67,7 @@ autoMemoryReclaim=gradual
     Assert-True ($json.theme -eq 'system') 'settings sets the theme'
     Assert-True ($json.copyOnSelect -eq $false) 'settings sets copyOnSelect'
     Assert-True ($json.copyFormatting -eq 'none') 'settings sets copyFormatting'
+    Assert-True ($json.profiles.defaults.font.face -eq 'BlexMono Nerd Font') 'settings sets the terminal font'
     Assert-True ($json.profiles.defaults.colorScheme.dark -eq 'VSCode Dark Modern') 'settings sets the dark color scheme'
     Assert-True ($json.keybindings.Count -eq 4) 'settings merges keybindings'
     Assert-True ($json.newTabMenu.Count -eq 1) 'settings ensures the new-tab menu'

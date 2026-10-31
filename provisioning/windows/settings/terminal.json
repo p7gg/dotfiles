@@ -4,6 +4,9 @@
   "copyFormatting": "none",
   "profiles": {
     "defaults": {
+      "font": {
+        "face": "BlexMono Nerd Font"
+      },
       "colorScheme": {
         "light": "VSCode Light Modern",
         "dark": "VSCode Dark Modern"
