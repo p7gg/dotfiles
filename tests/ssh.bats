@@ -59,6 +59,25 @@ start_agent() {
     [ -f "$TEST_TMP/msg.sig" ]
 }
 
+@test "git-ssh-sign uses the relay for a passphrase-protected key" {
+    local protected="$TEST_TMP/protected"
+    local askpass="$TEST_TMP/askpass"
+
+    ssh-keygen -q -t ed25519 -N "secret" -f "$protected"
+    printf '#!/bin/sh\nprintf "%%s\\n" secret\n' >"$askpass"
+    chmod +x "$askpass"
+    start_agent
+    SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force \
+        ssh-add "$protected" </dev/null >/dev/null 2>&1
+    printf 'payload\n' >"$TEST_TMP/msg"
+
+    run env -u SSH_AUTH_SOCK -u SSH_AGENT_PID XDG_RUNTIME_DIR="$TEST_RUNTIME" \
+        "$WRAPPER" -Y sign -n git -f "$protected.pub" "$TEST_TMP/msg"
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_TMP/msg.sig" ]
+}
+
 @test "git-ssh-sign fails instead of prompting without a terminal" {
     command -v setsid >/dev/null || skip "setsid is not available"
     ssh-keygen -q -t ed25519 -N "secret" -f "$TEST_TMP/protected"

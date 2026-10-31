@@ -26,19 +26,26 @@ if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "${SSH_AUTH_SOCK}" ] && ! agent_has_keys;
 fi
 
 if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
+    found=0
     for candidate in \
         "$runtime/ssh-agent.sock" \
         "$runtime/ssh-agent.socket" \
         "$runtime/keyring/ssh" \
         "$runtime/gcr/ssh"; do
         if [ -S "$candidate" ]; then
+            # Export before probing: ssh-add runs as a child process and does
+            # not see a plain shell variable.
             SSH_AUTH_SOCK="$candidate"
+            export SSH_AUTH_SOCK
             if agent_has_keys; then
-                export SSH_AUTH_SOCK
+                found=1
                 break
             fi
         fi
     done
+    if [ "$found" -eq 0 ]; then
+        unset SSH_AUTH_SOCK
+    fi
 fi
 
 sign=0
