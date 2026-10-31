@@ -90,19 +90,23 @@ WSL root setup.
 EOF
 }
 
-pacman_install_file() {
-    local file="$1"
+pacman_install_files() {
+    local file
     local -a pkgs=()
     local -a args=(pacman -S --needed)
 
-    mapfile -t pkgs < <(filter_packages "$file")
+    mapfile -t pkgs < <(
+        for file in "$@"; do
+            filter_packages "$file"
+        done | LC_ALL=C sort -u
+    )
     ((${#pkgs[@]} > 0)) || return 0
 
     if ((ASSUME_YES)); then
         args+=(--noconfirm)
     fi
 
-    log "Installing native packages from ${file#"$REPO_ROOT/"}"
+    log "Installing native packages from tracked lists"
     run_sudo "${args[@]}" "${pkgs[@]}"
 }
 
@@ -190,8 +194,9 @@ install_packages() {
         run_sudo pacman -Syu
     fi
 
-    pacman_install_file "$REPO_ROOT/provisioning/arch/packages/base.txt"
-    pacman_install_file "$REPO_ROOT/provisioning/arch/packages/${profile}.txt"
+    pacman_install_files \
+        "$REPO_ROOT/provisioning/arch/packages/base.txt" \
+        "$REPO_ROOT/provisioning/arch/packages/${profile}.txt"
 
     ensure_paru "$profile"
     paru_install_file "$REPO_ROOT/provisioning/arch/packages/aur.txt"
@@ -276,11 +281,19 @@ setup_opencode() {
         return 0
     fi
 
+    # A pinned version that is already installed needs no network access.
+    if [[ -n "$OPENCODE_VERSION" ]]; then
+        requested_version="${OPENCODE_VERSION#v}"
+        [[ "$requested_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]] ||
+            die "unexpected OpenCode version: ${requested_version:-<missing>}"
+        installed_version="$(opencode_installed_version || true)"
+        if [[ -n "$installed_version" && "$installed_version" == "$requested_version" ]]; then
+            log "OpenCode ${requested_version} is already installed at ${opencode_bin}"
+            return 0
+        fi
+    fi
+
     require_cmd curl
-    require_cmd tar
-    require_cmd sha512sum
-    require_cmd base64
-    require_cmd od
 
     latest_metadata="$(curl_https https://opencode.ai/update/api/latest/cli/npm)" ||
         die "could not read the OpenCode release metadata; skip with --no-opencode"
@@ -293,6 +306,17 @@ setup_opencode() {
         die "unexpected OpenCode package metadata: ${package_name:-<missing>}"
     [[ "$version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]] ||
         die "unexpected OpenCode version: ${version:-<missing>}"
+
+    installed_version="$(opencode_installed_version || true)"
+    if [[ -n "$installed_version" && "$installed_version" == "$version" ]]; then
+        log "OpenCode ${version} is already installed at ${opencode_bin}"
+        return 0
+    fi
+
+    require_cmd tar
+    require_cmd sha512sum
+    require_cmd base64
+    require_cmd od
 
     log "Installing/updating OpenCode ${version} from the verified npm tarball"
     metadata="$(fetch_opencode_package "$package_scope" "$target" "$version")" ||
