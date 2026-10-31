@@ -2,6 +2,9 @@ name: ci
 
 on:
   push:
+    # Pull requests already exercise their head branch. Avoid a second run for
+    # same-repository PRs; keep the scheduled canary for rolling-package drift.
+    branches: [main]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -56,7 +59,8 @@ jobs:
             just \
             openssh \
             shellcheck \
-            shfmt
+            shfmt \
+            sudo
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,6 +74,11 @@ jobs:
       # regular user, like a real machine.
       - name: Create test user
         run: useradd --create-home --user-group --shell /bin/bash tester
+
+      # --check validates the real bootstrap prerequisites as a normal user. It
+      # does not install packages or change the system.
+      - name: Bootstrap check
+        run: runuser -u tester -- env HOME=/home/tester ./provisioning/arch/bootstrap.sh --profile native --check
 
       - name: Test
         run: runuser -u tester -- env HOME=/home/tester ./scripts/test.sh

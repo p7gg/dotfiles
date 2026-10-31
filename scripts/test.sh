@@ -17,7 +17,10 @@ cd "$REPO_ROOT"
 
 "$REPO_ROOT/tests/check-docs.sh"
 "$REPO_ROOT/tests/render-templates.sh"
-bats "$REPO_ROOT/tests"
+
+# Bats files are independent (each gets its own temp directory), so run them in
+# parallel. Tests within a file still run in order.
+bats --jobs "${BATS_JOBS:-$(nproc)}" "$REPO_ROOT/tests"
 
 # Exercise the Windows helpers when running inside WSL. The Arch CI container
 # has no pwsh.exe, so this block is skipped there.
