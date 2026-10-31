@@ -60,10 +60,6 @@ All tracked WinGet IDs resolve with
 `winget show --id <id> -e --source winget`. Add a package only after that check
 passes.
 
-`Tw93.Mole` is installed on the current host but is not available from the
-WinGet source, so it is not part of the inventory. Install it manually or add a
-supported source before tracking it.
-
 Packages installed outside WinGet can be matched by display name through
 `provisioning/windows/packages/aliases.txt`. `Spotify.Spotify` uses this: the
 host installed Spotify from the Store, so the audit and bootstrap match the

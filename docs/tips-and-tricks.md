@@ -3,9 +3,6 @@
 Small habits that make this setup feel fast. Commands assume fish and the
 repository at `~/Projects/dotfiles`.
 
-The illustrations are local SVGs, so they render offline in GitHub, editors, and
-terminal browsers. They are diagrams, not screenshots.
-
 ![A short fish shell tour: eza, fd, ripgrep, zoxide, and key bindings](assets/shell-tour.svg)
 
 ## Shell: fewer keystrokes
@@ -307,9 +304,6 @@ session. A passphrase-protected keyring stays locked after the distro starts.
 Windows Hello PAM authenticates `sudo`; it does not unlock the keyring. See
 [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
 
-Older WSL installs used `pass`. To migrate, see
-[Migrating from `pass`](auth.md#migrating-from-pass).
-
 Use a read-only machine account token scoped to one project, and rotate it. For
 application secrets, prefer `bws run -- <command>` over exporting a shell full
 of environment variables.
@@ -323,10 +317,8 @@ The OpenCode CLI comes from OpenCode's npm release, not pacman. Bootstrap
 verifies the published `sha512` integrity before installing
 `~/.opencode/bin/opencode`, and fish adds that directory to `PATH`. Pin a
 reviewed release with `OPENCODE_VERSION`; skip the step with `--no-opencode`.
-If an older machine still has the pacman package, remove it once with
-`sudo pacman -Rns opencode`; `just doctor` warns when the pacman package is
-present or when `opencode` resolves somewhere else. Update with
-`opencode upgrade` or by rerunning bootstrap.
+`just doctor` warns when `opencode` resolves somewhere other than the managed
+binary. Update with `opencode upgrade` or by rerunning bootstrap.
 
 OpenCode MCP servers are scoped by directory:
 

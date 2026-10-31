@@ -18,8 +18,8 @@ usage() {
     cat <<'EOF'
 Usage: tests/check-docs.sh [--root DIR]
 
-Verify package counts and source-list counts in the documentation and SVG
-assets, then check that every relative Markdown link and HTML asset resolves.
+Verify that tracked packages are documented and that every relative Markdown
+link and HTML asset resolves.
 EOF
 }
 
@@ -51,48 +51,6 @@ done
 
 [[ -d "$CHECK_ROOT" ]] || die "not a directory: $CHECK_ROOT"
 
-count_file() {
-    local file="$1"
-
-    if [[ ! -f "$file" ]]; then
-        fail "missing package list: ${file#"$CHECK_ROOT/"}"
-        printf '0\n'
-        return 0
-    fi
-
-    filter_packages "$file" | wc -l | tr -d ' '
-}
-
-expect_literal() {
-    local file="$1"
-    local needle="$2"
-    local label="$3"
-
-    if [[ ! -f "$file" ]]; then
-        fail "missing documentation file: ${file#"$CHECK_ROOT/"}"
-        return 0
-    fi
-
-    if ! tr '\n' ' ' <"$file" | tr -s '[:space:]' ' ' | grep -Fq -- "$needle"; then
-        fail "${file#"$CHECK_ROOT/"}: expected $label"
-    fi
-}
-
-expect_regex() {
-    local file="$1"
-    local pattern="$2"
-    local label="$3"
-
-    if [[ ! -f "$file" ]]; then
-        fail "missing documentation file: ${file#"$CHECK_ROOT/"}"
-        return 0
-    fi
-
-    if ! grep -Eq -- "$pattern" "$file"; then
-        fail "${file#"$CHECK_ROOT/"}: expected $label"
-    fi
-}
-
 slugify_heading() {
     sed -E 's/<[^>]*>//g; s/`//g' |
         tr '[:upper:]' '[:lower:]' |
@@ -102,8 +60,15 @@ slugify_heading() {
 heading_slugs() {
     local file="$1"
 
-    grep -E '^#{1,6}[[:space:]]+' "$file" 2>/dev/null |
-        sed -E 's/^#{1,6}[[:space:]]+//' |
+    # Ignore headings inside fenced code blocks; shell/PowerShell comments that
+    # start with '#' are not Markdown anchors.
+    awk '
+        /^```/ { in_code = !in_code; next }
+        !in_code && /^#{1,6}[[:space:]]+/ {
+            sub(/^#{1,6}[[:space:]]+/, "")
+            print
+        }
+    ' "$file" 2>/dev/null |
         while IFS= read -r heading; do
             slugify_heading <<<"$heading"
         done || true
@@ -193,13 +158,11 @@ markdown_files() {
 }
 
 packages_dir="$CHECK_ROOT/provisioning/arch/packages"
-base_count="$(count_file "$packages_dir/base.txt")"
-native_count="$(count_file "$packages_dir/native.txt")"
-wsl_count="$(count_file "$packages_dir/wsl.txt")"
-aur_count="$(count_file "$packages_dir/aur.txt")"
-aur_native_count="$(count_file "$packages_dir/aur-native.txt")"
-aur_wsl_count="$(count_file "$packages_dir/aur-wsl.txt")"
-fonts_count="$(count_file "$packages_dir/fonts.txt")"
+package_files=(base.txt native.txt wsl.txt aur.txt aur-native.txt aur-wsl.txt fonts.txt)
+for file in "${package_files[@]}"; do
+    [[ -f "$packages_dir/$file" ]] ||
+        fail "missing package list: provisioning/arch/packages/$file"
+done
 
 all_required="$(
     for file in base.txt native.txt wsl.txt aur.txt aur-native.txt aur-wsl.txt; do
@@ -211,76 +174,10 @@ if [[ -n "$duplicates" ]]; then
     fail "duplicate package names across required lists: $(tr '\n' ' ' <<<"$duplicates")"
 fi
 
-total_count="$(uniq <<<"$all_required" | wc -l | tr -d ' ')"
-native_total=$((base_count + native_count + aur_count + aur_native_count))
-wsl_total=$((base_count + wsl_count + aur_count + aur_wsl_count))
-
-expected_total=67
-expected_native=61
-expected_wsl=58
-expected_fonts=18
-
-((total_count == expected_total)) ||
-    fail "package lists contain $total_count distinct names; expected $expected_total"
-((native_total == expected_native)) ||
-    fail "native profile resolves to $native_total packages; expected $expected_native"
-((wsl_total == expected_wsl)) ||
-    fail "WSL profile resolves to $wsl_total packages; expected $expected_wsl"
-((fonts_count == expected_fonts)) ||
-    fail "font catalog contains $fonts_count packages; expected $expected_fonts"
-
-readme="$CHECK_ROOT/README.md"
-docs_readme="$CHECK_ROOT/docs/README.md"
 packages_doc="$CHECK_ROOT/docs/packages.md"
-flow_svg="$CHECK_ROOT/docs/assets/provisioning-flow.svg"
 
-expect_literal "$readme" \
-    "67 tracked package names: 61 apply to the native profile and 58 to WSL" \
-    "the 67/61/58 package summary"
-expect_literal "$readme" "18 optional Nerd Fonts" "the optional font count"
-expect_literal "$docs_readme" \
-    "All 67 tracked packages (61 native, 58 WSL) plus" \
-    "the 67/61/58 package summary"
-expect_literal "$docs_readme" "18 optional Nerd Fonts" "the optional font count"
-expect_literal "$packages_doc" \
-    "**67 tracked required package names**" "the required package total"
-expect_literal "$packages_doc" \
-    "**52** are installed on both profiles: 47 official packages plus 5 AUR packages" \
-    "the shared package breakdown"
-expect_literal "$packages_doc" \
-    "**9** are native-only: 5 official packages plus 4 AUR packages" \
-    "the native-only package breakdown"
-expect_literal "$packages_doc" \
-    "**6** are WSL-only: 5 official packages plus 1 AUR package" \
-    "the WSL-only package breakdown"
-expect_literal "$packages_doc" \
-    "\`base.txt\` + \`native.txt\` + \`aur.txt\` + \`aur-native.txt\` | 61 |" \
-    "the 61-package native profile row"
-expect_literal "$packages_doc" \
-    "\`base.txt\` + \`wsl.txt\` + \`aur.txt\` + \`aur-wsl.txt\` | 58 |" \
-    "the 58-package WSL profile row"
-
-while IFS='|' read -r file count; do
-    source_word="packages"
-    ((count == 1)) && source_word="package"
-    expect_literal "$packages_doc" \
-        "Source: \`provisioning/arch/packages/$file\` — $count $source_word" \
-        "the $file count ($count)"
-done <<EOF
-base.txt|$base_count
-aur.txt|$aur_count
-native.txt|$native_count
-aur-native.txt|$aur_native_count
-wsl.txt|$wsl_count
-aur-wsl.txt|$aur_wsl_count
-fonts.txt|$fonts_count
-EOF
-
-expect_literal "$flow_svg" ">61 packages</text>" "the native package count in the SVG"
-expect_literal "$flow_svg" ">58 packages</text>" "the WSL package count in the SVG"
-
-# Counts alone cannot catch a renamed package or a swapped table row. Every
-# tracked package and optional font must still appear by name in the catalog.
+# Every tracked package and optional font must still appear by name in the
+# catalog without duplicating exact totals in the docs.
 check_documented_package() {
     local package="$1"
     local source="$2"
@@ -300,7 +197,6 @@ while IFS= read -r package; do
     check_documented_package "$package" "fonts.txt"
 done < <(filter_optional_packages "$packages_dir/fonts.txt")
 
-windows_count=0
 windows_packages_dir="$CHECK_ROOT/provisioning/windows/packages"
 windows_doc="$CHECK_ROOT/docs/windows.md"
 
@@ -323,7 +219,6 @@ if [[ -d "$windows_packages_dir" ]]; then
             fi
             while IFS= read -r package; do
                 windows_packages+=("$package")
-                windows_count=$((windows_count + 1))
                 if ! grep -Fq -- "\`$package\`" "$windows_doc"; then
                     fail "docs/windows.md: no catalog entry for '$package' (from ${path#"$CHECK_ROOT/"})"
                 fi
@@ -361,4 +256,4 @@ if ((FAIL > 0)); then
     exit 1
 fi
 
-log "docs check passed: $total_count packages ($native_total native, $wsl_total WSL), $fonts_count optional fonts, $windows_count Windows package IDs, and all local links and assets resolve"
+log "docs check passed: all tracked package names are documented, and all local links and assets resolve"

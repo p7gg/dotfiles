@@ -5,7 +5,7 @@ README.
 
 ## Tooling language choices
 
-A few notes on the requested tools:
+A few notes on the chosen tools:
 
 - `gitui` is Rust and is the tracked Git TUI. `lazygit` is the Go alternative.
 - `gitbutler` and its `but` CLI are Rust.
@@ -48,19 +48,12 @@ HTTPS but does not verify npm's registry signing keys; an optional
 missing or mismatched checksum stops bootstrap rather than installing an
 unverified binary.
 
-## Optional Git defaults
-
-Worth considering later: `feature.manyFiles = true` for large repositories,
-`diff.renames = copies`, and `push.followTags = true`. Avoid `merge.ff = only`
-unless every repository enforces linear history.
-
 ## GNOME Keyring on both profiles
 
 Native Arch already uses GNOME Keyring for the desktop and the SSH agent. WSL
-used `pass` only because it has no PAM login to unlock a keyring; that split
-doubled the secret paths and made the `bws` wrapper behave differently per
-profile. Both profiles now install `gnome-keyring` and talk to the Secret Service
-through `secret-tool`.
+has no PAM login, so both profiles install `gnome-keyring` and talk to the
+Secret Service through `secret-tool` instead of maintaining a second secret
+store.
 
 Bootstrap creates the WSL login keyring with a blank password by default so the
 daemon can unlock it without a login password. That is a deliberate convenience

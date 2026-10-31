@@ -49,8 +49,7 @@ Start with the task you need:
 - Use `provisioning/arch/auth.sh --check` to inspect authentication without
   changing it.
 - Package reconciliation is install-only. The bootstrap never removes packages.
-- The OpenCode CLI is installed from a verified npm tarball; remove an older
-  pacman `opencode` package once by hand after the user binary is in place.
+- The OpenCode CLI is installed from a verified npm tarball.
 - AUR packages execute code at build time. The bootstrap builds `paru` from a
   pinned AUR commit; review other AUR packages before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
@@ -134,10 +133,9 @@ tooling stay outside the managed home directory.
 
 ## Packages
 
-There are 67 tracked package names: 61 apply to the native profile and 58 to
-WSL. The lists live in `provisioning/arch/packages/` and split shared, native,
-and WSL packages across official and AUR files. The bootstrap also manages the
-OpenCode CLI outside those lists, and offers 18 optional Nerd Fonts that nothing
+The lists live in `provisioning/arch/packages/` and split shared, native, and
+WSL packages across official and AUR files. The bootstrap also manages the
+OpenCode CLI outside those lists, and offers optional Nerd Fonts that nothing
 installs unless selected.
 
 Adding a package is a two-step operation: install it normally, then add its name
@@ -169,9 +167,8 @@ just render     # template rendering only
 lefthook run pre-commit
 ```
 
-`just test` runs the docs checker first. It verifies the 67/61/58 package counts
-against `provisioning/arch/packages/*.txt`, checks that every tracked package and
-optional font appears by name in the catalog, checks the Windows inventory
+`just test` runs the docs checker first. It checks that every tracked package
+and optional font appears by name in the catalog, checks the Windows inventory
 against `docs/windows.md`, and checks every relative Markdown link and local
 asset.
 
@@ -191,7 +188,3 @@ asset.
 - `/etc` broadly; the bootstrap only manages the pacman, reflector, firewall,
   and sshd files listed in [Bootstrapping](docs/bootstrap.md#system-maintenance),
   and `wsl-init.sh` handles the WSL-specific bootstrap files
-
-If you later need reproducible desktop packages, add a `desktop.txt` list. If you
-later target multiple machines with different GPUs, add a host-specific overlay.
-Do not add that complexity before it is needed.

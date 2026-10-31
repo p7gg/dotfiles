@@ -118,7 +118,7 @@ Bitwarden; the vault is the source of truth.
 
 Windows Hello unlock is optional: **File → Settings → Security → Unlock with
 Windows Hello**. It only appears when Windows Hello is enabled at the OS level,
-and the Microsoft Store build does not support biometric unlock.
+and some builds do not support biometric unlock.
 
 The ArchWiki's PAM Windows Hello setup is separate: it authenticates `sudo` and
 other PAM services through Windows Hello. It does not expose an SSH agent, load
@@ -339,24 +339,6 @@ bws -o none project list
 `bws -o none project list` exercises the token without printing it. Use
 `secret-tool clear service bws account personal` first if you want
 `provisioning/arch/auth.sh` to prompt for the token again.
-
-### Migrating from `pass`
-
-Older WSL revisions stored the token in `pass`. Move it once, then remove the
-legacy store:
-
-```bash
-token="$(pass show bitwarden/bws-token)"
-printf '%s' "$token" | secret-tool store --label='BWS access token' service bws account personal
-unset token
-secret-tool lookup service bws account personal >/dev/null && pass rm -f bitwarden/bws-token
-sudo pacman -Rns pass
-```
-
-Verify `bws -o none project list` before removing `pass`. Delete the empty
-`~/.password-store` if nothing else uses it; the GPG key created for `pass` can
-be removed separately. `auth.sh --check` warns when the legacy entry is still
-present and prints the migration commands.
 
 ## Back to
 

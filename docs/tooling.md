@@ -64,11 +64,6 @@ default `~/go`. The location is set in `~/.config/go/env` via
 `home/dot_config/go/env.tmpl`, so it applies in every shell and to tools that
 invoke the `go` command. `~/.go/bin` is added to `PATH` by fish.
 
-On machines that still have the old default `~/go`, the
-`home/run_once_after_migrate-go-data.sh` script moves it to `~/.go` on the next
-`chezmoi apply`, preserving the module cache. If `~/.go` already exists, it
-leaves both directories in place and prints a warning.
-
 AUR packages are built before dotfiles are applied, so the bootstrap passes the
 same `GOPATH` to `paru`. Source builds such as `lefthook` write to `~/.go`
 instead of creating `~/go`.
@@ -99,22 +94,23 @@ The bootstrap runs it after `mise install`. Rerun it after upgrading tools:
 
 ## OpenCode
 
-The OpenCode CLI is installed from OpenCode's npm release, not from pacman. The
-bootstrap no longer pipes a remote installer into a shell: it reads the official
-release metadata from `https://opencode.ai/update/api/latest/cli/npm`, downloads
-the platform tarball from `registry.npmjs.org`, verifies the published `sha512`
-integrity value, and only then installs `~/.opencode/bin/opencode`.
+The OpenCode CLI is installed from OpenCode's npm release, not from pacman.
+Bootstrap reads the official release metadata from
+`https://opencode.ai/update/api/latest/cli/npm`, downloads the platform tarball
+from `registry.npmjs.org`, verifies the published `sha512` integrity value, and
+only then installs `~/.opencode/bin/opencode`. When the installed version
+already matches the target, it skips the download and reinstall.
 
 ```bash
 # What bootstrap does, without the remote-script pipe:
 # metadata -> registry.npmjs.org tarball -> sha512 check -> extract package/bin
 ```
 
-By default the CLI tracks the latest release on every provisioning run. Pin a
-reviewed version when reproducibility matters:
+By default the CLI tracks the latest release. Pin a reviewed version when
+reproducibility matters:
 
 ```bash
-OPENCODE_VERSION=2.1.4 ./provisioning/arch/bootstrap.sh --profile wsl
+OPENCODE_VERSION=<version> ./provisioning/arch/bootstrap.sh --profile wsl
 ```
 
 Use `--no-opencode` to skip the step. If the release metadata or checksum is
@@ -124,18 +120,10 @@ binary. Fish adds `~/.opencode/bin` to `PATH` through
 `opencode` resolves there. Update manually with `opencode upgrade`, or rerun
 bootstrap.
 
-The pacman package `opencode` is no longer tracked. If an older machine still
-has it, install the user-managed CLI first and then remove the package once so
-stale system-wide copies and scripts do not keep using `/usr/bin/opencode`:
-
-```bash
-sudo pacman -Rns opencode
-```
-
 The desktop app is a separate native-only AUR package,
 `opencode-desktop-bin` in `provisioning/arch/packages/aur-native.txt`. It installs
-`/usr/bin/opencode-desktop` and runs on system `electron44`; it does not replace
-the `opencode` CLI.
+`/usr/bin/opencode-desktop` and runs on the system Electron runtime; it does not
+replace the `opencode` CLI.
 
 Chezmoi tracks `~/.config/opencode/cli.json` with the current sidebar and diff
 tree settings, and `~/.config/opencode/opencode.json` with the global MCP
@@ -208,8 +196,6 @@ enables:
   `push.autoSetupRemote`
 - `delta` as the Git pager and `git dt` as the difftastic alias when those
   tools are installed
-
-Optional additions are listed in [decisions.md](decisions.md).
 
 ## Editor and application defaults
 

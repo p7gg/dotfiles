@@ -2,9 +2,8 @@
 
 This is the complete inventory of `provisioning/arch/packages/`: every required
 package the bootstrap tracks, the profile it lands on, and the reason it is
-there. The
-catalog also covers the OpenCode CLI installed by the bootstrap outside pacman
-and the optional Nerd Fonts offered by the interactive font step.
+there. The catalog also covers the OpenCode CLI installed by the bootstrap
+outside pacman and the optional Nerd Fonts offered by the interactive font step.
 
 The required lists are **install-only**. Bootstrap adds missing packages with
 `--needed` and never removes anything. Removing a package is a deliberate manual
@@ -15,27 +14,20 @@ automatically.
 
 ## At a glance
 
-There are **67 tracked required package names**:
+The files in `provisioning/arch/packages/` are the source of truth. This page
+lists every required package, the profile it lands on, and the reason it is
+there. Optional Nerd Fonts are listed separately; they are not installed by
+default and are never required by the audit. The OpenCode CLI is
+bootstrap-managed from the verified npm release and is not audited as a package.
 
-- **52** are installed on both profiles: 47 official packages plus 5 AUR packages
-- **9** are native-only: 5 official packages plus 4 AUR packages
-- **6** are WSL-only: 5 official packages plus 1 AUR package
+| Profile | Package lists | Entry point |
+| --- | --- | --- |
+| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | `./provisioning/arch/bootstrap.sh --profile native` |
+| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | `./provisioning/arch/bootstrap.sh --profile wsl` |
 
-There are also **18 optional Nerd Fonts** in
-`provisioning/arch/packages/fonts.txt`. They are not installed by default and
-are never required by the audit. The OpenCode CLI is bootstrap-managed from the
-verified npm release, is not counted here, and is not audited as a package.
-
-| Profile | Package lists | Packages | Entry point |
-| --- | --- | ---: | --- |
-| <img src="assets/badge-native.svg" alt="Native" height="20"> Native Arch + GNOME | `base.txt` + `native.txt` + `aur.txt` + `aur-native.txt` | 61 | `./provisioning/arch/bootstrap.sh --profile native` |
-| <img src="assets/badge-wsl.svg" alt="WSL" height="20"> Arch inside WSL | `base.txt` + `wsl.txt` + `aur.txt` + `aur-wsl.txt` | 58 | `./provisioning/arch/bootstrap.sh --profile wsl` |
-
-Counts are required package names only; the optional fonts are additional.
 `paru` is bootstrapped automatically when an AUR list is non-empty, so it is not
-tracked as a package. `base-devel` is a meta
-package in current Arch, not a group. Counts are current for this revision; the
-files in `provisioning/arch/packages/` remain the source of truth.
+tracked as a package. `base-devel` is a meta package in current Arch, not a
+group.
 
 ## Badge legend
 
@@ -52,7 +44,7 @@ and mise toolchains are managed outside these lists.
 
 ## Both profiles — official repositories
 
-Source: `provisioning/arch/packages/base.txt` — 47 packages.
+Source: `provisioning/arch/packages/base.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -106,7 +98,7 @@ Source: `provisioning/arch/packages/base.txt` — 47 packages.
 
 ## Both profiles — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `provisioning/arch/packages/aur.txt` — 5 packages. `paru` is bootstrapped
+Source: `provisioning/arch/packages/aur.txt`. `paru` is bootstrapped
 automatically the first time an AUR list is non-empty.
 
 | Package | Env | What it gives you | Notes |
@@ -119,7 +111,7 @@ automatically the first time an AUR list is non-empty.
 
 ## Native only — official repositories
 
-Source: `provisioning/arch/packages/native.txt` — 5 packages.
+Source: `provisioning/arch/packages/native.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -131,18 +123,18 @@ Source: `provisioning/arch/packages/native.txt` — 5 packages.
 
 ## Native only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `provisioning/arch/packages/aur-native.txt` — 4 packages.
+Source: `provisioning/arch/packages/aur-native.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
 | `brave-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Brave browser with built-in ad and tracker blocking. | Binary release; native only. |
-| `opencode-desktop-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | OpenCode desktop app, alongside the `opencode` CLI. | Runs on system `electron44`; native only. |
+| `opencode-desktop-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | OpenCode desktop app, alongside the `opencode` CLI. | Runs on the system Electron runtime; native only. |
 | `t3code-nightly-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Nightly desktop control surface for local coding agents. | Nightly build; native only. |
 | `visual-studio-code-bin` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Microsoft Visual Studio Code. | Native only by design. |
 
 ## WSL only — official repositories
 
-Source: `provisioning/arch/packages/wsl.txt` — 5 packages.
+Source: `provisioning/arch/packages/wsl.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -154,7 +146,7 @@ Source: `provisioning/arch/packages/wsl.txt` — 5 packages.
 
 ## WSL only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">
 
-Source: `provisioning/arch/packages/aur-wsl.txt` — 1 package.
+Source: `provisioning/arch/packages/aur-wsl.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
@@ -162,8 +154,8 @@ Source: `provisioning/arch/packages/aur-wsl.txt` — 1 package.
 
 ## Bootstrap-managed tools
 
-These are not pacman packages and are not included in the package totals above.
-`provisioning/arch/bootstrap.sh` installs them into the user's home directory.
+These are not pacman packages. `provisioning/arch/bootstrap.sh` installs them
+into the user's home directory.
 
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
@@ -171,20 +163,16 @@ These are not pacman packages and are not included in the package totals above.
 
 WSL also needs `npiperelay.exe` on the Windows side. Install it with
 `winget install --id albertony.npiperelay -e`; `~/.local/bin/ssh-agent-bridge`
-discovers it. It is a Windows executable, not a pacman package, and is not
-included in the package totals above.
+discovers it. It is a Windows executable, not a pacman package.
 
 The bootstrap installs OpenCode without executing a remote installer script
-and does not remove packages. If an older machine still has the pacman
-`opencode` package, remove it once with `sudo pacman -Rns opencode` after the
-bootstrap-managed binary is in place. `just doctor` warns when the pacman package
-is present or when `opencode` resolves somewhere other than
-`~/.opencode/bin/opencode`.
+and does not remove packages. `just doctor` warns when `opencode` resolves
+somewhere other than `~/.opencode/bin/opencode`.
 
 ## Optional — Nerd Fonts
 
-Source: `provisioning/arch/packages/fonts.txt` — 18 packages, all from the official
-`extra` repository.
+Source: `provisioning/arch/packages/fonts.txt`, all from the official `extra`
+repository.
 
 Bootstrap presents these in an interactive menu after package installation.
 Nothing is selected by default: enter numbers or ranges to install a subset, or
@@ -281,8 +269,7 @@ Optional fonts do not use this loop. They are selected at install time from
 `provisioning/arch/packages/fonts.txt`, and the audit accepts any installed subset.
 
 Removing a package is also two steps: delete the line, then uninstall it
-manually. Bootstrap will not do it for you. The same applies when retiring the
-old pacman `opencode` package in favor of the bootstrap-managed CLI.
+manually. Bootstrap will not do it for you.
 
 Bootstrap-managed tools are outside this loop. Update OpenCode with
 `opencode upgrade` or by rerunning `provisioning/arch/bootstrap.sh`.
