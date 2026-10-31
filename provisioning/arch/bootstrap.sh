@@ -917,10 +917,42 @@ sshd_hardening_effective() {
     local effective
 
     effective="$(sudo sshd -T 2>/dev/null)" || return 1
-    grep -qx 'passwordauthentication no' <<<"$effective" &&
-        grep -qx 'kbdinteractiveauthentication no' <<<"$effective" &&
-        grep -qx 'permitrootlogin no' <<<"$effective" &&
-        grep -qx 'pubkeyauthentication yes' <<<"$effective"
+    # sshd -T prints canonical CamelCase keys; compare lowercase so the check
+    # does not depend on the wording used in the managed file.
+    effective="${effective,,}"
+
+    local expected
+    while IFS= read -r expected; do
+        [[ -n "$expected" ]] || continue
+        grep -qx -- "$expected" <<<"$effective" || return 1
+    done <<'EOF'
+passwordauthentication no
+kbdinteractiveauthentication no
+permitrootlogin no
+pubkeyauthentication yes
+authenticationmethods publickey
+permitemptypasswords no
+maxauthtries 3
+logingracetime 30
+usedns no
+gssapiauthentication no
+allowagentforwarding no
+x11forwarding no
+EOF
+}
+
+restore_sshd_config() {
+    local dest="$1"
+    local backup="$2"
+
+    if [[ -n "$backup" ]]; then
+        run_optional sudo install -Dm644 "$backup" "$dest" ||
+            warn "could not restore $dest"
+    else
+        run_optional sudo rm -f "$dest" ||
+            warn "could not remove $dest"
+    fi
+    rm -f "$backup"
 }
 
 setup_sshd_hardening() {
@@ -982,27 +1014,13 @@ setup_sshd_hardening() {
 
     if ! sudo sshd -t; then
         warn "sshd rejected the hardening config; restoring the previous one"
-        if [[ -n "$backup" ]]; then
-            run_optional sudo install -Dm644 "$backup" "$dest" ||
-                warn "could not restore $dest"
-        else
-            run_optional sudo rm -f "$dest" ||
-                warn "could not remove $dest"
-        fi
-        rm -f "$backup"
+        restore_sshd_config "$dest" "$backup"
         return 0
     fi
 
     if ! sshd_hardening_effective; then
         warn "sshd accepts the config but the effective settings differ; restoring the previous one"
-        if [[ -n "$backup" ]]; then
-            run_optional sudo install -Dm644 "$backup" "$dest" ||
-                warn "could not restore $dest"
-        else
-            run_optional sudo rm -f "$dest" ||
-                warn "could not remove $dest"
-        fi
-        rm -f "$backup"
+        restore_sshd_config "$dest" "$backup"
         return 0
     fi
 

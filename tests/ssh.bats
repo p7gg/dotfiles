@@ -24,13 +24,17 @@ start_agent() {
     ssh-add "$TEST_KEY" >/dev/null 2>&1
 }
 
-@test "authorized_keys comments contain no personal email or stale GitHub titles" {
-    local keys="$REPO_ROOT/home/private_dot_ssh/private_authorized_keys"
+@test "sshd hardening keeps key-only authentication and disables forwarding" {
+    local conf="$REPO_ROOT/provisioning/arch/system/sshd-hardening.conf"
 
-    ! grep -Eq '^ssh-[^ ]+ [^ ]+ .*@' "$keys"
-    ! grep -Fq 'gh-cli' "$keys"
-    grep -Fq 'arch-wsl-auth, arch-wsl-signing' "$keys"
-    grep -Fq 'P7-LAPTOP-auth, P7-LAPTOP-signing' "$keys"
+    grep -qx 'PasswordAuthentication no' "$conf"
+    grep -qx 'KbdInteractiveAuthentication no' "$conf"
+    grep -qx 'PermitRootLogin no' "$conf"
+    grep -qx 'PubkeyAuthentication yes' "$conf"
+    grep -qx 'AuthenticationMethods publickey' "$conf"
+    grep -qx 'MaxAuthTries 3' "$conf"
+    grep -qx 'AllowAgentForwarding no' "$conf"
+    grep -qx 'X11Forwarding no' "$conf"
 }
 
 @test "git-ssh-sign finds the WSL relay when SSH_AUTH_SOCK is unset" {

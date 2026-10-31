@@ -212,9 +212,12 @@ The bootstrap applies:
   still needs mirrored networking or a Windows port proxy for outside access.
 - `sshd` key-only hardening:
   `provisioning/arch/system/sshd-hardening.conf` is installed as
-  `/etc/ssh/sshd_config.d/10-hardening.conf` after dotfiles are applied,
-  validated with `sshd -t`, then reloaded. `~/.ssh/authorized_keys` is managed
-  from `home/private_dot_ssh/private_authorized_keys`; without a key the step is
+  `/etc/ssh/sshd_config.d/10-hardening.conf` after dotfiles are applied. It
+  disables password and keyboard-interactive auth, root login, agent forwarding,
+  and X11 forwarding, and limits authentication attempts. The bootstrap validates
+  it with `sshd -t`, confirms the effective settings with `sshd -T`, then
+  reloads. `~/.ssh/authorized_keys` is managed from
+  `home/private_dot_ssh/private_authorized_keys`; without a key the step is
   skipped so password access is never lost.
 - timestamped backups of managed system files: `pacman.conf`, `wsl.conf`, and
   `locale.conf` keep the newest 3 backups per file instead of accumulating
