@@ -448,8 +448,6 @@ if ((have_pub)); then
     check_commit_signing
 fi
 
-check_commit_signing
-
 if ((have_pub)) && command -v ssh-add >/dev/null 2>&1; then
     agent_socket=""
     agent_ready=0
