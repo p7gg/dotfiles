@@ -523,6 +523,35 @@ function Set-IniValue {
     Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
 }
 
+function ConvertTo-WslBytes {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    if ($Value -notmatch '^\s*(\d+)\s*([KMGT]i?B?)?\s*$') {
+        return $null
+    }
+
+    $amount = [int64]$Matches[1]
+    $unit = if ($null -eq $Matches[2]) { '' } else { $Matches[2].ToUpperInvariant() }
+    switch ($unit) {
+        'KB' { return $amount * 1KB }
+        'KIB' { return $amount * 1KB }
+        'K' { return $amount * 1KB }
+        'MB' { return $amount * 1MB }
+        'MIB' { return $amount * 1MB }
+        'M' { return $amount * 1MB }
+        'GB' { return $amount * 1GB }
+        'GIB' { return $amount * 1GB }
+        'G' { return $amount * 1GB }
+        'TB' { return $amount * 1TB }
+        'TIB' { return $amount * 1TB }
+        'T' { return $amount * 1TB }
+        default { return $amount }
+    }
+}
+
 function Format-WslValue {
     param([string]$Value)
 

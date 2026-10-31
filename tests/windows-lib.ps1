@@ -75,6 +75,10 @@ $all = @(Get-OptionalPackages -Categories @('all'))
 Assert-Equal $expected $all.Count 'all expands to every optional package'
 Assert-Throws { Get-OptionalPackages -Categories @('nope') } 'unknown optional category throws'
 
+Assert-Equal 8589934592 (ConvertTo-WslBytes '8GB') 'parses gigabyte values'
+Assert-Equal 25769803776 (ConvertTo-WslBytes '24GB') 'parses larger gigabyte values'
+Assert-Equal 25769803776 (ConvertTo-WslBytes '25769803776') 'keeps byte counts'
+Assert-True ($null -eq (ConvertTo-WslBytes 'not-a-size')) 'rejects invalid sizes'
 Assert-Equal '3.0.3.0' (Format-Version4 '3.0.3') 'normalizes a three-part version'
 Assert-Equal '3.0.3.0' (Format-Version4 'v3.0.3') 'strips a v prefix'
 Assert-Equal '2.0.0.0' (Format-Version4 '2') 'pads a short version'

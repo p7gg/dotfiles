@@ -192,7 +192,17 @@ foreach ($section in $desiredIni.Keys) {
         if ($currentIni.ContainsKey($section) -and $currentIni[$section].ContainsKey($key)) {
             $current = $currentIni[$section][$key]
         }
-        if ($current -ne $desired) {
+        $same = $current -eq $desired
+        if (-not $same -and $key -in @('memory', 'swap')) {
+            # WSL accepts both "24GB" and the equivalent byte count.
+            $currentBytes = ConvertTo-WslBytes $current
+            $desiredBytes = ConvertTo-WslBytes $desired
+            if ($null -ne $currentBytes -and $null -ne $desiredBytes -and
+                $currentBytes -eq $desiredBytes) {
+                $same = $true
+            }
+        }
+        if (-not $same) {
             $wslChanges += [pscustomobject]@{
                 Section = $section
                 Key     = $key
