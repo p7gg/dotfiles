@@ -40,10 +40,6 @@ fi
 
 opencode_bin="$HOME/.opencode/bin/opencode"
 
-if pacman -Q opencode >/dev/null 2>&1; then
-    warn "pacman package opencode is installed; remove it with: sudo pacman -Rns opencode"
-fi
-
 if [[ -x "$opencode_bin" ]]; then
     log "==> OpenCode"
     run_optional "$opencode_bin" --version || true

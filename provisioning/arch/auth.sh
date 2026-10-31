@@ -155,11 +155,6 @@ bws_token_present() {
         grep -q '^\['
 }
 
-legacy_pass_token_present() {
-    local store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
-    [[ -f "$store_dir/bitwarden/bws-token.gpg" ]]
-}
-
 store_bws_token() {
     local stored
 
@@ -635,12 +630,6 @@ if ((SKIP_BWS == 0)); then
         AUTH_INCOMPLETE=1
     elif bws_token_present; then
         log "Bitwarden Secrets Manager token is already stored (replace: secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT)"
-    elif legacy_pass_token_present; then
-        warn "legacy pass entry found at ${PASSWORD_STORE_DIR:-$HOME/.password-store}/bitwarden/bws-token.gpg"
-        warn "migrate it with:"
-        warn "  pass show bitwarden/bws-token | secret-tool store --label='BWS access token' service bws account $BWS_ACCOUNT"
-        warn "  pass rm -f bitwarden/bws-token"
-        AUTH_INCOMPLETE=1
     elif ((DRY_RUN || NON_INTERACTIVE)) || [[ ! -t 0 ]]; then
         warn "BWS token is not stored; rerun interactively or see README: Bitwarden Secrets Manager"
         AUTH_INCOMPLETE=1

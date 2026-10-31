@@ -240,33 +240,31 @@ curl_https() {
     curl -fsSL --proto '=https' --tlsv1.2 "$@"
 }
 
+opencode_installed_version() {
+    local output
+
+    [[ -x "$HOME/.opencode/bin/opencode" ]] || return 1
+    output="$("$HOME/.opencode/bin/opencode" --version 2>/dev/null | tail -n 1 || true)"
+    output="${output##* }"
+    output="${output#v}"
+    [[ "$output" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]] || return 1
+    printf '%s\n' "$output"
+}
+
 fetch_opencode_package() {
     local scope="$1"
     local target="$2"
     local version="$3"
-    local package url
+    local package
 
     package="${scope}/cli-${target}"
-    url="https://registry.npmjs.org/${package//\//%2f}/${version}"
-    if curl_https "$url" 2>/dev/null; then
-        return 0
-    fi
-
-    # Older releases used the @opencode-ai scope. Keep the same fallback the
-    # official installer uses for a pinned pre-rename version.
-    package="@opencode-ai/cli-${target}"
-    url="https://registry.npmjs.org/${package//\//%2f}/${version}"
-    curl_https "$url"
+    curl_https "https://registry.npmjs.org/${package//\//%2f}/${version}"
 }
 
 setup_opencode() {
     local opencode_bin="$HOME/.opencode/bin/opencode"
     local latest_metadata package_name package_scope metadata version target
-    local tarball integrity download_tmp installed_version
-
-    if pacman -Q opencode >/dev/null 2>&1; then
-        warn "pacman package 'opencode' is still installed; remove it once with: sudo pacman -Rns opencode"
-    fi
+    local tarball integrity download_tmp installed_version requested_version
 
     target="$(opencode_target "$(uname -s)" "$(uname -m)")" ||
         die "OpenCode does not publish a Linux package for $(uname -s)/$(uname -m)"
