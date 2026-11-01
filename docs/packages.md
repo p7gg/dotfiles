@@ -61,6 +61,7 @@ Source: `provisioning/arch/packages/base.txt`.
 | `duf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Disk space and mount overview. | — |
 | `eza` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Modern `ls` with icons, Git status, and tree view. | — |
 | `fd` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast `find` with sensible ignore rules. | — |
+| `ffmpeg` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Audio and video conversion, stream merging, and format inspection. | Backs `yt-dlp` post-processing such as stream merging and audio extraction. |
 | `fish` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Interactive shell. | Bootstrap sets it as the login shell. |
 | `fzf` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fuzzy finder for files, history, and completion. | Fish bindings load in interactive shells. |
 | `git` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Distributed version control. | Commits and tags are SSH-signed by default. |
@@ -92,7 +93,7 @@ Source: `provisioning/arch/packages/base.txt`.
 | `unzip` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Extracts `.zip` archives. | — |
 | `wget` | <img src="assets/badge-both.svg" alt="Both" height="18"> | HTTP/FTP downloader. | — |
 | `yq` | <img src="assets/badge-both.svg" alt="Both" height="18"> | YAML/XML/TOML processor with `jq` syntax. | — |
-| `yt-dlp` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Video/audio downloader. | `ffmpeg` is not installed; add it for stream merging. |
+| `yt-dlp` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Video/audio downloader. | Pairs with `ffmpeg` for stream merging, audio extraction, and format conversion. |
 | `zip` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Creates and updates `.zip` archives. | — |
 | `zoxide` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Smarter `cd` with frecency ranking. | Fish integration loads in interactive shells. |
 
@@ -317,8 +318,8 @@ is why the default `--check` does not fail on untracked packages.
   WSL has no PAM login. A passphrase-protected keyring stays locked after each
   WSL start; run `keyring-unlock` to open it. See
   [GNOME Keyring](auth.md#gnome-keyring-both-profiles).
-- `yt-dlp` is installed without `ffmpeg`. Add `ffmpeg` if you need stream
-  merging, audio extraction, or format conversion.
+- `ffmpeg` and `yt-dlp` are installed together so downloads can merge streams,
+  extract audio, and convert formats without extra setup.
 - `restic` is installed without a repository, password, or backup schedule.
 - `tailscale` is installed on both profiles, but WSL without systemd needs a
   manually started `tailscaled`.

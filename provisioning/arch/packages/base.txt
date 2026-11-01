@@ -14,6 +14,7 @@ dust
 duf
 eza
 fd
+ffmpeg
 fish
 fzf
 git
