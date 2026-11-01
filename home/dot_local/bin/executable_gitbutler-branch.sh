@@ -9,12 +9,17 @@
 # keeps rendering the branch. In workspace mode [git_branch] ignores
 # `gitbutler/workspace`, so this module is the only branch segment there.
 #
-# Output is plain text; starship applies the colour and style.
+# Output is plain text apart from bold SGR codes around the branch ids, so
+# starship still owns the colour and style.
 #
-#   ⧓ feat ⇡2 › feat-part-2 ⇡ | hotfix   two stacks, the first one chained
-#   ⧓ workspace                          managed repo with no stacks applied
-#   ⧓ feat ⇡2 ⇣1                         target is one commit ahead of the base
-#   ⧓ ?                                  `but status --json` failed
+#   ⧓ gs:feat ⇡2 › at:feat-part-2 ⇡ | br:hotfix   two stacks, the first chained
+#   ⧓ workspace                                   managed repo, nothing applied
+#   ⧓ gs:feat ⇡2 ⇣1                               target is one commit ahead
+#   ⧓ ?                                           `but status --json` failed
+#
+# Each branch is prefixed with the two-letter id from `but status --json`
+# (bold), the same id `but status` prints and other commands accept, e.g.
+# `but merge gs`. The prefix is dropped when the JSON carries no id.
 #
 # Markers:
 #   ⇡N  commits on the branch, nothing pushed yet (exact count)
@@ -45,8 +50,13 @@ JQ='
       elif .branchStatus == "unpushedCommitsRequiringForce" then " ⇡!"
       elif .branchStatus == "unpushedCommits" then " ⇡"
       else "" end;
+  def with_id:
+    (.cliId // "") as $id
+    | if $id == "" then .name
+      else "\u001b[1m" + $id + "\u001b[22m:" + .name
+      end;
   [ .stacks[]?
-    | [ .branches[]? | select(.name != null and .name != "") | .name + mark ]
+    | [ .branches[]? | select(.name != null and .name != "") | with_id + mark ]
     | select(length > 0)
     | join(" › ")
   ] as $stacks

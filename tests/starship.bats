@@ -158,14 +158,12 @@ JSON
     [ "$output" = "⧓ feat ⇡1 | hotfix" ]
 }
 
-@test "chains branches inside one stack" {
+@test "prefixes branches with their but CLI id" {
     managed
     fixture <<'JSON'
 {"stacks":[
   {"cliId":"g0","branches":[
-    {"name":"feat-part-2","commits":[{"commitId":"c"}],
-     "upstreamCommits":[],"branchStatus":"unpushedCommits"},
-    {"name":"feat","commits":[{"commitId":"a"},{"commitId":"b"}],
+    {"cliId":"gs","name":"feat","commits":[{"commitId":"a"}],
      "upstreamCommits":[],"branchStatus":"completelyUnpushed"}
   ]}
 ]}
@@ -174,7 +172,26 @@ JSON
     run bash "$SEGMENT"
 
     [ "$status" -eq 0 ]
-    [ "$output" = "⧓ feat-part-2 ⇡ › feat ⇡2" ]
+    [ "$output" = $'⧓ \e[1mgs\e[22m:feat ⇡1' ]
+}
+
+@test "chains branches inside one stack" {
+    managed
+    fixture <<'JSON'
+{"stacks":[
+  {"cliId":"g0","branches":[
+    {"cliId":"at","name":"feat-part-2","commits":[{"commitId":"c"}],
+     "upstreamCommits":[],"branchStatus":"unpushedCommits"},
+    {"cliId":"gs","name":"feat","commits":[{"commitId":"a"},{"commitId":"b"}],
+     "upstreamCommits":[],"branchStatus":"completelyUnpushed"}
+  ]}
+]}
+JSON
+
+    run bash "$SEGMENT"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'⧓ \e[1mat\e[22m:feat-part-2 ⇡ › \e[1mgs\e[22m:feat ⇡2' ]
 }
 
 @test "does not invent a count for partially pushed branches" {
