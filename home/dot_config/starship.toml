@@ -37,8 +37,10 @@ deleted = ""
 
 # GitButler stacks, rendered by ~/.local/bin/gitbutler-branch.sh. The script
 # prints nothing outside a GitButler workspace, so $git_branch above keeps
-# handling ordinary repositories. It bounds `but status` itself because that
-# can outlast the prompt-wide command_timeout.
+# handling ordinary repositories. In single-branch mode $git_branch already
+# shows the checked-out branch, so the script prints ids only and marks it
+# with ▸; workspace mode keeps the names. The script bounds `but status` itself
+# because that can outlast the prompt-wide command_timeout.
 [custom.gitbutler]
 command = "~/.local/bin/gitbutler-branch.sh"
 description = "GitButler stacks"

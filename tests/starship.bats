@@ -108,6 +108,42 @@ JSON
     [ "$output" = "⧓ feat ⇡1" ]
 }
 
+@test "marks the checked-out branch and shows ids only in single-branch mode" {
+    single_branch
+    fixture <<'JSON'
+{"stacks":[
+  {"cliId":"g0","branches":[
+    {"cliId":"gs","name":"main","commits":[{"commitId":"a"}],
+     "upstreamCommits":[],"branchStatus":"completelyUnpushed"},
+    {"cliId":"at","name":"feat-part-2","commits":[{"commitId":"b"}],
+     "upstreamCommits":[],"branchStatus":"completelyUnpushed"}
+  ]}
+]}
+JSON
+
+    run bash "$SEGMENT"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'⧓ \e[1m▸gs\e[22m ⇡1 › \e[1mat\e[22m ⇡1' ]
+}
+
+@test "marks a checked-out branch without an id" {
+    single_branch
+    fixture <<'JSON'
+{"stacks":[
+  {"cliId":"g0","branches":[
+    {"name":"main","commits":[{"commitId":"a"}],
+     "upstreamCommits":[],"branchStatus":"completelyUnpushed"}
+  ]}
+]}
+JSON
+
+    run bash "$SEGMENT"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'⧓ \e[1m▸\e[22m ⇡1' ]
+}
+
 @test "renders an empty workspace" {
     managed
     fixture <<'JSON'
