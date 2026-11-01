@@ -85,7 +85,7 @@ Source: `provisioning/arch/packages/base.txt`.
 | `ripgrep` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast recursive search that respects ignore files. | `rg`. |
 | `shellcheck` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Shell script linter. | Runs in the pre-commit hook. |
 | `shfmt` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Shell script formatter. | Pre-commit checks formatting with `shfmt -d`. |
-| `starship` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Cross-shell prompt. | Config: `~/.config/starship.toml`. |
+| `starship` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Cross-shell prompt. | Config: `~/.config/starship.toml`; GitButler stacks via `~/.local/bin/gitbutler-branch.sh`. |
 | `sudo` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Privilege escalation used during provisioning. | — |
 | `tailscale` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Mesh VPN. | Native runs `tailscaled.service`; WSL may need a manual daemon. |
 | `tealdeer` | <img src="assets/badge-both.svg" alt="Both" height="18"> | Fast `tldr` client for example-driven help. | — |

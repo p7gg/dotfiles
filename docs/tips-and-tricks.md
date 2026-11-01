@@ -28,7 +28,8 @@ The interactive shell also receives:
 - **fzf** on `Ctrl+T` — pick a file, insert its path
 - **fzf** on `Alt+C` — jump to a directory
 - **zoxide** — `z <fragment>` jumps by frecency; `zi` opens a picker
-- **Starship** — directory, Git branch and status, and a compact prompt
+- **Starship** — directory, Git branch and status, GitButler stacks in managed
+  repos, and a compact prompt
 
 **Find who owns a port.** `ports` opens an fzf browser over `ss(8)`. `Tab` marks
 several sockets, `Enter` prints their port numbers, `Ctrl-Y` copies them, and
