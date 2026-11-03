@@ -162,7 +162,7 @@ teardown() {
 }
 
 @test "--yes sends SIGTERM to every selected pid" {
-    export FZF_ACTION=ctrl-k
+    export FZF_ACTION=alt-k
     export FZF_PORTS="8080 3000"
 
     run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
@@ -170,4 +170,13 @@ teardown() {
     [ "$status" -eq 0 ]
     grep -q -- "-TERM 111" "$KILL_ARGS_FILE"
     grep -q -- "-TERM 444" "$KILL_ARGS_FILE"
+}
+
+@test "fzf expects alt-k for the kill action" {
+    export FZF_PORTS=8080
+
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports"
+
+    [ "$status" -eq 0 ]
+    grep -q -- "--expect=ctrl-y,alt-k" "$FZF_ARGS_FILE"
 }

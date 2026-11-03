@@ -21,7 +21,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
                     'Usage: ports [--all] [--yes] [query...]' \
                     '' \
                     'Browse TCP and UDP sockets with fzf. Tab marks multiple rows,' \
-                    'Enter prints the selected ports, Ctrl-Y copies them, and Ctrl-K' \
+                    'Enter prints the selected ports, Ctrl-Y copies them, and Alt-K' \
                     'sends SIGTERM to the selected processes.' \
                     '' \
                     'Options:' \
@@ -33,7 +33,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
                     '  tab        mark another row' \
                     '  enter      print selected ports' \
                     '  ctrl-y     copy selected ports to the clipboard' \
-                    '  ctrl-k     send SIGTERM to the selected processes' \
+                    '  alt-k      send SIGTERM to the selected processes' \
                     '  esc        cancel'
                 return 0
             case --preview
@@ -249,7 +249,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
     if test $show_all -eq 1
         set noun sockets
     end
-    set -l header (printf '\e[1m%d\e[0m %s  \e[2m·\e[0m  \e[2mtab\e[0m mark  \e[2menter\e[0m print  \e[2mctrl-y\e[0m copy  \e[2mctrl-k\e[0m kill' (count $entries) $noun)
+    set -l header (printf '\e[1m%d\e[0m %s  \e[2m·\e[0m  \e[2mtab\e[0m mark  \e[2menter\e[0m print  \e[2mctrl-y\e[0m copy  \e[2malt-k\e[0m kill' (count $entries) $noun)
 
     set -l fzf_options \
         --ansi \
@@ -268,7 +268,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
         --marker='●' \
         --header-first \
         --header="$header" \
-        --expect=ctrl-y,ctrl-k \
+        --expect=ctrl-y,alt-k \
         --with-shell='fish -c' \
         --preview='ports --preview {2} {3} {4}' \
         --preview-label=' details ' \
@@ -295,7 +295,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
         if test -z "$line"
             continue
         end
-        if test -z "$key"; and contains -- $line ctrl-y ctrl-k
+        if test -z "$key"; and contains -- $line ctrl-y alt-k
             set key $line
             continue
         end
@@ -363,7 +363,7 @@ function ports --description 'Browse, copy, and kill ports with fzf'
             end
             printf '%s\n' $selected_ports
             return 0
-        case ctrl-k
+        case alt-k
             if test (count $selected_pids) -eq 0
                 printf 'ports: selected ports have no visible process\n' >&2
                 printf 'ports: other users processes need root to signal\n' >&2

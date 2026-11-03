@@ -30,7 +30,7 @@ branch with the same name that tracks it. With arguments, `ch` defers to
 `ports` opens the port browser. It reads `ss(8)` and lists TCP and UDP sockets
 with their protocol, port, address, state, user, and process. `Tab` marks
 multiple rows, `Enter` prints the selected port numbers, `Ctrl-Y` copies them to
-the clipboard, and `Ctrl-K` sends `SIGTERM` to the selected processes after a
+the clipboard, and `Alt-K` sends `SIGTERM` to the selected processes after a
 confirmation. The preview pane shows process details and the matching socket.
 `ports --all` includes established connections, and `ports 8080` starts with a
 pre-filled search.
