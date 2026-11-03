@@ -133,13 +133,16 @@ servers. The same servers are available in every project:
 - `gh_grep` at `https://mcp.grep.app`, without authentication
 - `linear` at `https://mcp.linear.app/mcp` (OAuth)
 - `jira` at `https://mcp.atlassian.com/v2/mcp` (OAuth)
+- `railway` locally through `railway mcp`, using the Railway CLI login
 
 `provisioning/arch/auth.sh` signs in to Linear and Jira through their OAuth
 flows. To authenticate later, run `opencode mcp auth linear` or
 `opencode mcp auth jira`, or use `/mcps` in OpenCode. Context7 and `gh_grep`
 work without an API key. The tracked `opencode.json` already sends
 `CONTEXT7_API_KEY` from the environment when it is set; export the variable only
-if you want the higher rate limits.
+if you want the higher rate limits. Railway uses the CLI proxy, so run
+`railway login` once; `railway setup agent` and `railway mcp install` write the
+V1 `mcp.<name>` shape, which this V2 config does not use.
 
 OpenCode provider credentials and MCP OAuth tokens live outside the repo, and
 `~/.config/opencode/service.json` is intentionally ignored because it contains a
