@@ -369,10 +369,12 @@ function ports --description 'Browse, copy, and kill ports with fzf'
             end
 
             if test $assume_yes -eq 0
-                printf 'Send SIGTERM to %d process(es) [%s]? [y/N] ' \
-                    (count $selected_pids) (string join ', ' -- $selected_pids) >&2
-                read -l answer
-                if not string match -qir '^y(es)?$' -- $answer
+                # fish's read draws its own prompt and clears the rest of the
+                # line, so a printf-ed question would be wiped before it is
+                # answered. Pass the question through read -P instead.
+                set -l question (printf 'Send SIGTERM to %d process(es) [%s]? [y/N] ' \
+                    (count $selected_pids) (string join ', ' -- $selected_pids))
+                if not read -l -P "$question" answer; or not string match -qir '^y(es)?$' -- $answer
                     printf 'ports: cancelled\n' >&2
                     return 130
                 end

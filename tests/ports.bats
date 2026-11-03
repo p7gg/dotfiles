@@ -141,6 +141,15 @@ teardown() {
     [ ! -s "$KILL_ARGS_FILE" ]
 }
 
+@test "closed stdin cancels instead of signalling" {
+    export FZF_PORTS=8080
+
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports" </dev/null
+
+    [ "$status" -eq 130 ]
+    [ ! -s "$KILL_ARGS_FILE" ]
+}
+
 @test "default mode asks ss for listening sockets" {
     export FZF_PORTS=8080
 
