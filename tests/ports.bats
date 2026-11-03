@@ -109,32 +109,42 @@ teardown() {
     rm -rf "$TEST_TMP"
 }
 
-@test "prints the selected port" {
+@test "enter sends SIGTERM to the selected port" {
     export FZF_PORTS=8080
 
-    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports"
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
 
     [ "$status" -eq 0 ]
-    [ "$output" = "8080" ]
+    grep -q -- "-TERM 111" "$KILL_ARGS_FILE"
     grep -q "node" "$FZF_INPUT"
     grep -q "gabriel" "$FZF_INPUT"
 }
 
-@test "multi-select prints each port once in numeric order" {
-    export FZF_PORTS="8080 3000 8080"
+@test "multi-select sends SIGTERM to every selected pid" {
+    export FZF_PORTS="8080 3000"
 
-    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports"
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
 
     [ "$status" -eq 0 ]
-    [ "${#lines[@]}" -eq 2 ]
-    [ "${lines[0]}" = "3000" ]
-    [ "${lines[1]}" = "8080" ]
+    [ "$(grep -c -- '-TERM' "$KILL_ARGS_FILE")" -eq 2 ]
+    grep -q -- "-TERM 111" "$KILL_ARGS_FILE"
+    grep -q -- "-TERM 444" "$KILL_ARGS_FILE"
+}
+
+@test "declining the confirmation sends no signal" {
+    export FZF_PORTS=8080
+    printf 'n\n' >"$TEST_TMP/answer"
+
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports" <"$TEST_TMP/answer"
+
+    [ "$status" -eq 130 ]
+    [ ! -s "$KILL_ARGS_FILE" ]
 }
 
 @test "default mode asks ss for listening sockets" {
     export FZF_PORTS=8080
 
-    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports"
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
 
     [ "$status" -eq 0 ]
     grep -q -- "-l" "$SS_ARGS_FILE"
@@ -144,7 +154,7 @@ teardown() {
 @test "--all asks ss for every socket" {
     export FZF_PORTS=22
 
-    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --all"
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --all --yes"
 
     [ "$status" -eq 0 ]
     grep -q -- "-a" "$SS_ARGS_FILE"
@@ -161,22 +171,30 @@ teardown() {
     [[ "$output" == *"127.0.0.1:8080"* ]]
 }
 
-@test "--yes sends SIGTERM to every selected pid" {
-    export FZF_ACTION=alt-k
+@test "ctrl-y copies the selected ports" {
+    cat >"$TEST_BIN/wl-copy" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cat >"${COPY_FILE:?}"
+EOF
+    chmod +x "$TEST_BIN/wl-copy"
+    export COPY_FILE="$TEST_TMP/copied"
+    export FZF_ACTION=ctrl-y
     export FZF_PORTS="8080 3000"
-
-    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
-
-    [ "$status" -eq 0 ]
-    grep -q -- "-TERM 111" "$KILL_ARGS_FILE"
-    grep -q -- "-TERM 444" "$KILL_ARGS_FILE"
-}
-
-@test "fzf expects alt-k for the kill action" {
-    export FZF_PORTS=8080
 
     run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports"
 
     [ "$status" -eq 0 ]
-    grep -q -- "--expect=ctrl-y,alt-k" "$FZF_ARGS_FILE"
+    grep -qx 3000 "$COPY_FILE"
+    grep -qx 8080 "$COPY_FILE"
+}
+
+@test "fzf expects ctrl-y for the copy action" {
+    export FZF_PORTS=8080
+
+    run fish -c "source '$REPO_ROOT/home/dot_config/fish/functions/ports.fish'; ports --yes"
+
+    [ "$status" -eq 0 ]
+    grep -q -- "--expect=ctrl-y" "$FZF_ARGS_FILE"
+    ! grep -q -- "alt-k" "$FZF_ARGS_FILE"
 }

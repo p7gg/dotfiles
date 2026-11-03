@@ -32,9 +32,9 @@ The interactive shell also receives:
   repos, and a compact prompt
 
 **Find who owns a port.** `ports` opens an fzf browser over `ss(8)`. `Tab` marks
-several sockets, `Enter` prints their port numbers, `Ctrl-Y` copies them, and
-`Alt-K` sends `SIGTERM` to the selected processes after a confirmation. The
-preview shows the process and its matching socket; `ports --all` includes
+several sockets, `Enter` sends `SIGTERM` to the selected processes after a
+confirmation, and `Ctrl-Y` copies their port numbers. The preview shows the
+process and its matching socket; `ports --all` includes
 established connections and `ports 3000` starts with a query.
 
 Useful moves:
