@@ -53,6 +53,21 @@ else
     warn "opencode is not installed at $opencode_bin; run ./provisioning/arch/bootstrap.sh"
 fi
 
+mole_bin="${XDG_DATA_HOME:-$HOME/.local/share}/mole/mole"
+
+if [[ -x "$mole_bin" ]]; then
+    log "==> Mole"
+    run_optional "$mole_bin" --version || true
+    mole_path="$(command -v mo || true)"
+    if [[ -z "$mole_path" ]]; then
+        warn "mo is not on PATH; expected $HOME/.local/bin/mo"
+    elif [[ "$(realpath -m -- "$mole_path")" != "$(realpath -m -- "$mole_bin")" ]]; then
+        warn "mo resolves to $mole_path; expected $mole_bin"
+    fi
+else
+    warn "Mole is not installed at $mole_bin; run ./provisioning/arch/bootstrap.sh"
+fi
+
 login_shell="$(getent passwd "$USER" | cut -d: -f7 || true)"
 if [[ -n "$login_shell" ]] && ! grep -qxF -- "$login_shell" /etc/shells; then
     canonical_shell="$(readlink -f -- "$login_shell" 2>/dev/null || true)"

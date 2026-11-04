@@ -10,7 +10,7 @@ Start with the task you need instead of reading everything:
 | Fix SSH, GitHub, gcloud, Tailscale, BWS, or MCP auth | [Authentication and SSH](auth.md) |
 | Look up a shell, Git, chezmoi, mise, WSL, or secrets workflow | [Tips and tricks](tips-and-tricks.md) |
 | Recover a broken shell or dotfiles | [Tips — recovery moves](tips-and-tricks.md#recovery-moves) |
-| Check shell, editor, OpenCode, and Git defaults | [Tooling and defaults](tooling.md) |
+| Check shell, editor, OpenCode, Mole, and Git defaults | [Tooling and defaults](tooling.md) |
 | Understand a design choice | [Decisions and rationale](decisions.md) |
 | Audit, provision, or configure the Windows host | [Windows notes](windows.md) |
 
@@ -19,8 +19,8 @@ Start with the task you need instead of reading everything:
 | Document | What it covers |
 | --- | --- |
 | [Bootstrapping](bootstrap.md) | Native and WSL install order, system maintenance, backups, Git hooks, and day-2 commands. |
-| [Package catalog](packages.md) | Every tracked package, the bootstrap-managed OpenCode CLI, and the optional Nerd Fonts, with Native/WSL badges, the mise toolchains, and the install → record → audit loop. |
-| [Tooling and defaults](tooling.md) | Fish, mise, Go, completions, OpenCode, Git defaults, and editor/app defaults. |
+| [Package catalog](packages.md) | Every tracked package, the bootstrap-managed OpenCode and Mole CLIs, and the optional Nerd Fonts, with Native/WSL badges, the mise toolchains, and the install → record → audit loop. |
+| [Tooling and defaults](tooling.md) | Fish, mise, Go, completions, OpenCode, Mole, Git defaults, and editor/app defaults. |
 | [Tips and tricks](tips-and-tricks.md) | Fish, Git, chezmoi, mise, WSL, secrets, OpenCode, recovery, and a small maintenance rhythm. |
 | [Authentication and SSH](auth.md) | Key, GitHub, gcloud, Tailscale, BWS, and MCP setup and troubleshooting. |
 | [Windows notes](windows.md) | Windows host boundary, WinGet inventory, audit, install-only bootstrap, settings apply, and manual steps. |

@@ -12,6 +12,8 @@ setup() {
     [[ "$output" == *"Usage: provisioning/arch/bootstrap.sh"* ]]
     [[ "$output" == *"--allow-profile-mismatch"* ]]
     [[ "$output" == *"--profile native|wsl"* ]]
+    [[ "$output" == *"--no-mole"* ]]
+    [[ "$output" == *"MOLE_VERSION"* ]]
 
     run "$REPO_ROOT/provisioning/arch/bootstrap.sh" --not-a-real-option
     [ "$status" -eq 1 ]

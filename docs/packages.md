@@ -2,8 +2,9 @@
 
 This is the complete inventory of `provisioning/arch/packages/`: every required
 package the bootstrap tracks, the profile it lands on, and the reason it is
-there. The catalog also covers the OpenCode CLI installed by the bootstrap
-outside pacman and the optional Nerd Fonts offered by the interactive font step.
+there. The catalog also covers the OpenCode and Mole CLIs installed by the
+bootstrap outside pacman, and the optional Nerd Fonts offered by the interactive
+font step.
 
 The required lists are **install-only**. Bootstrap adds missing packages with
 `--needed` and never removes anything. Removing a package is a deliberate manual
@@ -17,8 +18,8 @@ automatically.
 The files in `provisioning/arch/packages/` are the source of truth. This page
 lists every required package, the profile it lands on, and the reason it is
 there. Optional Nerd Fonts are listed separately; they are not installed by
-default and are never required by the audit. The OpenCode CLI is
-bootstrap-managed from the verified npm release and is not audited as a package.
+default and are never required by the audit. The OpenCode and Mole CLIs are
+bootstrap-managed from verified releases and are not audited as packages.
 
 | Profile | Package lists | Entry point |
 | --- | --- | --- |
@@ -39,8 +40,8 @@ group.
 | <img src="assets/badge-aur.svg" alt="AUR" height="18"> | Built from the Arch User Repository |
 
 Everything in an `aur*.txt` list is built from the Arch User Repository; the
-other package lists come from the official Arch repositories. The OpenCode CLI
-and mise toolchains are managed outside these lists.
+other package lists come from the official Arch repositories. The OpenCode and
+Mole CLIs and the mise toolchains are managed outside these lists.
 
 ## Both profiles — official repositories
 
@@ -168,14 +169,15 @@ into the user's home directory.
 | Tool | Source | What it gives you | Notes |
 | --- | --- | --- | --- |
 | `opencode` | `registry.npmjs.org` release tarball | Terminal AI coding agent. | Bootstrap reads OpenCode's release metadata, verifies the npm `sha512` integrity, and installs `~/.opencode/bin/opencode`; fish adds that directory to `PATH`. Pin with `OPENCODE_VERSION`; update with `opencode upgrade` or by rerunning bootstrap. MCP servers live in `~/.config/opencode/opencode.json`. |
+| `mo`, `mole` | GitHub release archive | Disk cleanup, app uninstall, disk analysis, and system status. | Bootstrap resolves the latest stable `V*-linux` release, verifies `SHA256SUMS.txt`, and installs `~/.local/share/mole` with links in `~/.local/bin`. Pin with `MOLE_VERSION`; update with `mo update` or by rerunning bootstrap. The AUR `mole` package is an unrelated SSH-tunnel tool. |
 
 WSL also needs `npiperelay.exe` on the Windows side. Install it with
 `winget install --id albertony.npiperelay -e`; `~/.local/bin/ssh-agent-bridge`
 discovers it. It is a Windows executable, not a pacman package.
 
-The bootstrap installs OpenCode without executing a remote installer script
-and does not remove packages. `just doctor` warns when `opencode` resolves
-somewhere other than `~/.opencode/bin/opencode`.
+The bootstrap installs OpenCode and Mole without executing a remote installer
+script and does not remove packages. `just doctor` warns when `opencode` or
+`mo` resolves somewhere other than the bootstrap-managed path.
 
 ## Optional — Nerd Fonts
 
@@ -280,7 +282,8 @@ Removing a package is also two steps: delete the line, then uninstall it
 manually. Bootstrap will not do it for you.
 
 Bootstrap-managed tools are outside this loop. Update OpenCode with
-`opencode upgrade` or by rerunning `provisioning/arch/bootstrap.sh`.
+`opencode upgrade` and Mole with `mo update`, or rerun
+`provisioning/arch/bootstrap.sh` for either.
 
 ### Inspecting a package
 

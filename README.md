@@ -1,7 +1,7 @@
 # Dotfiles and machine provisioning
 
 Personal Arch Linux configuration: chezmoi for user dotfiles, pacman/AUR for
-system packages, OpenCode's verified npm release for the CLI, mise for
+system packages, verified releases for the OpenCode and Mole CLIs, mise for
 development toolchains, and fish as the interactive shell.
 
 Supported targets:
@@ -49,7 +49,8 @@ Start with the task you need:
 - Use `provisioning/arch/auth.sh --check` to inspect authentication without
   signing in.
 - Package reconciliation is install-only. The bootstrap never removes packages.
-- The OpenCode CLI is installed from a verified npm tarball.
+- The OpenCode CLI is installed from a verified npm tarball; the Mole CLI is
+  installed from a verified GitHub release archive.
 - AUR packages execute code at build time. The bootstrap builds `paru` from a
   pinned AUR commit; review other AUR packages before using `--yes`.
 - `chezmoi init --apply` can overwrite existing dotfiles. On an existing machine,
@@ -135,8 +136,8 @@ tooling stay outside the managed home directory.
 
 The lists live in `provisioning/arch/packages/` and split shared, native, and
 WSL packages across official and AUR files. The bootstrap also manages the
-OpenCode CLI outside those lists, and offers optional Nerd Fonts that nothing
-installs unless selected.
+OpenCode and Mole CLIs outside those lists, and offers optional Nerd Fonts that
+nothing installs unless selected.
 
 Adding a package is a two-step operation: install it normally, then add its name
 to the appropriate list. The bootstrap adds missing packages and never removes

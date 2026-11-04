@@ -24,6 +24,7 @@ ALLOW_PROFILE_MISMATCH=0
 DO_PACKAGES=1
 DO_FONTS=1
 DO_OPENCODE=1
+DO_MOLE=1
 DO_WSL_SSH_AGENT=1
 DO_DOTFILES=1
 DO_MISE=1
@@ -37,6 +38,7 @@ CHEZMOI_NAME="${CHEZMOI_NAME:-}"
 CHEZMOI_EMAIL="${CHEZMOI_EMAIL:-}"
 CHEZMOI_WORK_EMAIL="${CHEZMOI_WORK_EMAIL:-}"
 OPENCODE_VERSION="${OPENCODE_VERSION:-}"
+MOLE_VERSION="${MOLE_VERSION:-}"
 # Pin the paru build to a reviewed AUR commit instead of executing whatever
 # happens to be on master at provisioning time. Bump it deliberately when
 # updating paru.
@@ -70,6 +72,7 @@ Options:
                         packages, or display names (implies the fonts step)
   --no-fonts            Skip the optional Nerd Fonts step
   --no-opencode         Skip installing/updating the OpenCode CLI
+  --no-mole             Skip installing/updating the Mole CLI
   --no-wsl-ssh-agent    Skip the Windows SSH agent relay (WSL only)
   --no-dotfiles         Skip chezmoi init/apply
   --no-mise             Skip `mise install`
@@ -82,6 +85,7 @@ Options:
 
 Environment:
   OPENCODE_VERSION      Pin the OpenCode CLI version (default: latest)
+  MOLE_VERSION          Pin the Mole CLI version (default: latest Linux release)
   PARU_COMMIT           AUR paru commit to build (default: reviewed pin)
   BACKUP_RETENTION      Timestamped backups to keep per managed file (default: 3)
 
@@ -347,6 +351,164 @@ setup_opencode() {
 
     installed_version="$("$opencode_bin" --version 2>/dev/null | tail -n 1 || true)"
     log "OpenCode installed at $opencode_bin${installed_version:+ ($installed_version)}"
+}
+
+mole_latest_version() {
+    local page body tag count
+
+    for page in 1 2 3 4 5 6 7 8 9 10; do
+        body="$(curl_https -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/tw93/Mole/releases?per_page=100&page=$page")" || return 1
+        tag="$(jq -r '[.[] | select(.draft == false and .prerelease == false) |
+            .tag_name | select(test("^V[0-9]+\\.[0-9]+\\.[0-9]+-linux$"))][0] // empty' <<<"$body")" ||
+            return 1
+        if [[ -n "$tag" ]]; then
+            tag="${tag#V}"
+            printf '%s\n' "${tag%-linux}"
+            return 0
+        fi
+        count="$(jq 'length' <<<"$body")" || return 1
+        ((count > 0)) || break
+    done
+
+    return 3
+}
+
+mole_version() {
+    local version="$1"
+
+    version="${version#[Vv]}"
+    version="${version%-linux}"
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    printf '%s\n' "$version"
+}
+
+mole_installed_version() {
+    local bin="$1"
+    local output
+
+    [[ -x "$bin" ]] || return 1
+    output="$("$bin" --version 2>/dev/null |
+        awk '/^Mole version / { version = $3 } END { print version }')" || true
+    [[ "$output" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    printf '%s\n' "$output"
+}
+
+mole_is_install() {
+    local root="$1"
+
+    [[ -f "$root/mole" && (-f "$root/VERSION" || -f "$root/lib/core/common.sh") &&
+        ! -L "$root" && ! -d "$root/.git" ]]
+}
+
+mole_link_is_install() {
+    local target="$1"
+    local root
+
+    [[ -n "$target" ]] || return 1
+    root="$(dirname -- "$target")"
+    [[ -f "$root/mole" && (-f "$root/VERSION" || -f "$root/lib/core/common.sh") ]]
+}
+
+setup_mole() {
+    local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    local install_root="$data_home/mole"
+    local bin_dir="$HOME/.local/bin"
+    local mole_bin="$install_root/mole"
+    local version installed_version target asset base download_tmp expected actual
+    local reported old_root name link resolved
+
+    case "$(uname -m)" in
+    x86_64 | amd64) target="x86_64" ;;
+    aarch64 | arm64) target="aarch64" ;;
+    *) die "Mole has no Linux release for $(uname -m)" ;;
+    esac
+
+    version="${MOLE_VERSION:-}"
+    if [[ -n "$version" ]]; then
+        version="$(mole_version "$version")" ||
+            die "unexpected Mole version: ${MOLE_VERSION:-<missing>}"
+    fi
+
+    if ((DRY_RUN)); then
+        log "Would install/update Mole ${version:-latest} from the verified GitHub release into $install_root"
+        log "Would verify the release archive against SHA256SUMS.txt before installing"
+        return 0
+    fi
+
+    require_cmd curl
+    require_cmd tar
+    require_cmd sha256sum
+    require_cmd jq
+
+    if [[ -z "$version" ]]; then
+        version="$(mole_latest_version)" ||
+            die "could not read the latest Mole Linux release; skip with --no-mole or pin MOLE_VERSION"
+    fi
+
+    installed_version="$(mole_installed_version "$mole_bin" || true)"
+    if [[ -n "$installed_version" && "$installed_version" == "$version" ]]; then
+        log "Mole ${version} is already installed at ${mole_bin}"
+        return 0
+    fi
+
+    asset="mole-${version}-linux-${target}.tar.gz"
+    base="https://github.com/tw93/Mole/releases/download/V${version}-linux"
+    download_tmp="$(mktemp -d)"
+    register_tmp_dir "$download_tmp"
+
+    log "Installing/updating Mole ${version} from the verified GitHub release"
+    curl_https -o "$download_tmp/$asset" "$base/$asset" ||
+        die "could not download Mole ${version}; skip with --no-mole"
+    curl_https -o "$download_tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt" ||
+        die "could not download Mole checksums; skip with --no-mole"
+
+    expected="$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1; exit }' \
+        "$download_tmp/SHA256SUMS.txt")"
+    [[ "$expected" =~ ^[0-9a-f]{64}$ ]] ||
+        die "Mole release does not list a SHA256 checksum for $asset"
+    actual="$(sha256sum -- "$download_tmp/$asset" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]] ||
+        die "Mole archive checksum verification failed"
+
+    mkdir -p "$download_tmp/unpack"
+    tar -xzf "$download_tmp/$asset" -C "$download_tmp/unpack" \
+        --strip-components=1 --no-same-owner ||
+        die "could not unpack the Mole release"
+
+    reported="$(bash "$download_tmp/unpack/mole" --version 2>/dev/null |
+        awk '/^Mole version / { version = $3 } END { print version }')" || reported=""
+    [[ "$reported" == "$version" ]] ||
+        die "the Mole release reports '${reported:-nothing}', expected $version; nothing was installed"
+
+    mkdir -p "$(dirname -- "$install_root")"
+    if [[ -e "$install_root" ]]; then
+        mole_is_install "$install_root" ||
+            die "$install_root exists and is not an installed Mole; move it away and retry"
+        old_root="${install_root}.old.$$"
+        mv -- "$install_root" "$old_root"
+    fi
+
+    if ! mv -- "$download_tmp/unpack" "$install_root"; then
+        [[ -n "${old_root:-}" && -e "$old_root" ]] && mv -- "$old_root" "$install_root"
+        die "could not move the new Mole version into $install_root"
+    fi
+    [[ -n "${old_root:-}" ]] && rm -rf -- "$old_root"
+
+    mkdir -p "$bin_dir"
+    for name in mo mole; do
+        link="$bin_dir/$name"
+        if [[ -e "$link" || -L "$link" ]]; then
+            resolved="$(readlink -f -- "$link" 2>/dev/null || true)"
+            if [[ -e "$link" ]] && ! mole_link_is_install "$resolved"; then
+                warn "$link belongs to another program; left as is, run Mole as $mole_bin"
+                continue
+            fi
+        fi
+        ln -sfn -- "$mole_bin" "$link"
+    done
+
+    log "Mole installed at $mole_bin ($version)"
 }
 
 find_wsl_npiperelay() {
@@ -1188,6 +1350,31 @@ check_environment() {
         done
     fi
 
+    if ((DO_MOLE)); then
+        if ! command -v curl >/dev/null 2>&1; then
+            if ((DO_PACKAGES)); then
+                warn "curl not found; the package step will install it"
+            else
+                warn "curl not found; required by the Mole download"
+                status=1
+            fi
+        fi
+        for cmd in tar sha256sum; do
+            if ! command -v "$cmd" >/dev/null 2>&1; then
+                warn "$cmd not found; required by the verified Mole install (part of the base system)"
+                status=1
+            fi
+        done
+        if ! command -v jq >/dev/null 2>&1; then
+            if ((DO_PACKAGES)); then
+                warn "jq not found; the package step will install it for Mole release resolution"
+            else
+                warn "jq not found; required to resolve the Mole Linux release"
+                status=1
+            fi
+        fi
+    fi
+
     if ((DO_WSL_SSH_AGENT)) && [[ "$PROFILE" == "wsl" ]]; then
         if ! command -v socat >/dev/null 2>&1; then
             if ((DO_PACKAGES)); then
@@ -1319,6 +1506,10 @@ while (($# > 0)); do
         DO_OPENCODE=0
         shift
         ;;
+    --no-mole)
+        DO_MOLE=0
+        shift
+        ;;
     --no-wsl-ssh-agent)
         DO_WSL_SSH_AGENT=0
         shift
@@ -1442,6 +1633,12 @@ if ((DO_OPENCODE)); then
     setup_opencode
 else
     log "Skipping OpenCode CLI"
+fi
+
+if ((DO_MOLE)); then
+    setup_mole
+else
+    log "Skipping Mole CLI"
 fi
 
 if ((DO_WSL_SSH_AGENT)); then

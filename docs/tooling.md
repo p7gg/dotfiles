@@ -175,6 +175,27 @@ exposed as `/reflect`. It reviews recent work for repeated friction and proposes
 the smallest reusable improvement; `--sessions` reads the local OpenCode session
 database. It is adapted from the `oh-my-opencode-slim` reflect skill (MIT).
 
+## Mole
+
+Mole is a disk-cleaning, app-uninstall, disk-analysis, and system-status CLI.
+It is installed from its Linux GitHub release, not from pacman: the AUR `mole`
+package is an unrelated SSH-tunnel tool.
+
+Bootstrap resolves the latest stable `V*-linux` release through the GitHub API,
+downloads `mole-<version>-linux-<arch>.tar.gz` and `SHA256SUMS.txt`, verifies the
+archive checksum, and only then installs `~/.local/share/mole` with `mo` and
+`mole` linked into `~/.local/bin`. An already-installed matching version is
+skipped without downloading. A pinned version avoids the release lookup:
+
+```bash
+MOLE_VERSION='0.4.0' ./provisioning/arch/bootstrap.sh --profile wsl
+```
+
+Use `--no-mole` to skip the step. Update with `mo update` or by rerunning
+bootstrap. Mole refuses to run as root; only its clean and uninstall operations
+ask for sudo. Preview changes first with `mo clean --dry-run`,
+`mo uninstall --dry-run`, or `mo optimize --dry-run`.
+
 ## Git defaults
 
 Beyond SSH signing (see [authentication](auth.md)), the tracked Git config

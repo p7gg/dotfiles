@@ -31,22 +31,26 @@ read-only; inspecting another profile's drift is a legitimate use.
 
 ## Supply-chain pins
 
-Two bootstrap steps execute code that is not covered by pacman's package
+Three bootstrap steps install code that is not covered by pacman's package
 signatures:
 
 - The OpenCode CLI is downloaded from OpenCode's npm release metadata and the
   tarball's published `sha512` integrity is verified before extraction. Set
   `OPENCODE_VERSION` to pin a release; `--no-opencode` skips it.
+- The Mole CLI is downloaded from its GitHub Linux release and the archive's
+  published SHA-256 checksum is verified against `SHA256SUMS.txt` before
+  extraction. Set `MOLE_VERSION` to pin a release; `--no-mole` skips it.
 - `paru` is built from the AUR at the `PARU_COMMIT` value in
   `provisioning/arch/bootstrap.sh` instead of whatever is on AUR master at
   provisioning time. Bump that pin deliberately, after reviewing the PKGBUILD.
 
 Upstream OpenCode uses npm's registry integrity metadata rather than a detached
-installer signature. This repo verifies the published `sha512` integrity over
-HTTPS but does not verify npm's registry signing keys; an optional
-`OPENCODE_VERSION` pin adds reproducibility. Failing closed is intentional: a
-missing or mismatched checksum stops bootstrap rather than installing an
-unverified binary.
+installer signature, and Mole publishes `SHA256SUMS.txt` beside each release.
+This repo verifies those published checksums over HTTPS but does not verify a
+detached signature; optional `OPENCODE_VERSION` and `MOLE_VERSION` pins add
+reproducibility. Failing closed is intentional: a missing or mismatched checksum
+stops bootstrap rather than installing an unverified binary, and neither tool is
+installed by piping a remote script into a shell.
 
 ## GNOME Keyring on both profiles
 

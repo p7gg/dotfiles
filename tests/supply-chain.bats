@@ -21,6 +21,19 @@ setup() {
     grep -Fq 'curl_https -o "$download_tmp/opencode.tgz" "$tarball"' "$BOOTSTRAP"
 }
 
+@test "the Mole install verifies the published release checksum" {
+    grep -Fq 'https://github.com/tw93/Mole/releases/download/V${version}-linux' "$BOOTSTRAP"
+    grep -Fq 'SHA256SUMS.txt' "$BOOTSTRAP"
+    grep -Fq 'sha256sum -- "$download_tmp/$asset"' "$BOOTSTRAP"
+    grep -Fq 'MOLE_VERSION' "$BOOTSTRAP"
+}
+
+@test "Mole resolves only stable Linux releases" {
+    grep -Fq 'api.github.com/repos/tw93/Mole/releases' "$BOOTSTRAP"
+    grep -Fq '.prerelease == false' "$BOOTSTRAP"
+    grep -Fq 'test("^V[0-9]+\\.[0-9]+\\.[0-9]+-linux$")' "$BOOTSTRAP"
+}
+
 @test "documentation does not advertise the retired remote installer" {
     ! grep -Rq 'opencode.ai/v2/install' \
         "$REPO_ROOT/README.md" "$REPO_ROOT/docs" "$REPO_ROOT/provisioning/arch"
