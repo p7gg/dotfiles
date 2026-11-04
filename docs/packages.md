@@ -116,10 +116,17 @@ Source: `provisioning/arch/packages/native.txt`.
 
 | Package | Env | What it gives you | Notes |
 | --- | :---: | --- | --- |
+| `appmenu-gtk-module` | <img src="assets/badge-native.svg" alt="Native" height="18"> | GTK module that exports application menus to the desktop shell. | Tauri Arch prerequisite; needed for global menu integration. |
+| `file` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Identifies file types from their contents. | Tauri Arch prerequisite. |
 | `fwupd` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Firmware update daemon and client. | `fwupd-refresh.timer` is enabled on native. |
 | `gnome-tweaks` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Advanced GNOME settings GUI. | — |
+| `libappindicator` | <img src="assets/badge-native.svg" alt="Native" height="18"> | AppIndicator/StatusNotifier tray library; provides `libappindicator-gtk3`. | Tauri Arch prerequisite; needed for tray icons. Arch package name differs from the Tauri docs. |
+| `librsvg` | <img src="assets/badge-native.svg" alt="Native" height="18"> | SVG rendering library. | Tauri Arch prerequisite. |
+| `openssl` | <img src="assets/badge-native.svg" alt="Native" height="18"> | TLS and cryptography library and headers. | Tauri Arch prerequisite for linking. |
 | `restic` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Encrypted, deduplicated backups. | No repository, password, or timer is configured. |
 | `ufw` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Uncomplicated Firewall. | Bootstrap denies incoming by default and allows SSH plus `tailscale0`. |
+| `webkit2gtk-4.1` | <img src="assets/badge-native.svg" alt="Native" height="18"> | WebKitGTK 4.1 web engine. | The webview Tauri renders in; Tauri Arch prerequisite. |
+| `xdotool` | <img src="assets/badge-native.svg" alt="Native" height="18"> | X11 automation tool; ships `libxdo`. | Tauri Arch prerequisite (provides `libxdo`). |
 | `zellij` | <img src="assets/badge-native.svg" alt="Native" height="18"> | Terminal multiplexer and workspace. | Native only by design. |
 
 ## Native only — AUR <img src="assets/badge-aur.svg" alt="AUR" height="20">

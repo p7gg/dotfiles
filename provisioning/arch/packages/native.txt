@@ -2,8 +2,15 @@
 # The bootstrap installs this file in addition to base.txt when the native
 # profile is selected.
 
+appmenu-gtk-module
+file
 fwupd
 gnome-tweaks
+libappindicator
+librsvg
+openssl
 restic
 ufw
+webkit2gtk-4.1
+xdotool
 zellij

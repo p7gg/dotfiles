@@ -48,6 +48,8 @@ Global toolchains live in `~/.config/mise/config.toml`:
 - pnpm
 - `npm:@antfu/ni`
 - `github:gittower/git-flow-next`, version 2.1.0, renamed to `git-flow`
+- Rust stable, installed through rustup under mise's control (not the pacman
+  `rust` package)
 
 Project-specific versions belong in each project's `mise.toml`, not in the
 global config. After bootstrap:
